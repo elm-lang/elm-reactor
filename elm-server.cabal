@@ -39,6 +39,7 @@ Executable elm-server
                        process,
                        snap-core,
                        snap-server,
+                       split,
                        transformers,
                        unix-compat,
                        unordered-containers
