@@ -27,15 +27,18 @@ source-repository head
 
 Executable elm-server
   Main-is:             Server.hs
+  other-modules:       Index
   Build-depends:       base >=4.2 && <5,
                        bytestring,
                        cmdargs,
                        containers >= 0.3,
                        directory,
-                       filepath,
                        Elm >= 0.12.3,
-                       snap-core,
-                       snap-server,
+                       filepath,
                        mtl,
                        process,
+                       snap-core,
+                       snap-server,
+                       transformers,
+                       unix-compat,
                        unordered-containers

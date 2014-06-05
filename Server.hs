@@ -22,6 +22,8 @@ import Snap.Core
 import Snap.Http.Server
 import Snap.Util.FileServe
 
+import Index
+
 data Flags = Flags
   { port :: Int
   , runtime :: Maybe FilePath
@@ -57,25 +59,7 @@ main = do
       <|> serveDirectoryWith directoryConfig "."
 
 directoryConfig :: MonadSnap m => DirectoryConfig m
-directoryConfig =
-    fancyDirectoryConfig
-    { indexGenerator = defaultIndexGenerator defaultMimeTypes indexStyle
-    , mimeTypes = Map.insert ".elm" "text/html" defaultMimeTypes
-    }
-
-indexStyle :: BS.ByteString
-indexStyle =
-    "body { margin:0; font-family:sans-serif; background:rgb(245,245,245);\
-    \       font-family: calibri, verdana, helvetica, arial; }\
-    \div.header { padding: 40px 50px; font-size: 24px; }\
-    \div.content { padding: 0 40px }\
-    \div.footer { display:none; }\
-    \table { width:100%; border-collapse:collapse; }\
-    \td { padding: 6px 10px; }\
-    \tr:nth-child(odd) { background:rgb(216,221,225); }\
-    \td { font-family:monospace }\
-    \th { background:rgb(90,99,120); color:white; text-align:left;\
-    \     padding:10px; font-weight:normal; }"
+directoryConfig = fancyDirectoryConfig {indexGenerator = elmIndexGenerator}
 
 runtimeName :: String
 runtimeName = "elm-runtime.js"
