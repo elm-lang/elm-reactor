@@ -6,9 +6,10 @@ import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as S
 import Data.List
 import Data.List.Split (splitOn)
+import Data.Time.Format (formatTime)
 import System.Directory
 import System.FilePath
-import System.PosixCompat.Files
+import System.Locale (defaultTimeLocale)
 
 import Snap.Core
 import Snap.Util.FileServe
@@ -32,7 +33,9 @@ indexStyle = S.pack
 elmIndexGenerator :: MonadSnap m
                       => FilePath   -- ^ Directory to generate index for
                       -> m ()
-elmIndexGenerator d = let writeS = writeBS . S.pack in do
+elmIndexGenerator d = do
+    let writeS = writeBS . S.pack
+    let formatTime' = formatTime defaultTimeLocale "%d %b 20%y, %r"
     modifyResponse $ setContentType $ S.pack "text/html"
 
     rq      <- getRequest
@@ -60,14 +63,13 @@ elmIndexGenerator d = let writeS = writeBS . S.pack in do
 
     unless (null elmFiles) $ writeS "<table><tr><th>Elm File</th><th>Last Modified</th></tr>"
     forM_ (sort elmFiles ) $ \f -> do
-        stat <- liftIO $ getFileStatus (d </> f)
-        tm   <- liftIO $ formatHttpTime (modificationTime stat)
+        tm <- liftIO . getModificationTime $ d </> f
         writeS "<tr><td><a href='"
         writeS f
         writeS "'>"
         writeS f
         writeS "</a></td><td>"
-        writeBS tm
+        writeS $ formatTime' tm
         writeS "</td></tr>"
     unless (null elmFiles) $ writeS "</table>"
 
@@ -93,8 +95,7 @@ elmIndexGenerator d = let writeS = writeBS . S.pack in do
 
     writeS "<table><tr><th>File Name</th><th>MIME type</th><th>Last Modified</th></tr>"
     forM_ (sort $ filter (not . dotFile) otherFiles) $ \f -> do
-        stat <- liftIO $ getFileStatus (d </> f)
-        tm   <- liftIO $ formatHttpTime (modificationTime stat)
+        tm <- liftIO . getModificationTime $ d </> f
         writeS "<tr><td><a href='"
         writeS f
         writeS "'>"
@@ -102,7 +103,7 @@ elmIndexGenerator d = let writeS = writeBS . S.pack in do
         writeS "</a></td><td>"
         writeBS $ fileType defaultMimeTypes f
         writeS "</td><td>"
-        writeBS tm
+        writeS $ formatTime' tm
         writeS "</tr>"
 
     writeS "</table></div>"
