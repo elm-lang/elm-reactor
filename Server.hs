@@ -51,8 +51,10 @@ config = setAccessLog ConfigNoLog (setErrorLog ConfigNoLog defaultConfig)
 main :: IO ()
 main = do
   cargs <- cmdArgs flags
-  putStrLn $ "Elm Server " ++ Version.showVersion version ++
-             ": Just refresh a page to recompile it!"
+  (_,Just h,_,_) <- createProcess $ (shell "elm --version") { std_out = CreatePipe }
+  elmVer <- hGetContents h
+  putStr $ "Elm Server " ++ Version.showVersion version ++ " serving Elm " ++ elmVer
+  putStrLn "Just refresh a page to recompile it!"
   httpServe (setPort (port cargs) config) $
       serveRuntime (maybe Elm.runtime id (runtime cargs))
       <|> serveElm
