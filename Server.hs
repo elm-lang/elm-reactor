@@ -5,9 +5,7 @@ module Main where
 import Control.Applicative ((<$>),(<|>))
 import Control.Monad (guard)
 import Control.Monad.Trans (MonadIO(liftIO))
-import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BSC
-import qualified Data.HashMap.Strict as Map
 import qualified Data.Version as Version
 import System.Console.CmdArgs
 import System.Directory
