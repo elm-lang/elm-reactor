@@ -78,7 +78,7 @@ serveElm =
      onSuccess (compile file) (serve file)
   where
     compile file =
-        let elmArgs = [ "--make", "--set-runtime=" ++ runtimeName, file ]
+        let elmArgs = [ "--make", "--set-runtime=/" ++ runtimeName, file ]
         in  createProcess $ (proc "elm" elmArgs) { std_out = CreatePipe }
 
     serve file =
