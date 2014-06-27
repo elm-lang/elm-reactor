@@ -16,18 +16,17 @@ import Snap.Util.FileServe
 
 indexStyle :: BS.ByteString
 indexStyle = S.pack
-    "body { margin:0; font-family:sans-serif; background:rgb(245,245,245);\
-    \       font-family: calibri, verdana, helvetica, arial; }\
-    \div.topbar {height: 6px; background-color: rgb(90,99,120); }\
-    \div.intro  { padding: 20px 50px 0px; font-size: 14px; color:#888 }\
-    \div.header { padding: 0px 50px 20px; font-size: 24px; color:rgb(78,78,78) }\
+    "body { margin:0; background:rgb(253,253,253);\
+    \       font-family: 'Lucida Grande','Trebuchet MS','Bitstream Vera Sans',Verdana,Helvetica,sans-serif; }\
+    \div.topbar {height: 6px; background-color: rgb(96,181,204); }\
+    \div.header { padding: 20px 50px; font-size: 30px; }\
     \div.content { padding: 0 40px }\
     \table { width:100%; border-collapse:collapse; margin-bottom: 40px; float: left }\
-    \a { text-decoration: none; color:rgb(90,99,120) }\
-    \td { padding: 6px 10px; color:rgb(78,78,78) }\
-    \tr { border-bottom: solid rgb(216, 221, 225) 1px }\
-    \th { background:rgb(90,99,120); color:white; text-align:left;\
-    \     padding:3px 10px; font-weight:normal; }"
+    \a { text-decoration: none; color:rgb(96,181,204) }\
+    \td { padding: 6px 10px; color:rgb(180,180,180) }\
+    \tr { border-bottom: solid rgb(245,245,245) 1px }\
+    \th { background:rgb(216,221,225); text-align:left;\
+    \     padding:6px 10px; font-weight:normal; font-size: 18px; }"
 
 elmIndexGenerator :: MonadSnap m
                       => FilePath   -- ^ Directory to generate index for
@@ -43,13 +42,14 @@ elmIndexGenerator d = do
     writeS "<style type='text/css'>"
     writeBS indexStyle
     writeS "</style><div class=\"topbar\"></div>"
-    writeS "<div class=\"intro\">Directory Listing</div>"
+
     writeS "<div class=\"header\">"
-    writeS "<a href='/'>~</a>/"
+    writeS "<a href='/'>~</a> / "
     when (uri /= "/") $ do
         let path = splitOn "/" uri
-        let pathScan = scanr1 (\a b -> a ++ ('/':b)) path
-        mapM_ (\(p,ps) -> unless (null p) $ writeS $ "<a href='"++ps++"'>"++p++"</a>/") (zip path pathScan)
+        let pathScan = scanl1 (\a b -> a ++ '/' : b) path
+        forM_ (zip path pathScan) $ \(p,ps) ->
+            unless (null p) $ writeS $ "<a href=\""++ps++"\">"++p++"</a> / "
     writeS "</div><div class=\"content\">"
 
     entries <- liftIO $ getDirectoryContents d
