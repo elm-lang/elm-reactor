@@ -89,10 +89,8 @@ socket :: Snap ()
 socket = WS.runWebSocketsSnap pollingApp
 
 pollingApp :: WS.ServerApp
-pollingApp pending = loop
-  where
-    loop = do
-      conn <- WS.acceptRequest pending
+pollingApp pendingConnection = do
+      conn <- WS.acceptRequest pendingConnection
       _ <- putStrLn "Sent Hello"
       WS.sendTextData conn $ BSC.pack "Hello world!"
 
