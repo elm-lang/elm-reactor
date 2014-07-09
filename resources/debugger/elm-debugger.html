@@ -1,0 +1,152 @@
+<html>
+<head>
+</head>
+<body style="background-color:rgb(216,221,225);">
+  <div>
+    <button class="largeButton" id="buttonRestart">Restart</button>
+    <button class="largeButton" id="buttonPause">Pause</button>
+    <button class="largeButton" id="buttonContinue" style="display:none;">Continue</button>
+    <p id="statusText"></p>
+    <input id="timeSlider" type=range value=0 step=1 min=0 max=0/>
+  </div>
+  <div id="watches">
+  </div>
+<style>
+body {
+  font-family: "Lucida Grande";
+}
+
+#watches {
+  padding-top: 6px;
+}
+
+#statusText {
+  padding-left:6px;
+  font-size: 12px;
+  display: inline;
+}
+
+#signalGraphParent {
+	overflow: scroll;
+	width: 100%;
+}
+
+#signalGraphView {
+	-webkit-transform: scale(0.7);
+	-webkit-transform-origin: 0% 0%;
+	-moz-transform: scale(0.5);
+	-moz-transform-origin: 0% 0%;
+}
+
+#timeSlider {
+	width: 100%;
+}
+</style>
+<script src="/debugger/viz.js"></script>
+<script>
+if (!String.prototype.format) {
+  String.prototype.format = function() {
+	var args = arguments;
+	return this.replace(/{(\d+)}/g, function(match, number) {
+	  return typeof args[number] != 'undefined'
+		? args[number]
+		: match
+	  ;
+	});
+  };
+}
+
+var elmDebugger = {
+	restart: function() {},
+	pause: function() {},
+	kontinue: function() {},
+	getMaxSteps: function() { return 0; },
+	stepTo: function(i) {},
+	getPaused: function() { return false; },
+	getHotSwapState: function() { return null; },
+        watchTracker: { frames:[{}] }
+};
+
+function updateStatus() {
+    if (elmDebugger.getPaused()) {
+        statusText.textContent = "Event {0} of {1}".format(timeSlider.value, elmDebugger.getMaxSteps());
+    }
+    else {
+        statusText.textContent = "{0} events".format(elmDebugger.getMaxSteps());
+    }
+}
+
+function updateWatches() {
+    while (watchesDiv.hasChildNodes()) {
+        watchesDiv.removeChild(watchesDiv.lastChild);
+    }
+    var frame = elmDebugger.watchTracker.frames[timeSlider.value];
+    for (var tag in frame) {
+        var node = document.createElement('div');
+        node.innerHTML = tag + ': <code>' + show(frame[tag]) + '</code>'
+        watchesDiv.appendChild(node);
+    }
+}
+
+var watchesDiv = document.getElementById("watches");
+var statusText = document.getElementById("statusText");
+var timeSlider = document.getElementById("timeSlider");
+timeSlider.addEventListener('input',  slide);
+timeSlider.addEventListener('change', slide);
+function slide(e) {
+    console.log("Time sliding");
+    elmDebugger.stepTo(+timeSlider.value);
+    updateStatus();
+    updateWatches();
+}
+
+var pauseButton = document.getElementById('buttonPause');
+pauseButton.addEventListener('click', function(e) {
+    pauseButton.innerHTML = 'Unpause';
+    pauseButton.disabled = true;
+    pauseButton.title = "Unpause is a bit buggy still. It is inactive for now, but it is definitely possible!";
+    elmDebugger.pause();
+    refreshDebuggerUI();
+});
+
+document.getElementById('buttonRestart').addEventListener('click', function(e) {
+    console.log("Restart");
+    pauseButton.innerHTML = 'Pause';
+    pauseButton.disabled = false;
+    pauseButton.title = "";
+    elmDebugger.restart();
+    refreshDebuggerUI();
+});
+
+function refreshDebuggerUI() {
+	updateStatus();
+	updateWatches();
+	timeSlider.max = elmDebugger.getMaxSteps();
+	if (elmDebugger.getPaused()) {
+		timeSlider.disabled = false;
+	}
+	else {
+		timeSlider.disabled = true;
+		timeSlider.value = timeSlider.max;
+	}
+}
+
+var show;
+function startDebugging(elmWindow) {
+	console.log("Debugger started");
+	elmDebugger = elmWindow.Elm.Debugger;
+        show = elmWindow.Elm.String.make({}).show;
+}
+
+parent.window.addEventListener("message", function(e) {
+	if (e.data == "elmDebuggerInit") {
+		startDebugging(e.source);
+	}
+	else if (e.data == "elmNotify") {
+		refreshDebuggerUI();
+	}
+}, false);
+
+</script>
+</body>
+</html>

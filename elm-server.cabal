@@ -29,12 +29,15 @@ Executable elm-server
   Main-is:             Server.hs
   other-modules:       Index
   Build-depends:       base >=4.2 && <5,
+                       blaze-html,
+                       blaze-markup,
                        bytestring,
                        cmdargs,
                        containers >= 0.3,
                        directory,
                        Elm >= 0.12.3,
                        filepath,
+                       HTTP,
                        mtl,
                        process,
                        old-locale,
@@ -44,3 +47,5 @@ Executable elm-server
                        time,
                        transformers,
                        unordered-containers
+  
+  hs-source-dirs:      server
