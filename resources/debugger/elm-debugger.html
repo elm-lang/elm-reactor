@@ -147,6 +147,14 @@ parent.window.addEventListener("message", function(e) {
 	}
 }, false);
 
+var refreshingSocket = new WebSocket("ws://localhost:8000/socket");
+refreshingSocket.onopen = function(){
+  console.log("socket opened");
+}
+refreshingSocket.onmessage = function(event) {
+  console.log(event.data);
+};
+
 </script>
 </body>
 </html>

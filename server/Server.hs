@@ -3,12 +3,16 @@
 module Main where
 
 import Control.Applicative ((<$>),(<|>))
-import Control.Monad (guard)
+import Control.Concurrent (forkIO)
+import Control.Exception (finally)
+import Control.Monad (guard, forever, unless)
 import Control.Monad.Trans (MonadIO(liftIO))
 import qualified Data.ByteString.Char8 as BSC
 import qualified Data.Version as Version
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html.Renderer.Utf8 as BlazeBS
+import qualified Network.WebSockets as WS
+import qualified Network.WebSockets.Snap as WS
 import System.Console.CmdArgs
 import System.Directory
 import System.Exit
@@ -64,6 +68,7 @@ main = do
       <|> route [ ("debug", edit)
                 , ("compile", compile)
                 , ("hotswap", hotswap)
+                , ("socket", socket)
                 ]
       <|> serveDirectoryWith simpleDirectoryConfig "resources"
       <|> error404
@@ -80,6 +85,16 @@ serveRuntime runtimePath =
      guard (file == runtimeName)
      serveFileAs "application/javascript" runtimePath
 
+socket :: Snap ()
+socket = WS.runWebSocketsSnap pollingApp
+
+pollingApp :: WS.ServerApp
+pollingApp pending = loop
+  where
+    loop = do
+      conn <- WS.acceptRequest pending
+      _ <- putStrLn "Sent Hello"
+      WS.sendTextData conn $ BSC.pack "Hello world!"
 
 hotswap :: Snap ()
 hotswap = maybe error404 serve =<< getParam "input"

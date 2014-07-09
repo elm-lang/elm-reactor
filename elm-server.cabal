@@ -46,6 +46,8 @@ Executable elm-server
                        split,
                        time,
                        transformers,
-                       unordered-containers
+                       unordered-containers,
+                       websockets,
+                       websockets-snap
   
   hs-source-dirs:      server
