@@ -153,7 +153,33 @@ refreshingSocket.onopen = function(){
 }
 refreshingSocket.onmessage = function(event) {
   console.log(event.data);
+  hotSwap(event.data);
 };
+
+function hotSwap(js) {
+  var top = self.parent;
+  if (js) {
+      var error = top.output.document.getElementById('ErrorMessage');
+      if (error) {
+          error.parentNode.removeChild(error);
+      }
+      top.output.eval(js);
+      var moduleStr = js.substring(0,js.indexOf('=')).replace(/\s/g,'');
+      var module = top.output.eval(moduleStr);
+      if (top.output.Elm.Debugger) {
+          var debuggerState = top.output.Elm.Debugger.getHotSwapState();
+          top.output.runningElmModule.dispose();
+          top.output.Elm.Debugger.dispose();
+
+          var wrappedModule = top.output.Elm.debuggerAttach(module, debuggerState);
+          top.output.runningElmModule = top.output.Elm.fullscreen(wrappedModule);
+      }
+      else {
+          top.output.runningElmModule =
+              top.output.runningElmModule.swap(module);
+      }
+  }
+}
 
 </script>
 </body>

@@ -68,6 +68,8 @@ main = do
       <|> serveRuntime (maybe Elm.runtime id (runtime cargs))
       <|> serveElm
       <|> route [ ("debug", debug)
+                , ("compile", compileSnap)
+                , ("hotswap", hotswap)
                 , ("socket", socket)
                 ]
       <|> serveDirectoryWith simpleDirectoryConfig "resources"
@@ -125,8 +127,8 @@ sendHotSwap connection filePath =
               WS.sendTextData connection $ BSC.pack result
   where
     file = FP.encodeString $ FP.filename filePath
-    compileJS file =
-      let elmArgs = [ "--make", "--only-js", "--set-runtime=/" ++ runtimeName, file ]
+    compileJS elmFile =
+      let elmArgs = [ "--make", "--only-js", "--set-runtime=/" ++ runtimeName, elmFile ]
       in  createProcess $ (proc "elm" elmArgs) { std_out = CreatePipe }
 
 
@@ -173,6 +175,14 @@ onSuccess action success =
 
 debug :: Snap()
 debug = withFile Editor.ide 
+
+hotswap :: Snap ()
+hotswap = maybe error404 serve =<< getParam "input"
+    where
+      serve src = do
+        _ <- setContentType "application/javascript" <$> getResponse
+        result <- liftIO . Generate.js $ BSC.unpack src
+        writeBS (BSC.pack result)
 
 withFile :: (FilePath -> String -> H.Html) -> Snap ()
 withFile handler = do
