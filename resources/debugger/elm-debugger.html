@@ -154,7 +154,9 @@ parent.window.addEventListener("message", function(e) {
 	}
 }, false);
 
-var refreshingSocket = new WebSocket("ws://localhost:8000/socket");
+var socketLocation = "ws://" + window.location.host + "/socket";
+console.log(socketLocation);
+var refreshingSocket = new WebSocket(socketLocation);
 refreshingSocket.onmessage = function(event) {
   var hotSwapCheckbox = document.getElementById("hotswap");
   if(hotSwapCheckbox.checked) {
