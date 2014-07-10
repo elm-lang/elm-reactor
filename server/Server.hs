@@ -68,7 +68,7 @@ main = do
       <|> serveRuntime (maybe Elm.runtime id (runtime cargs))
       <|> serveElm
       <|> route [ ("debug", edit)
-                , ("compile", compile)
+                , ("compile", compileSnap)
                 , ("hotswap", hotswap)
                 , ("socket", socket)
                 ]
@@ -93,7 +93,6 @@ socket = WS.runWebSocketsSnap pollingApp
 pollingApp :: WS.ServerApp
 pollingApp pendingConnection = do
       conn <- WS.acceptRequest pendingConnection
-      _ <- putStrLn "Sent Hello"
       threadID <- forkIO $ keepAlive conn
       notifyManager <- liftIO $ Notify.startManager
       notifyIfChange notifyManager conn
@@ -103,7 +102,7 @@ pollingApp pendingConnection = do
 keepAlive :: WS.Connection -> IO ()
 keepAlive connection =
   do WS.sendPing connection $ BSC.pack "ping"
-     threadDelay $ 10 * (1000000)
+     threadDelay $ 10 * (1000000) -- 10 seconds
      keepAlive connection
 
 notifyIfChange :: Notify.WatchManager -> WS.Connection -> IO ()
@@ -114,16 +113,31 @@ notifyIfChange manager conn =
 emptyCompileFile :: WS.Connection -> FP.FilePath -> IO ()
 emptyCompileFile conn filePath =
   do
-    _ <- putStrLn $ "Compiling file: " ++ show filePath
-    let Right textFile = FP.toText filePath
-    let file = show textFile
-    let elmArgs = [ "--make", "--set-runtime=/" ++ runtimeName, file ]
-    (_, _, _, phandle) <- createProcess $ (proc "elm" elmArgs) { std_out = CreatePipe }
-    --_ <- putStrLn $ show badFilePath
-    _ <- waitForProcess phandle
-    _ <- putStrLn "Compiled file"
-    WS.sendTextData conn $ BSC.pack "compiled file"
-    return ()
+    let file = FP.encodeString $ FP.filename filePath
+    liftIO $ putStrLn file
+    (stdin, stdout, stderr, phandle) <- liftIO $ compileJS file
+    exitCode <- waitForProcess phandle
+    case (exitCode, stdout, stderr) of
+      (ExitFailure _, Just out, Just err) ->
+          do output <- hGetContents out 
+             error <- hGetContents err
+             putStrLn $ output ++ error
+             return ()
+      (ExitFailure _, _, _) ->
+          do putStrLn "Check the console for the error"
+             return ()
+      (ExitSuccess, _ , _) ->
+          do result <- readFile ("build" </> file `replaceExtension` "js") 
+             WS.sendTextData conn $ BSC.pack result
+  where
+    compileJS file =
+      let elmArgs = [ "--make", "--only-js", "--set-runtime=/" ++ runtimeName, file ]
+      in  createProcess $ (proc "elm" elmArgs) { std_out = CreatePipe }
+
+compile :: FilePath -> IO (Maybe Handle, Maybe Handle, Maybe Handle, ProcessHandle)
+compile file =
+  let elmArgs = [ "--make", "--set-runtime=/" ++ runtimeName, file ]
+  in  createProcess $ (proc "elm" elmArgs) { std_out = CreatePipe }
 
 hotswap :: Snap ()
 hotswap = maybe error404 serve =<< getParam "input"
@@ -133,8 +147,8 @@ hotswap = maybe error404 serve =<< getParam "input"
         result <- liftIO . Generate.js $ BSC.unpack src
         writeBS (BSC.pack result)
 
-compile :: Snap ()
-compile = maybe error404 serve =<< getParam "input"
+compileSnap :: Snap ()
+compileSnap = maybe error404 serve =<< getParam "input"
     where
       serve src = do
         result <- liftIO . Generate.html "Compiled Elm" $ BSC.unpack src
@@ -147,10 +161,6 @@ serveElm =
      guard (exists && takeExtension file == ".elm")
      onSuccess (compile file) (serve file)
   where
-    compile file =
-        let elmArgs = [ "--make", "--set-runtime=/" ++ runtimeName, file ]
-        in  createProcess $ (proc "elm" elmArgs) { std_out = CreatePipe }
-
     serve file =
         serveFileAs "text/html; charset=UTF-8" ("build" </> replaceExtension file "html")
 
