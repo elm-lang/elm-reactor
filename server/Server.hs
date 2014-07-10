@@ -4,7 +4,7 @@ module Main where
 
 import Control.Applicative ((<$>),(<|>))
 import Control.Concurrent (threadDelay, forkIO)
-import Control.Monad (guard, forever)
+import Control.Monad (guard)
 import Control.Monad.Trans (MonadIO(liftIO))
 import qualified Filesystem.Path.CurrentOS as FP
 import qualified Data.ByteString.Char8 as BSC
@@ -67,9 +67,7 @@ main = do
       ifTop (serveDirectoryWith directoryConfig ".")
       <|> serveRuntime (maybe Elm.runtime id (runtime cargs))
       <|> serveElm
-      <|> route [ ("debug", edit)
-                , ("compile", compileSnap)
-                , ("hotswap", hotswap)
+      <|> route [ ("debug", debug)
                 , ("socket", socket)
                 ]
       <|> serveDirectoryWith simpleDirectoryConfig "resources"
@@ -88,16 +86,15 @@ serveRuntime runtimePath =
      serveFileAs "application/javascript" runtimePath
 
 socket :: Snap ()
-socket = WS.runWebSocketsSnap pollingApp
+socket = WS.runWebSocketsSnap fileChangeApp
 
-pollingApp :: WS.ServerApp
-pollingApp pendingConnection = do
-      conn <- WS.acceptRequest pendingConnection
-      threadID <- forkIO $ keepAlive conn
+fileChangeApp :: WS.ServerApp
+fileChangeApp pendingConnection = do
+      connection <- WS.acceptRequest pendingConnection
+      _ <- forkIO $ keepAlive connection
       notifyManager <- liftIO $ Notify.startManager
-      notifyIfChange notifyManager conn
+      updateOnChange notifyManager connection
       Notify.stopManager notifyManager
-      WS.sendTextData conn $ BSC.pack "Hello world!"
 
 keepAlive :: WS.Connection -> IO ()
 keepAlive connection =
@@ -105,47 +102,33 @@ keepAlive connection =
      threadDelay $ 10 * (1000000) -- 10 seconds
      keepAlive connection
 
-notifyIfChange :: Notify.WatchManager -> WS.Connection -> IO ()
-notifyIfChange manager conn =
-  do NDevel.treeExtExists manager "." "elm" (emptyCompileFile conn)
+updateOnChange :: Notify.WatchManager -> WS.Connection -> IO ()
+updateOnChange manager connection =
+  do _ <- NDevel.treeExtExists manager "." "elm" (sendHotSwap connection)
      threadDelay maxBound
 
-emptyCompileFile :: WS.Connection -> FP.FilePath -> IO ()
-emptyCompileFile conn filePath =
-  do
-    let file = FP.encodeString $ FP.filename filePath
-    liftIO $ putStrLn file
-    (stdin, stdout, stderr, phandle) <- liftIO $ compileJS file
-    exitCode <- waitForProcess phandle
-    case (exitCode, stdout, stderr) of
-      (ExitFailure _, Just out, Just err) ->
-          do output <- hGetContents out 
-             error <- hGetContents err
-             putStrLn $ output ++ error
-             return ()
-      (ExitFailure _, _, _) ->
-          do putStrLn "Check the console for the error"
-             return ()
-      (ExitSuccess, _ , _) ->
-          do result <- readFile ("build" </> file `replaceExtension` "js") 
-             WS.sendTextData conn $ BSC.pack result
+sendHotSwap :: WS.Connection -> FP.FilePath -> IO ()
+sendHotSwap connection filePath =
+  do (_, stdout, stderr, phandle) <- liftIO $ compileJS file
+     exitCode <- waitForProcess phandle
+     case (exitCode, stdout, stderr) of
+       (ExitFailure _, Just out, Just err) ->
+           do output <- hGetContents out 
+              errorMessage <- hGetContents err
+              putStrLn $ output ++ errorMessage
+              return ()
+       (ExitFailure _, _, _) ->
+           do putStrLn "Check the console for the error"
+              return ()
+       (ExitSuccess, _ , _) ->
+           do result <- readFile ("build" </> file `replaceExtension` "js") 
+              WS.sendTextData connection $ BSC.pack result
   where
+    file = FP.encodeString $ FP.filename filePath
     compileJS file =
       let elmArgs = [ "--make", "--only-js", "--set-runtime=/" ++ runtimeName, file ]
       in  createProcess $ (proc "elm" elmArgs) { std_out = CreatePipe }
 
-compile :: FilePath -> IO (Maybe Handle, Maybe Handle, Maybe Handle, ProcessHandle)
-compile file =
-  let elmArgs = [ "--make", "--set-runtime=/" ++ runtimeName, file ]
-  in  createProcess $ (proc "elm" elmArgs) { std_out = CreatePipe }
-
-hotswap :: Snap ()
-hotswap = maybe error404 serve =<< getParam "input"
-    where
-      serve src = do
-        _ <- setContentType "application/javascript" <$> getResponse
-        result <- liftIO . Generate.js $ BSC.unpack src
-        writeBS (BSC.pack result)
 
 compileSnap :: Snap ()
 compileSnap = maybe error404 serve =<< getParam "input"
@@ -161,6 +144,9 @@ serveElm =
      guard (exists && takeExtension file == ".elm")
      onSuccess (compile file) (serve file)
   where
+    compile file =
+      let elmArgs = [ "--make", "--set-runtime=/" ++ runtimeName, file ]
+      in  createProcess $ (proc "elm" elmArgs) { std_out = CreatePipe }
     serve file =
         serveFileAs "text/html; charset=UTF-8" ("build" </> replaceExtension file "html")
 
@@ -185,8 +171,8 @@ onSuccess action success =
 
        (ExitSuccess, _) -> success
 
-edit :: Snap()
-edit = withFile Editor.ide 
+debug :: Snap()
+debug = withFile Editor.ide 
 
 withFile :: (FilePath -> String -> H.Html) -> Snap ()
 withFile handler = do
