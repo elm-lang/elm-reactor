@@ -3,10 +3,10 @@
 module Main where
 
 import Control.Applicative ((<$>),(<|>))
-import Control.Concurrent (forkIO)
-import Control.Exception (finally)
-import Control.Monad (guard, forever, unless)
+import Control.Concurrent (threadDelay, forkIO)
+import Control.Monad (guard, forever)
 import Control.Monad.Trans (MonadIO(liftIO))
+import qualified Filesystem.Path.CurrentOS as FP
 import qualified Data.ByteString.Char8 as BSC
 import qualified Data.Version as Version
 import qualified Text.Blaze.Html5 as H
@@ -17,6 +17,8 @@ import System.Console.CmdArgs
 import System.Directory
 import System.Exit
 import System.FilePath
+import qualified System.FSNotify as Notify
+import qualified System.FSNotify.Devel as NDevel
 import System.Process
 import System.IO (hGetContents, Handle)
 
@@ -92,7 +94,36 @@ pollingApp :: WS.ServerApp
 pollingApp pendingConnection = do
       conn <- WS.acceptRequest pendingConnection
       _ <- putStrLn "Sent Hello"
+      threadID <- forkIO $ keepAlive conn
+      notifyManager <- liftIO $ Notify.startManager
+      notifyIfChange notifyManager conn
+      Notify.stopManager notifyManager
       WS.sendTextData conn $ BSC.pack "Hello world!"
+
+keepAlive :: WS.Connection -> IO ()
+keepAlive connection =
+  do WS.sendPing connection $ BSC.pack "ping"
+     threadDelay $ 10 * (1000000)
+     keepAlive connection
+
+notifyIfChange :: Notify.WatchManager -> WS.Connection -> IO ()
+notifyIfChange manager conn =
+  do NDevel.treeExtExists manager "." "elm" (emptyCompileFile conn)
+     threadDelay maxBound
+
+emptyCompileFile :: WS.Connection -> FP.FilePath -> IO ()
+emptyCompileFile conn filePath =
+  do
+    _ <- putStrLn $ "Compiling file: " ++ show filePath
+    let Right textFile = FP.toText filePath
+    let file = show textFile
+    let elmArgs = [ "--make", "--set-runtime=/" ++ runtimeName, file ]
+    (_, _, _, phandle) <- createProcess $ (proc "elm" elmArgs) { std_out = CreatePipe }
+    --_ <- putStrLn $ show badFilePath
+    _ <- waitForProcess phandle
+    _ <- putStrLn "Compiled file"
+    WS.sendTextData conn $ BSC.pack "compiled file"
+    return ()
 
 hotswap :: Snap ()
 hotswap = maybe error404 serve =<< getParam "input"
