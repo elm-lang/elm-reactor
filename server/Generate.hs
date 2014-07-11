@@ -17,7 +17,6 @@ import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
 
 import qualified Elm.Internal.Utils as Elm
-import Utils
 
 -- | Using a page title and the full source of an Elm program, compile down to
 --   a valid HTML document.
@@ -55,7 +54,6 @@ html name src =
         H.body $ do
           script ! A.src (H.toValue ("/elm-runtime.js" :: String)) $ ""
           content
-        googleAnalytics
 
 addSpaces :: String -> String
 addSpaces str =
