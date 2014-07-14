@@ -73,6 +73,7 @@ main = do
                 , ("socket", socket)
                 ]
       <|> serveDirectoryWith simpleDirectoryConfig "resources"
+      <|> serveDirectoryWith simpleDirectoryConfig "build"
       <|> error404
 
 directoryConfig :: MonadSnap m => DirectoryConfig m
