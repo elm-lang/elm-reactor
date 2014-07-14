@@ -136,17 +136,27 @@ sendHotSwap connection filePath =
 compileSnap :: Snap ()
 compileSnap = maybe error404 serve =<< getParam "input"
     where
-      serve src = do
-        result <- liftIO . Generate.html "Compiled Elm" $ BSC.unpack src
+      serve :: BSC.ByteString -> Snap ()
+      serve filePath = do
+        let file = BSC.unpack filePath
+        exists <- liftIO $ doesFileExist file
+        guard (exists && takeExtension file == ".elm")
+        fileContents <- liftIO $ readFile file
+        result <- liftIO $ Generate.html "Compiled Elm" fileContents
         serveHtml result
 
 serveElm :: Snap ()
 serveElm =
-  do file <- BSC.unpack . rqPathInfo <$> getRequest
+  do param <- getParam "debug"
+     let enableDebug = maybe False (\x -> isTrue $ BSC.unpack x) param
+     file <- BSC.unpack . rqPathInfo <$> getRequest
      exists <- liftIO $ doesFileExist file
      guard (exists && takeExtension file == ".elm")
      onSuccess (compile file) (serve file)
   where
+    isTrue str = case str of
+                   "true" -> True
+                   _ -> False
     compile file =
       let elmArgs = [ "--make", "--set-runtime=/" ++ runtimeName, file ]
       in  createProcess $ (proc "elm" elmArgs) { std_out = CreatePipe }
@@ -185,14 +195,13 @@ hotswap = maybe error404 serve =<< getParam "input"
         result <- liftIO . Generate.js $ BSC.unpack src
         writeBS (BSC.pack result)
 
-withFile :: (FilePath -> String -> H.Html) -> Snap ()
+withFile :: (FilePath -> H.Html) -> Snap ()
 withFile handler = do
   filePath <- BSC.unpack . rqPathInfo <$> getRequest
   let file = filePath
   exists <- liftIO (doesFileExist file)
   if not exists then error404 else
-      do content <- liftIO $ readFile file
-         serveHtml $ handler filePath content
+      serveHtml $ handler filePath
 
 error404 :: Snap ()
 error404 =
@@ -204,7 +213,3 @@ serveHtml html =
     do _ <- setContentType "text/html" <$> getResponse
        writeLBS (BlazeBS.renderHtml html)
 
-{--
-pageTitle :: String -> String
-pageTitle = dropExtension . takeBaseName
---}

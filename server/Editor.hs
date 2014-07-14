@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Editor (ide,empty) where
+module Editor (ide) where
 
 import Data.Monoid (mempty)
 import Text.Blaze.Html
@@ -8,16 +8,13 @@ import qualified Text.Blaze.Html5.Attributes as A
 import Network.HTTP.Base (urlEncode)
 import qualified System.FilePath as FP
 
--- | Display an editor and the compiled result side-by-side.
-ide :: FilePath -> String -> Html
-ide fileName code =
+-- | Display the elm program and debugging controls
+ide :: FilePath -> Html
+ide fileName =
     ideBuilder ("Elm Debugger: " ++ FP.takeBaseName fileName)
                fileName
-               ("/compile?input=" ++ urlEncode code)
+               ("/compile?input=" ++ urlEncode fileName)
 
--- | Display an editor and the compiled result side-by-side.
-empty :: Html
-empty = ideBuilder "Debug Elm" "Empty.elm" "/Try.elm"
 
 ideBuilder :: String -> String -> String -> Html
 ideBuilder title input output =

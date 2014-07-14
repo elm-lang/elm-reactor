@@ -22,7 +22,7 @@ import qualified Elm.Internal.Utils as Elm
 --   a valid HTML document.
 html :: String -> String -> IO H.Html
 html name src =
-  do compilerResult <- safeCompile src
+  do compilerResult <- compile src
      return . buildPage $ formatResult compilerResult
   where
     script = H.script ! A.type_ "text/javascript"
@@ -64,20 +64,14 @@ addSpaces str =
 
 js :: String -> IO String
 js src =
-  do output <- safeCompile src
+  do output <- compile src
      return (either (wrap "error") (wrap "success") output)
   where
     wrap :: String -> String -> String
     wrap typ msg = "{ " ++ show typ ++ " : " ++ show msg ++ " }"
 
-safeCompile :: String -> IO (Either String String)
-safeCompile src =
-  case Elm.nameAndImports src of
-    Nothing -> compileNormal src
-    Just (_name, imports) ->
-        if any (`elem` thirdPartyLibraries) imports
-          then compileInSandbox src
-          else compileNormal src
+compile :: String -> IO (Either String String)
+compile = compileInSandbox
 
 thirdPartyLibraries :: [String]
 thirdPartyLibraries =
@@ -87,13 +81,6 @@ thirdPartyLibraries =
     , "Math.Vector3"
     , "Math.Vector4"
     ]
-
-compileNormal :: String -> IO (Either String String)
-compileNormal src =
-  do output <- catchBugs (Elm.compile src)
-     return (either explain id output)
-  where
-    explain problem = Left ("Error:\n" ++ problem)
 
 catchBugs :: a -> IO (Either String a)
 catchBugs inp = (Right <$> evaluate inp) `catches` handlers
