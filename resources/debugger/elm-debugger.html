@@ -107,13 +107,20 @@ function slide(e) {
     updateWatches();
 }
 
+var paused = false;
 var pauseButton = document.getElementById('buttonPause');
 pauseButton.addEventListener('click', function(e) {
-    pauseButton.innerHTML = 'Unpause';
-    pauseButton.disabled = true;
-    pauseButton.title = "Unpause is a bit buggy still. It is inactive for now, but it is definitely possible!";
-    elmDebugger.pause();
-    refreshDebuggerUI();
+    if(paused) {
+      elmDebugger.kontinue();
+      refreshDebuggerUI();
+      pauseButton.innerHTML = 'Pause';
+      pauseButton.title = "Unpause is a bit buggy still. It is inactive for now, but it is definitely possible!";
+    } else {
+      elmDebugger.pause();
+      refreshDebuggerUI();
+      pauseButton.innerHTML = 'Unpause';
+    }
+    paused = !paused;
 });
 
 document.getElementById('buttonRestart').addEventListener('click', function(e) {
@@ -163,8 +170,6 @@ refreshingSocket.onmessage = function(event) {
     hotSwap(event.data);
   }
 };
-
-
 
 
 function hotSwap(js) {
