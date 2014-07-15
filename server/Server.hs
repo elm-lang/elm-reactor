@@ -64,8 +64,7 @@ main = do
   putStr $ "Elm Server " ++ Version.showVersion version ++ " serving Elm " ++ elmVer
   putStrLn "Just refresh a page to recompile it!"
   httpServe (setPort (port cargs) config) $
-      ifTop (serveDirectoryWith directoryConfig ".")
-      <|> serveRuntime (maybe Elm.runtime id (runtime cargs))
+      serveRuntime (maybe Elm.runtime id (runtime cargs))
       <|> serveElm
       <|> route [ ("debug", debug)
                 , ("compile", compileSnap)
@@ -74,6 +73,7 @@ main = do
                 ]
       <|> serveDirectoryWith simpleDirectoryConfig "resources"
       <|> serveDirectoryWith simpleDirectoryConfig "build"
+      <|> serveDirectoryWith directoryConfig "."
       <|> error404
 
 directoryConfig :: MonadSnap m => DirectoryConfig m
