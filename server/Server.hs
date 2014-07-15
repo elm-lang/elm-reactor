@@ -3,21 +3,16 @@
 module Main where
 
 import Control.Applicative ((<$>),(<|>))
-import Control.Concurrent (threadDelay, forkIO)
 import Control.Monad (guard)
 import Control.Monad.Trans (MonadIO(liftIO))
-import qualified Filesystem.Path.CurrentOS as FP
 import qualified Data.ByteString.Char8 as BSC
 import qualified Data.Version as Version
+import qualified Network.WebSockets.Snap as WSS
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html.Renderer.Utf8 as BlazeBS
-import qualified Network.WebSockets as WS
-import qualified Network.WebSockets.Snap as WSS
 import System.Console.CmdArgs
 import System.Directory
 import System.FilePath
-import qualified System.FSNotify as Notify
-import qualified System.FSNotify.Devel as NDevel
 import System.Process
 import System.IO (hGetContents)
 import Paths_elm_server (version)
@@ -29,6 +24,8 @@ import Snap.Util.FileServe
 import Index
 import qualified Debugger
 import qualified Generate
+import qualified Socket
+
 
 data Flags = Flags
   { port :: Int
@@ -85,41 +82,7 @@ serveRuntime runtimePath =
      serveFileAs "application/javascript" runtimePath
 
 socket :: Snap ()
-socket = WSS.runWebSocketsSnap fileChangeApp
-
-fileChangeApp :: WS.ServerApp
-fileChangeApp pendingConnection = do
-      connection <- WS.acceptRequest pendingConnection
-      _ <- forkIO $ keepAlive connection
-      notifyManager <- liftIO $ Notify.startManager
-      updateOnChange notifyManager connection
-      Notify.stopManager notifyManager
-
-keepAlive :: WS.Connection -> IO ()
-keepAlive connection =
-  do WS.sendPing connection $ BSC.pack "ping"
-     threadDelay $ 10 * (1000000) -- 10 seconds
-     keepAlive connection
-
-updateOnChange :: Notify.WatchManager -> WS.Connection -> IO ()
-updateOnChange manager connection =
-  do _ <- NDevel.treeExtExists manager "." "elm" (sendHotSwap connection)
-     threadDelay maxBound
-
-sendHotSwap :: WS.Connection -> FP.FilePath -> IO ()
-sendHotSwap connection filePath =
-  do result <- liftIO $ Generate.js $ FP.encodeString filePath
-     WS.sendTextData connection $ BSC.pack result
-
-
-serveElm :: Snap ()
-serveElm =
-  do file <- BSC.unpack . rqPathInfo <$> getRequest
-     exists <- liftIO $ doesFileExist file
-     guard (exists && takeExtension file == ".elm")
-     result <- liftIO $ Generate.html file
-     serveHtml result
-
+socket = WSS.runWebSocketsSnap Socket.fileChangeApp
 
 debug :: Snap()
 debug = withFile Debugger.ide 
@@ -142,3 +105,10 @@ serveHtml html =
     do _ <- setContentType "text/html" <$> getResponse
        writeLBS (BlazeBS.renderHtml html)
 
+serveElm :: Snap ()
+serveElm =
+  do file <- BSC.unpack . rqPathInfo <$> getRequest
+     exists <- liftIO $ doesFileExist file
+     guard (exists && takeExtension file == ".elm")
+     result <- liftIO $ Generate.html file
+     serveHtml result
