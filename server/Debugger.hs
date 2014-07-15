@@ -1,10 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Debugger (ide) where
 
-import Data.Monoid (mempty)
 import Text.Blaze.Html
 import qualified Text.Blaze.Html5 as H
-import qualified Text.Blaze.Html5.Attributes as A
 import Network.HTTP.Base (urlEncode)
 import qualified System.FilePath as FP
 

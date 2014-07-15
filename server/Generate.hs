@@ -2,14 +2,11 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Generate (html, js) where
 
-import Control.Exception (evaluate, catches, Handler(..), SomeException)
 import Control.Monad    (forM_, when)
-import Data.Functor     ((<$>))
 import Data.Maybe       (fromMaybe)
 import System.Directory
 import System.Exit
 import System.FilePath
-import System.IO (openTempFile, hPutStr, hFlush)
 import System.Process
 import Text.Blaze       (preEscapedToMarkup)
 import Text.Blaze.Html5 ((!))

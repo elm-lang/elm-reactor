@@ -12,16 +12,14 @@ import qualified Data.Version as Version
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html.Renderer.Utf8 as BlazeBS
 import qualified Network.WebSockets as WS
-import qualified Network.WebSockets.Snap as WS
+import qualified Network.WebSockets.Snap as WSS
 import System.Console.CmdArgs
 import System.Directory
-import System.Exit
 import System.FilePath
 import qualified System.FSNotify as Notify
 import qualified System.FSNotify.Devel as NDevel
 import System.Process
-import System.IO (hGetContents, Handle)
-
+import System.IO (hGetContents)
 import Paths_elm_server (version)
 import qualified Elm.Internal.Paths as Elm
 import Snap.Core
@@ -87,7 +85,7 @@ serveRuntime runtimePath =
      serveFileAs "application/javascript" runtimePath
 
 socket :: Snap ()
-socket = WS.runWebSocketsSnap fileChangeApp
+socket = WSS.runWebSocketsSnap fileChangeApp
 
 fileChangeApp :: WS.ServerApp
 fileChangeApp pendingConnection = do
