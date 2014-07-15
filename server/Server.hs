@@ -26,7 +26,6 @@ import qualified Debugger
 import qualified Generate
 import qualified Socket
 
-
 data Flags = Flags
   { port :: Int
   , runtime :: Maybe FilePath
@@ -90,8 +89,7 @@ debug = withFile Debugger.ide
 withFile :: (FilePath -> H.Html) -> Snap ()
 withFile handler = do
   filePath <- BSC.unpack . rqPathInfo <$> getRequest
-  let file = filePath
-  exists <- liftIO (doesFileExist file)
+  exists <- liftIO (doesFileExist filePath)
   if not exists then error404 else
       serveHtml $ handler filePath
 

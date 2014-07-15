@@ -53,6 +53,8 @@ html filePath =
           script ! A.src (H.toValue ("/elm-runtime.js" :: String)) $ ""
           content
 
+-- | Creates the javascript for the elm program and returns it as a 
+--   JSONified string with either success:<code> or error:<message>
 js :: FilePath -> IO String
 js filePath =
   do output <- compile filePath
