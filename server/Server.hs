@@ -29,7 +29,7 @@ import Snap.Http.Server
 import Snap.Util.FileServe
 
 import Index
-import qualified Editor
+import qualified Debugger
 import qualified Generate
 
 data Flags = Flags
@@ -140,29 +140,9 @@ serveElm =
      result <- liftIO $ Generate.html "Compiled Elm" fileContents
      serveHtml result
 
-failure :: String -> Snap ()
-failure msg =
-  do modifyResponse $ setResponseStatus 404 "Not found"
-     writeBS $ BSC.pack msg
-
-onSuccess :: IO (t, Maybe Handle, t1, ProcessHandle) -> Snap () -> Snap ()
-onSuccess action success =
-  do (_, stdout, _, handle) <- liftIO action
-     exitCode <- liftIO $ waitForProcess handle
-     case (exitCode, stdout) of
-       (ExitFailure 127, _) ->
-           failure "Error: elm compiler not found in your path."
-
-       (ExitFailure _, Just out) ->
-           failure =<< liftIO (hGetContents out)
-
-       (ExitFailure _, Nothing) ->
-           failure "See command line for error message."
-
-       (ExitSuccess, _) -> success
 
 debug :: Snap()
-debug = withFile Editor.ide 
+debug = withFile Debugger.ide 
 
 withFile :: (FilePath -> H.Html) -> Snap ()
 withFile handler = do

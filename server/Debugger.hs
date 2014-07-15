@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Editor (ide) where
+module Debugger (ide) where
 
 import Data.Monoid (mempty)
 import Text.Blaze.Html
