@@ -1,11 +1,10 @@
 <html>
 <head>
 </head>
-<body style="background-color:rgb(216,221,225);">
+<body style="background-color:rgb(255,255,255);">
   <div>
     <button class="largeButton" id="buttonRestart">Restart</button>
     <button class="largeButton" id="buttonPause">Pause</button>
-    <button class="largeButton" id="buttonContinue" style="display:none;">Continue</button>
     <input type="checkbox" name="hotswap" id="hotswap" checked>
       <span id="hscheckbox"> Hotswap?
       </span>
@@ -117,7 +116,7 @@ pauseButton.addEventListener('click', function(e) {
     } else {
       elmDebugger.pause();
       refreshDebuggerUI();
-      pauseButton.innerHTML = 'Unpause';
+      pauseButton.innerHTML = 'Continue';
     }
     paused = !paused;
 });
