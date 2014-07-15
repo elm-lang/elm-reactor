@@ -97,8 +97,8 @@ withFile handler = do
 
 error404 :: Snap ()
 error404 =
-    do modifyResponse $ setResponseStatus 404 "Not found"
-       serveFileAs "text/html; charset=UTF-8" "build/public/Error404.elm"
+    do serveFileAs "text/html; charset=UTF-8" "resources/Error404.elm"
+       modifyResponse $ setResponseStatus 404 "Not Found"
 
 serveHtml :: MonadSnap m => H.Html -> m ()
 serveHtml html =
