@@ -110,25 +110,8 @@ updateOnChange manager connection =
 
 sendHotSwap :: WS.Connection -> FP.FilePath -> IO ()
 sendHotSwap connection filePath =
-  do (_, stdout, stderr, phandle) <- liftIO $ compileJS file
-     exitCode <- waitForProcess phandle
-     case (exitCode, stdout, stderr) of
-       (ExitFailure _, Just out, Just err) ->
-           do output <- hGetContents out 
-              errorMessage <- hGetContents err
-              putStrLn $ output ++ errorMessage
-              return ()
-       (ExitFailure _, _, _) ->
-           do putStrLn "Check the console for the error"
-              return ()
-       (ExitSuccess, _ , _) ->
-           do result <- readFile ("build" </> file `replaceExtension` "js") 
-              WS.sendTextData connection $ BSC.pack result
-  where
-    file = FP.encodeString $ FP.filename filePath
-    compileJS elmFile =
-      let elmArgs = [ "--make", "--only-js", "--set-runtime=/" ++ runtimeName, elmFile ]
-      in  createProcess $ (proc "elm" elmArgs) { std_out = CreatePipe }
+  do result <- liftIO $ Generate.js $ FP.encodeString filePath
+     WS.sendTextData connection $ BSC.pack result
 
 
 serveElm :: Snap ()
@@ -136,8 +119,7 @@ serveElm =
   do file <- BSC.unpack . rqPathInfo <$> getRequest
      exists <- liftIO $ doesFileExist file
      guard (exists && takeExtension file == ".elm")
-     fileContents <- liftIO $ readFile file
-     result <- liftIO $ Generate.html "Compiled Elm" fileContents
+     result <- liftIO $ Generate.html file
      serveHtml result
 
 

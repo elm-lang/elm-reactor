@@ -171,8 +171,10 @@ refreshingSocket.onmessage = function(event) {
 };
 
 
-function hotSwap(js) {
+function hotSwap(raw) {
   var top = self.parent;
+  var result = JSON.parse(raw);
+  var js = result.success;
   if (js) {
       var error = top.output.document.getElementById('ErrorMessage');
       if (error) {
