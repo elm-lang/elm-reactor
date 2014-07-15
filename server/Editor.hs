@@ -13,7 +13,7 @@ ide :: FilePath -> Html
 ide fileName =
     ideBuilder ("Elm Debugger: " ++ FP.takeBaseName fileName)
                fileName
-               ("/compile?input=" ++ urlEncode fileName)
+               ("/" ++ urlEncode fileName)
 
 
 ideBuilder :: String -> String -> String -> Html

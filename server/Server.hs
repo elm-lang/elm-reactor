@@ -67,8 +67,6 @@ main = do
       serveRuntime (maybe Elm.runtime id (runtime cargs))
       <|> serveElm
       <|> route [ ("debug", debug)
-                , ("compile", compileSnap)
-                , ("hotswap", hotswap)
                 , ("socket", socket)
                 ]
       <|> serveDirectoryWith simpleDirectoryConfig "resources"
@@ -133,35 +131,14 @@ sendHotSwap connection filePath =
       in  createProcess $ (proc "elm" elmArgs) { std_out = CreatePipe }
 
 
-compileSnap :: Snap ()
-compileSnap = maybe error404 serve =<< getParam "input"
-    where
-      serve :: BSC.ByteString -> Snap ()
-      serve filePath = do
-        let file = BSC.unpack filePath
-        exists <- liftIO $ doesFileExist file
-        guard (exists && takeExtension file == ".elm")
-        fileContents <- liftIO $ readFile file
-        result <- liftIO $ Generate.html "Compiled Elm" fileContents
-        serveHtml result
-
 serveElm :: Snap ()
 serveElm =
-  do param <- getParam "debug"
-     let enableDebug = maybe False (\x -> isTrue $ BSC.unpack x) param
-     file <- BSC.unpack . rqPathInfo <$> getRequest
+  do file <- BSC.unpack . rqPathInfo <$> getRequest
      exists <- liftIO $ doesFileExist file
      guard (exists && takeExtension file == ".elm")
-     onSuccess (compile file) (serve file)
-  where
-    isTrue str = case str of
-                   "true" -> True
-                   _ -> False
-    compile file =
-      let elmArgs = [ "--make", "--set-runtime=/" ++ runtimeName, file ]
-      in  createProcess $ (proc "elm" elmArgs) { std_out = CreatePipe }
-    serve file =
-        serveFileAs "text/html; charset=UTF-8" ("build" </> replaceExtension file "html")
+     fileContents <- liftIO $ readFile file
+     result <- liftIO $ Generate.html "Compiled Elm" fileContents
+     serveHtml result
 
 failure :: String -> Snap ()
 failure msg =
@@ -186,14 +163,6 @@ onSuccess action success =
 
 debug :: Snap()
 debug = withFile Editor.ide 
-
-hotswap :: Snap ()
-hotswap = maybe error404 serve =<< getParam "input"
-    where
-      serve src = do
-        _ <- setContentType "application/javascript" <$> getResponse
-        result <- liftIO . Generate.js $ BSC.unpack src
-        writeBS (BSC.pack result)
 
 withFile :: (FilePath -> H.Html) -> Snap ()
 withFile handler = do
