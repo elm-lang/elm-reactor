@@ -20,9 +20,9 @@ ideBuilder title input output =
       H.head $ do
         H.title . toHtml $ title
       preEscapedToMarkup $
-         concat [ "  <frameset rows=\"*,110\" frameborder=\"0\">\n"
-                , "    <frame name=\"output\" src=\"", output, "\" />\n"
+         concat [ "  <frameset cols=\"220,*\" frameborder=\"0\">\n"
                 , "    <frame name=\"debug\" src=\"/elm-debugger.html\" />\n"
+                , "    <frame name=\"output\" src=\"", output, "\" />\n"
                 , "  </frameset>"
                 ]
 
