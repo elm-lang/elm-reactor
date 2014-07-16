@@ -17,6 +17,9 @@ Copyright:           Copyright: (c) 2011-2014 Evan Czaplicki
 Category:            Compiler, Language
 
 Build-type:          Simple
+Data-files:          resources/debug.png
+                     resources/Error404.elm
+                     resources/elm-debugger.html
 
 Extra-source-files:  README.md
 Cabal-version:       >=1.8
