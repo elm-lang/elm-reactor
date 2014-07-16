@@ -62,6 +62,8 @@ main = do
       <|> serveElm
       <|> route [ ("debug", debug)
                 , ("socket", socket)
+                , ("debug.png", serveAsset "resources/debug.png")
+                , ("elm-debugger.html", serveAsset "resources/elm-debugger.html")
                 ]
       <|> serveDirectoryWith simpleDirectoryConfig "resources"
       <|> serveDirectoryWith simpleDirectoryConfig "build"
@@ -111,3 +113,8 @@ serveElm =
      guard (exists && takeExtension file == ".elm")
      result <- liftIO $ Generate.html file
      serveHtml result
+
+serveAsset :: String -> Snap ()
+serveAsset assetPath =
+  do dataPath <- liftIO $ getDataFileName assetPath
+     serveFile dataPath
