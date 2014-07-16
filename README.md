@@ -2,7 +2,7 @@
 
 This is a simple server to make it easier to develop Elm projects. It lets you
 view Elm files in your browser and recompile them by refreshing the page. The
-server also support hotswapping on file changes (see the [blog post]
+server also supports hot-swapping on file changes (see the [blog post]
 (http://elm-lang.org/blog/Interactive-Programming.elm) about what hotswapping is).
 
 #### Install
