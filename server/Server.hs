@@ -64,11 +64,11 @@ main = do
                 , ("socket", socket)
                 -- The location of these assets may change with setup. Any new
                 -- asset needs to be served up here.
-                , ("debug.png", serveAsset "resources/debug.png")
-                , ("elm-debugger.html", serveAsset "resources/elm-debugger.html")
-                , ("favicon.ico", serveAsset "resources/favicon.ico")
+                , ("debug.png", serveAsset "assets/debug.png")
+                , ("elm-debugger.html", serveAsset "assets/elm-debugger.html")
+                , ("favicon.ico", serveAsset "assets/favicon.ico")
                 ]
-      <|> serveDirectoryWith simpleDirectoryConfig "resources"
+      <|> serveDirectoryWith simpleDirectoryConfig "assets"
       <|> serveDirectoryWith simpleDirectoryConfig "build"
       <|> serveDirectoryWith directoryConfig "."
       <|> error404
@@ -100,7 +100,7 @@ withFile handler = do
 
 error404 :: Snap ()
 error404 =
-    do errorPath <- liftIO $ getDataFileName "resources/Error404.elm"
+    do errorPath <- liftIO $ getDataFileName "assets/Error404.elm"
        serveFileAs "text/html; charset=UTF-8" errorPath
        modifyResponse $ setResponseStatus 404 "Not Found"
 

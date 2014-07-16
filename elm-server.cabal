@@ -17,10 +17,10 @@ Copyright:           Copyright: (c) 2011-2014 Evan Czaplicki
 Category:            Compiler, Language
 
 Build-type:          Simple
-Data-files:          resources/debug.png
-                     resources/Error404.elm
-                     resources/elm-debugger.html
-                     resources/favicon.ico
+Data-files:          assets/debug.png
+                     assets/Error404.elm
+                     assets/elm-debugger.html
+                     assets/favicon.ico
 
 Extra-source-files:  README.md
 Cabal-version:       >=1.8
