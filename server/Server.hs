@@ -99,10 +99,7 @@ withFile handler = do
       serveHtml $ handler filePath
 
 error404 :: Snap ()
-error404 =
-    do errorPath <- liftIO $ getDataFileName "assets/Error404.elm"
-       serveFileAs "text/html; charset=UTF-8" errorPath
-       modifyResponse $ setResponseStatus 404 "Not Found"
+error404 = modifyResponse $ setResponseStatus 404 "Not Found"
 
 serveHtml :: MonadSnap m => H.Html -> m ()
 serveHtml html =

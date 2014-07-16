@@ -18,7 +18,6 @@ Category:            Compiler, Language
 
 Build-type:          Simple
 Data-files:          assets/debug.png
-                     assets/Error404.elm
                      assets/elm-debugger.html
                      assets/favicon.ico
 
