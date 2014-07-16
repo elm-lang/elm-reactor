@@ -112,9 +112,11 @@ serveHtml html =
 serveElm :: Snap ()
 serveElm =
   do file <- BSC.unpack . rqPathInfo <$> getRequest
+     debugParam <- getParam "debug"
+     let debug = maybe False ("true"==) debugParam
      exists <- liftIO $ doesFileExist file
      guard (exists && takeExtension file == ".elm")
-     result <- liftIO $ Generate.html file
+     result <- liftIO $ Generate.html debug file
      serveHtml result
 
 serveAsset :: String -> Snap ()
