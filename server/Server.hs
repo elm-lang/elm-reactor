@@ -15,7 +15,7 @@ import System.Directory
 import System.FilePath
 import System.Process
 import System.IO (hGetContents)
-import Paths_elm_server (version)
+import Paths_elm_server (getDataFileName, version)
 import qualified Elm.Internal.Paths as Elm
 import Snap.Core
 import Snap.Http.Server
@@ -95,7 +95,8 @@ withFile handler = do
 
 error404 :: Snap ()
 error404 =
-    do serveFileAs "text/html; charset=UTF-8" "resources/Error404.elm"
+    do errorPath <- liftIO $ getDataFileName "resources/Error404.elm"
+       serveFileAs "text/html; charset=UTF-8" errorPath
        modifyResponse $ setResponseStatus 404 "Not Found"
 
 serveHtml :: MonadSnap m => H.Html -> m ()
