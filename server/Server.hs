@@ -62,8 +62,11 @@ main = do
       <|> serveElm
       <|> route [ ("debug", debug)
                 , ("socket", socket)
+                -- The location of these assets may change with setup. Any new
+                -- asset needs to be served up here.
                 , ("debug.png", serveAsset "resources/debug.png")
                 , ("elm-debugger.html", serveAsset "resources/elm-debugger.html")
+                , ("favicon.ico", serveAsset "resources/favicon.ico")
                 ]
       <|> serveDirectoryWith simpleDirectoryConfig "resources"
       <|> serveDirectoryWith simpleDirectoryConfig "build"
