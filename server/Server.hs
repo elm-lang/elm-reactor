@@ -15,7 +15,7 @@ import System.Directory
 import System.FilePath
 import System.Process
 import System.IO (hGetContents)
-import Paths_elm_server (getDataFileName, version)
+import Paths_elm_server (version)
 import qualified Elm.Internal.Paths as Elm
 import Snap.Core
 import Snap.Http.Server
@@ -25,6 +25,7 @@ import Index
 import qualified Debugger
 import qualified Generate
 import qualified Socket
+import qualified Utils
 
 data Flags = Flags
   { port :: Int
@@ -118,5 +119,5 @@ serveElm =
 
 serveAsset :: String -> Snap ()
 serveAsset assetPath =
-  do dataPath <- liftIO $ getDataFileName assetPath
+  do dataPath <- liftIO $ Utils.getDataFile assetPath
      serveFile dataPath
