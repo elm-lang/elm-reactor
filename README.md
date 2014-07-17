@@ -36,20 +36,3 @@ source file and save it, the website will update accordingly.
 
 You may hot swap code at any point and maintain program state as long
 as the type signatures don't change.
-
-#### Program assets
-
-Your elm program may use local files during development. It is recommended
-that you place them in a directory called `assets` on the root of the project.
-In your elm code would look something like:
-
-```haskell
-      let marioImage = image 35 35 "/imgs/mario-stading.gif"
-```
-And the corresponding directory structure should be:
-```
-<project root>
-    assets/
-        imgs/
-            mario-standing.gif
-```
