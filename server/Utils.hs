@@ -14,4 +14,4 @@ getDataFile name = do
     then return path
     else do
       env <- getEnv "ELM_HOME"
-      return (env </> name)
+      return (env </> "server" </> name)

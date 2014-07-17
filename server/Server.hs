@@ -63,8 +63,8 @@ main = do
       <|> serveElm
       <|> route [ ("socket", socket)
                 ]
-      <|> serveAssets
       <|> serveDirectoryWith directoryConfig "."
+      <|> serveAssets
       <|> error404
 
 directoryConfig :: MonadSnap m => DirectoryConfig m
@@ -118,7 +118,7 @@ serveAsset assetPath =
 serveAssets :: Snap ()
 serveAssets =
   do file <- BSC.unpack. rqPathInfo <$> getRequest
-     guard (  file == "debug.png"
-           || file == "elm-debugger.html"
+     guard (  file == "debug-wrench-elm-server.png"
+           || file == "debugger-interface-elm-server.html"
            || file == "favicon.ico")
      serveAsset $ "assets" </> file

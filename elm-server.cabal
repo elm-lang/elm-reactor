@@ -17,8 +17,8 @@ Copyright:           Copyright: (c) 2011-2014 Evan Czaplicki
 Category:            Compiler, Language
 
 Build-type:          Simple
-Data-files:          assets/debug.png
-                     assets/elm-debugger.html
+Data-files:          assets/debug-wrench-elm-server.png
+                     assets/debugger-interface-elm-server.html
                      assets/favicon.ico
 
 Extra-source-files:  README.md
