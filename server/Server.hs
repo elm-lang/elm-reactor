@@ -69,8 +69,6 @@ main = do
                 , ("elm-debugger.html", serveAsset "assets/elm-debugger.html")
                 , ("favicon.ico", serveAsset "assets/favicon.ico")
                 ]
-      <|> serveDirectoryWith simpleDirectoryConfig "assets"
-      <|> serveDirectoryWith simpleDirectoryConfig "build"
       <|> serveDirectoryWith directoryConfig "."
       <|> error404
 
