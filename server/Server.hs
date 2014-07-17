@@ -65,10 +65,8 @@ main = do
                 , ("socket", socket)
                 -- The location of these assets may change with setup. Any new
                 -- asset needs to be served up here.
-                , ("debug.png", serveAsset "assets/debug.png")
-                , ("elm-debugger.html", serveAsset "assets/elm-debugger.html")
-                , ("favicon.ico", serveAsset "assets/favicon.ico")
                 ]
+      <|> serveAssets
       <|> serveDirectoryWith directoryConfig "."
       <|> error404
 
@@ -115,7 +113,15 @@ serveElm =
      result <- liftIO $ Generate.html doDebug file
      serveHtml result
 
-serveAsset :: String -> Snap ()
+serveAsset :: FilePath -> Snap ()
 serveAsset assetPath =
   do dataPath <- liftIO $ Utils.getDataFile assetPath
      serveFile dataPath
+
+serveAssets :: Snap ()
+serveAssets =
+  do file <- BSC.unpack. rqPathInfo <$> getRequest
+     guard (  file == "debug.png"
+           || file == "elm-debugger.html"
+           || file == "favicon.ico")
+     serveAsset $ "assets" </> file
