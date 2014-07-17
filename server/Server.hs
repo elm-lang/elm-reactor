@@ -101,7 +101,7 @@ serveElm :: Snap ()
 serveElm =
   do file <- BSC.unpack . rqPathInfo <$> getRequest
      debugParam <- getParam "debug"
-     let doDebug = maybe False ("true"==) debugParam
+     let doDebug = maybe False (const True) debugParam
      exists <- liftIO $ doesFileExist file
      guard (exists && takeExtension file == ".elm")
      if doDebug
