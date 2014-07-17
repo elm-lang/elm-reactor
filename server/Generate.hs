@@ -8,6 +8,7 @@ import System.Directory
 import System.Exit
 import System.FilePath
 import System.Process
+import System.IO        (hGetContents)
 import Text.Blaze       (preEscapedToMarkup)
 import Text.Blaze.Html5 ((!))
 import qualified Text.Blaze.Html5 as H
@@ -74,29 +75,37 @@ addSpaces str =
 
 compile :: FilePath -> IO (Either String String)
 compile filePath =
-  do (exitCode, stdout, stderr) <- readProcessWithExitCode "elm" (args filePath) ""
+  do (_, Just hout, Just herr, p) <- createProcess (proc "elm" $ args fileName)
+                                     { cwd = Just directory
+                                     , std_out = CreatePipe
+                                     , std_err = CreatePipe
+                                     }
+     exitCode <- waitForProcess p
+     stdout <- exitCode `seq` hGetContents hout
+     stderr <- exitCode `seq` hGetContents herr
      case exitCode of
        ExitFailure _ ->
-         do removeEverything filePath
+         do removeEverything directory fileName
             return (Left (stdout ++ stderr))
        ExitSuccess ->
-         do result <- readFile ("build" </> filePath `replaceExtension` "js")
-            length result `seq` removeEverything filePath
+         do result <- readFile (directory </> "build" </> fileName `replaceExtension` "js")
+            length result `seq` (removeEverything directory fileName)
             return (Right result)
   where
+    (directory, fileName) = splitFileName filePath
     args file =
         [ "--make"
         , "--only-js"
         , file
         ]
-    removeEverything :: FilePath -> IO ()
-    removeEverything file =
+    removeEverything :: FilePath -> FilePath -> IO ()
+    removeEverything dir file =
         do remove "cache" "elmi"
            remove "cache" "elmo"
            remove "build" "js"
         where
           remove :: String -> String -> IO ()
-          remove dir ext = do
-            let path = dir </> file `replaceExtension` ext
+          remove subdir ext = do
+            let path = dir </> subdir </> file`replaceExtension` ext
             exists <- doesFileExist path
             when exists (removeFile path)

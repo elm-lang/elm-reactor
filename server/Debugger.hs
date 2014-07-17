@@ -8,10 +8,11 @@ import qualified System.FilePath as FP
 
 -- | Display the elm program and debugging controls
 ide :: FilePath -> Html
-ide fileName =
-    ideBuilder ("Elm Debugger: " ++ FP.takeBaseName fileName)
+ide filePath =
+    let (directory, fileName) = FP.splitFileName filePath
+    in  ideBuilder ("Elm Debugger: " ++ FP.takeBaseName fileName)
                fileName
-               ("/" ++ urlEncode fileName ++ "?debug=true")
+               ("/" ++ directory ++ urlEncode fileName ++ "?debug=true")
 
 
 ideBuilder :: String -> String -> String -> Html
