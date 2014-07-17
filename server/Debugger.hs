@@ -11,12 +11,11 @@ ide :: FilePath -> Html
 ide filePath =
     let (directory, fileName) = FP.splitFileName filePath
     in  ideBuilder ("Elm Debugger: " ++ FP.takeBaseName fileName)
-               fileName
                ("/" ++ directory ++ urlEncode fileName ++ "?debug=true")
 
 
-ideBuilder :: String -> String -> String -> Html
-ideBuilder title input output =
+ideBuilder :: String -> String -> Html
+ideBuilder title output =
     H.docTypeHtml $ do
       H.head $ do
         H.title . toHtml $ title
