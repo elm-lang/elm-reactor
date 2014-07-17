@@ -18,8 +18,8 @@ import qualified Elm.Internal.Utils as Elm
 
 -- | Using a page title and the full source of an Elm program, compile down to
 --   a valid HTML document.
-html :: Bool -> FilePath -> IO H.Html
-html debug filePath =
+html :: FilePath -> IO H.Html
+html filePath =
   do src <- readFile filePath
      compilerResult <- compile filePath
      return . buildPage $ formatResult src compilerResult
@@ -39,9 +39,7 @@ html debug filePath =
 
     runFullscreen src =
         let moduleName = "Elm." ++ fromMaybe "Main" (Elm.moduleName src)
-        in  if debug
-          then "var runningElmModule = Elm.fullscreen(Elm.debuggerAttach(" ++  moduleName ++ "))"
-          else "var runningElmModule = Elm.fullscreen(" ++  moduleName ++ ")"
+        in  "var runningElmModule = Elm.fullscreen(Elm.debuggerAttach(" ++  moduleName ++ "))"
 
     buildPage content = H.docTypeHtml $ do
         H.head $ do

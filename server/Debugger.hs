@@ -11,7 +11,7 @@ ide :: FilePath -> Html
 ide filePath =
     let (directory, fileName) = FP.splitFileName filePath
     in  ideBuilder ("Elm Debugger: " ++ FP.takeBaseName fileName)
-               ("/" ++ directory ++ urlEncode fileName ++ "?debug=true")
+                   ("/" ++ directory ++ urlEncode fileName)
 
 
 ideBuilder :: String -> String -> Html

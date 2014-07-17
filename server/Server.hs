@@ -61,10 +61,7 @@ main = do
   httpServe (setPort (port cargs) config) $
       serveRuntime (maybe Elm.runtime id (runtime cargs))
       <|> serveElm
-      <|> route [ ("debug", debug)
-                , ("socket", socket)
-                -- The location of these assets may change with setup. Any new
-                -- asset needs to be served up here.
+      <|> route [ ("socket", socket)
                 ]
       <|> serveAssets
       <|> serveDirectoryWith directoryConfig "."
@@ -84,9 +81,6 @@ serveRuntime runtimePath =
 
 socket :: Snap ()
 socket = WSS.runWebSocketsSnap Socket.fileChangeApp
-
-debug :: Snap()
-debug = withFile Debugger.ide 
 
 withFile :: (FilePath -> H.Html) -> Snap ()
 withFile handler = do
@@ -110,8 +104,11 @@ serveElm =
      let doDebug = maybe False ("true"==) debugParam
      exists <- liftIO $ doesFileExist file
      guard (exists && takeExtension file == ".elm")
-     result <- liftIO $ Generate.html doDebug file
-     serveHtml result
+     if doDebug
+       then withFile Debugger.ide
+       else do result <- liftIO $ Generate.html file
+               serveHtml result
+
 
 serveAsset :: FilePath -> Snap ()
 serveAsset assetPath =
