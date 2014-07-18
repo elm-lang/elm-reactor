@@ -159,7 +159,10 @@ parent.window.addEventListener("message", function(e) {
 	}
 }, false);
 
-var socketLocation = "ws://" + window.location.host + "/socket";
+// "/mario.elm" => "mario.elm"
+// Bigger projects may want to list a set of files here to refresh on change
+var filePath = top.location.pathname.substr(1);
+var socketLocation = "ws://" + window.location.host + "/socket?files=" + filePath;
 var serverConnection = new WebSocket(socketLocation);
 serverConnection.onmessage = function(event) {
   var hotSwapCheckbox = document.getElementById("hotswap");

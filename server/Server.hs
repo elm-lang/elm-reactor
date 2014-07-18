@@ -80,7 +80,11 @@ serveRuntime runtimePath =
      serveFileAs "application/javascript" runtimePath
 
 socket :: Snap ()
-socket = WSS.runWebSocketsSnap Socket.fileChangeApp
+socket = maybe error400 socketSnap =<< getParam "files"
+  where
+    socketSnap filesParam =
+      do let watchedFiles = Utils.wordsWhen (','==) $ BSC.unpack filesParam
+         WSS.runWebSocketsSnap $ Socket.fileChangeApp watchedFiles
 
 withFile :: (FilePath -> H.Html) -> Snap ()
 withFile handler = do
@@ -88,6 +92,9 @@ withFile handler = do
   exists <- liftIO (doesFileExist filePath)
   if not exists then error404 else
       serveHtml $ handler filePath
+
+error400 :: Snap ()
+error400 = modifyResponse $ setResponseStatus 400 "Bad Request"
 
 error404 :: Snap ()
 error404 = modifyResponse $ setResponseStatus 404 "Not Found"
