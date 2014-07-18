@@ -36,64 +36,64 @@ body {
 }
 
 #signalGraphParent {
-	overflow: scroll;
-	width: 100%;
+  overflow: scroll;
+  width: 100%;
 }
 
 #signalGraphView {
-	-webkit-transform: scale(0.7);
-	-webkit-transform-origin: 0% 0%;
-	-moz-transform: scale(0.5);
-	-moz-transform-origin: 0% 0%;
+  -webkit-transform: scale(0.7);
+  -webkit-transform-origin: 0% 0%;
+  -moz-transform: scale(0.5);
+  -moz-transform-origin: 0% 0%;
 }
 
 #timeSlider {
-	width: 100%;
+  width: 100%;
 }
 </style>
 <script>
 if (!String.prototype.format) {
   String.prototype.format = function() {
-	var args = arguments;
-	return this.replace(/{(\d+)}/g, function(match, number) {
-	  return typeof args[number] != 'undefined'
-		? args[number]
-		: match
-	  ;
-	});
+  var args = arguments;
+  return this.replace(/{(\d+)}/g, function(match, number) {
+    return typeof args[number] != 'undefined'
+    ? args[number]
+    : match
+    ;
+  });
   };
 }
 
 var elmDebugger = {
-	restart: function() {},
-	pause: function() {},
-	kontinue: function() {},
-	getMaxSteps: function() { return 0; },
-	stepTo: function(i) {},
-	getPaused: function() { return false; },
-	getHotSwapState: function() { return null; },
-        watchTracker: { frames:[{}] }
+  restart: function() {},
+  pause: function() {},
+  kontinue: function() {},
+  getMaxSteps: function() { return 0; },
+  stepTo: function(i) {},
+  getPaused: function() { return false; },
+  getHotSwapState: function() { return null; },
+  watchTracker: { frames:[{}] }
 };
 
 function updateStatus() {
-    if (elmDebugger.getPaused()) {
-        statusText.textContent = "Event {0} of {1}".format(timeSlider.value, elmDebugger.getMaxSteps());
-    }
-    else {
-        statusText.textContent = "{0} events".format(elmDebugger.getMaxSteps());
-    }
+  if (elmDebugger.getPaused()) {
+    statusText.textContent = "Event {0} of {1}".format(timeSlider.value, elmDebugger.getMaxSteps());
+  }
+  else {
+    statusText.textContent = "{0} events".format(elmDebugger.getMaxSteps());
+  }
 }
 
 function updateWatches() {
-    while (watchesDiv.hasChildNodes()) {
-        watchesDiv.removeChild(watchesDiv.lastChild);
-    }
-    var frame = elmDebugger.watchTracker.frames[timeSlider.value];
-    for (var tag in frame) {
-        var node = document.createElement('div');
-        node.innerHTML = tag + ': <code>' + show(frame[tag]) + '</code>'
-        watchesDiv.appendChild(node);
-    }
+  while (watchesDiv.hasChildNodes()) {
+    watchesDiv.removeChild(watchesDiv.lastChild);
+  }
+  var frame = elmDebugger.watchTracker.frames[timeSlider.value];
+  for (var tag in frame) {
+    var node = document.createElement('div');
+    node.innerHTML = tag + ': <code>' + show(frame[tag]) + '</code>'
+    watchesDiv.appendChild(node);
+  }
 }
 
 var watchesDiv = document.getElementById("watches");
@@ -102,61 +102,61 @@ var timeSlider = document.getElementById("timeSlider");
 timeSlider.addEventListener('input',  slide);
 timeSlider.addEventListener('change', slide);
 function slide(e) {
-    console.log("Time sliding");
-    elmDebugger.stepTo(+timeSlider.value);
-    updateStatus();
-    updateWatches();
+  console.log("Time sliding");
+  elmDebugger.stepTo(+timeSlider.value);
+  updateStatus();
+  updateWatches();
 }
 
 var paused = false;
 var pauseButton = document.getElementById('buttonPause');
 pauseButton.addEventListener('click', function(e) {
-    if(paused) {
-      elmDebugger.kontinue();
-      refreshDebuggerUI();
-      pauseButton.innerHTML = 'Pause';
-    } else {
-      elmDebugger.pause();
-      refreshDebuggerUI();
-      pauseButton.innerHTML = 'Continue';
-    }
-    paused = !paused;
+  if(paused) {
+    elmDebugger.kontinue();
+    refreshDebuggerUI();
+    pauseButton.innerHTML = 'Pause';
+  } else {
+    elmDebugger.pause();
+    refreshDebuggerUI();
+    pauseButton.innerHTML = 'Continue';
+  }
+  paused = !paused;
 });
 
 document.getElementById('buttonRestart').addEventListener('click', function(e) {
-    pauseButton.innerHTML = 'Pause';
-    pauseButton.disabled = false;
-    pauseButton.title = "";
-    elmDebugger.restart();
-    refreshDebuggerUI();
+  pauseButton.innerHTML = 'Pause';
+  pauseButton.disabled = false;
+  pauseButton.title = "";
+  elmDebugger.restart();
+  refreshDebuggerUI();
 });
 
 function refreshDebuggerUI() {
-	updateStatus();
-	updateWatches();
-	timeSlider.max = elmDebugger.getMaxSteps();
-	if (elmDebugger.getPaused()) {
-		timeSlider.disabled = false;
-	}
-	else {
-		timeSlider.disabled = true;
-		timeSlider.value = timeSlider.max;
-	}
+  updateStatus();
+  updateWatches();
+  timeSlider.max = elmDebugger.getMaxSteps();
+  if (elmDebugger.getPaused()) {
+    timeSlider.disabled = false;
+  }
+  else {
+    timeSlider.disabled = true;
+    timeSlider.value = timeSlider.max;
+  }
 }
 
 var show;
 function startDebugging(elmWindow) {
-	elmDebugger = elmWindow.Elm.Debugger;
-        show = elmWindow.Elm.String.make({}).show;
+  elmDebugger = elmWindow.Elm.Debugger;
+  show = elmWindow.Elm.String.make({}).show;
 }
 
 parent.window.addEventListener("message", function(e) {
-	if (e.data == "elmDebuggerInit") {
-		startDebugging(e.source);
-	}
-	else if (e.data == "elmNotify") {
-		refreshDebuggerUI();
-	}
+  if (e.data == "elmDebuggerInit") {
+    startDebugging(e.source);
+  }
+  else if (e.data == "elmNotify") {
+    refreshDebuggerUI();
+  }
 }, false);
 
 // "/mario.elm" => "mario.elm"
