@@ -115,7 +115,6 @@ pauseButton.addEventListener('click', function(e) {
       elmDebugger.kontinue();
       refreshDebuggerUI();
       pauseButton.innerHTML = 'Pause';
-      pauseButton.title = "Unpause is a bit buggy still. It is inactive for now, but it is definitely possible!";
     } else {
       elmDebugger.pause();
       refreshDebuggerUI();
@@ -125,7 +124,6 @@ pauseButton.addEventListener('click', function(e) {
 });
 
 document.getElementById('buttonRestart').addEventListener('click', function(e) {
-    console.log("Restart");
     pauseButton.innerHTML = 'Pause';
     pauseButton.disabled = false;
     pauseButton.title = "";
@@ -148,7 +146,6 @@ function refreshDebuggerUI() {
 
 var show;
 function startDebugging(elmWindow) {
-	console.log("Debugger started");
 	elmDebugger = elmWindow.Elm.Debugger;
         show = elmWindow.Elm.String.make({}).show;
 }
@@ -163,9 +160,8 @@ parent.window.addEventListener("message", function(e) {
 }, false);
 
 var socketLocation = "ws://" + window.location.host + "/socket";
-console.log(socketLocation);
-var refreshingSocket = new WebSocket(socketLocation);
-refreshingSocket.onmessage = function(event) {
+var serverConnection = new WebSocket(socketLocation);
+serverConnection.onmessage = function(event) {
   var hotSwapCheckbox = document.getElementById("hotswap");
   if(hotSwapCheckbox.checked) {
     hotSwap(event.data);
