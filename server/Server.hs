@@ -115,10 +115,14 @@ serveAsset assetPath =
   do dataPath <- liftIO $ Utils.getDataFile assetPath
      serveFile dataPath
 
+staticAssets :: [FilePath]
+staticAssets = [ "debug-wrench-elm-server.png"
+               , "debugger-interface-elm-server.html"
+               , "favicon.ico"
+               ]
+
 serveAssets :: Snap ()
 serveAssets =
   do file <- BSC.unpack. rqPathInfo <$> getRequest
-     guard (  file == "debug-wrench-elm-server.png"
-           || file == "debugger-interface-elm-server.html"
-           || file == "favicon.ico")
+     guard (file `elem` staticAssets)
      serveAsset $ "assets" </> file
