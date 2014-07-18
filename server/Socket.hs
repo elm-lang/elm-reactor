@@ -15,12 +15,12 @@ import System.Process
 import qualified Generate
 
 fileChangeApp :: [FilePath] -> WS.ServerApp
-fileChangeApp watchedFiles pendingConnection = do
-      connection <- WS.acceptRequest pendingConnection
-      _ <- forkIO $ keepAlive connection
-      notifyManager <- liftIO $ Notify.startManager
-      updateOnChange notifyManager connection watchedFiles
-      Notify.stopManager notifyManager
+fileChangeApp watchedFiles pendingConnection =
+  do connection <- WS.acceptRequest pendingConnection
+     _ <- forkIO $ keepAlive connection
+     notifyManager <- liftIO $ Notify.startManager
+     updateOnChange notifyManager connection watchedFiles
+     Notify.stopManager notifyManager
 
 keepAlive :: WS.Connection -> IO ()
 keepAlive connection =
@@ -45,4 +45,3 @@ sendHotSwap connection watchedFiles filePath =
     changedFileTokens = splitDirectories $ normalise strChangedFile
     watchedTokens = map (\x -> splitDirectories $ normalise x) watchedFiles
     beginningMatch l r = all (uncurry (==)) $ zip (reverse l) (reverse r)
-

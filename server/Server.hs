@@ -87,11 +87,11 @@ socket = maybe error400 socketSnap =<< getParam "files"
          WSS.runWebSocketsSnap $ Socket.fileChangeApp watchedFiles
 
 withFile :: (FilePath -> H.Html) -> Snap ()
-withFile handler = do
-  filePath <- BSC.unpack . rqPathInfo <$> getRequest
-  exists <- liftIO (doesFileExist filePath)
-  if not exists then error404 else
-      serveHtml $ handler filePath
+withFile handler =
+  do filePath <- BSC.unpack . rqPathInfo <$> getRequest
+     exists <- liftIO (doesFileExist filePath)
+     if not exists then error404 else
+         serveHtml $ handler filePath
 
 error400 :: Snap ()
 error400 = modifyResponse $ setResponseStatus 400 "Bad Request"
@@ -101,8 +101,8 @@ error404 = modifyResponse $ setResponseStatus 404 "Not Found"
 
 serveHtml :: MonadSnap m => H.Html -> m ()
 serveHtml html =
-    do _ <- setContentType "text/html" <$> getResponse
-       writeLBS (BlazeBS.renderHtml html)
+  do _ <- setContentType "text/html" <$> getResponse
+     writeLBS (BlazeBS.renderHtml html)
 
 serveElm :: Snap ()
 serveElm =
