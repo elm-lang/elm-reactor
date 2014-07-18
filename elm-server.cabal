@@ -40,7 +40,7 @@ Executable elm-server
                        directory,
                        Elm >= 0.12.3,
                        filepath,
-                       fsnotify,
+                       fsnotify >= 0.1.0.2,
                        HTTP,
                        mtl,
                        process,
@@ -52,7 +52,7 @@ Executable elm-server
                        time,
                        transformers,
                        unordered-containers,
-                       websockets,
-                       websockets-snap
+                       websockets >= 0.8.2.5,
+                       websockets-snap >= 0.8.2.1
   
   hs-source-dirs:      server
