@@ -19,7 +19,7 @@ fileChangeApp watchedFiles pendingConnection =
   do connection <- WS.acceptRequest pendingConnection
      _ <- forkIO $ keepAlive connection
      notifyManager <- liftIO $ Notify.startManager
-     updateOnChange notifyManager connection watchedFiles
+     updateOnChange watchedFiles connection notifyManager
      Notify.stopManager notifyManager
 
 keepAlive :: WS.Connection -> IO ()
@@ -28,13 +28,13 @@ keepAlive connection =
      threadDelay $ 10 * (1000000) -- 10 seconds
      keepAlive connection
 
-updateOnChange :: Notify.WatchManager -> WS.Connection -> [FilePath] -> IO ()
-updateOnChange manager connection watchedFiles =
-  do _ <- NDevel.treeExtExists manager "." "elm" (sendHotSwap connection watchedFiles)
+updateOnChange ::  [FilePath] -> WS.Connection -> Notify.WatchManager -> IO ()
+updateOnChange watchedFiles connection manager =
+  do _ <- NDevel.treeExtExists manager "." "elm" (sendHotSwap watchedFiles connection)
      threadDelay maxBound
 
-sendHotSwap :: WS.Connection -> [FilePath] -> FP.FilePath -> IO ()
-sendHotSwap connection watchedFiles filePath =
+sendHotSwap :: [FilePath] -> WS.Connection -> FP.FilePath -> IO ()
+sendHotSwap watchedFiles connection filePath =
   if any (beginningMatch changedFileTokens) watchedTokens
   then
     do result <- liftIO $ Generate.js strChangedFile
