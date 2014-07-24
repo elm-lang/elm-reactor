@@ -2,6 +2,7 @@
 module Socket where
 
 import Control.Monad.Trans (MonadIO(liftIO))
+import Control.Monad (forever)
 import Control.Concurrent (threadDelay, forkIO)
 import qualified Data.ByteString.Char8 as BSC
 import qualified Filesystem.Path.CurrentOS as FP
@@ -31,7 +32,7 @@ keepAlive connection =
 updateOnChange ::  [FilePath] -> WS.Connection -> Notify.WatchManager -> IO ()
 updateOnChange watchedFiles connection manager =
   do _ <- NDevel.treeExtExists manager "." "elm" (sendHotSwap watchedFiles connection)
-     threadDelay maxBound
+     forever $ threadDelay 10000000 -- related to https://ghc.haskell.org/trac/ghc/ticket/5544
 
 sendHotSwap :: [FilePath] -> WS.Connection -> FP.FilePath -> IO ()
 sendHotSwap watchedFiles connection filePath =
