@@ -7,13 +7,14 @@ import Control.Monad (guard)
 import Control.Monad.Trans (MonadIO(liftIO))
 import qualified Data.ByteString.Char8 as BSC
 import qualified Data.Version as Version
+import qualified Network.WebSockets.Snap as WSS
+import qualified Text.Blaze.Html5 as H
+import qualified Text.Blaze.Html.Renderer.Utf8 as BlazeBS
 import System.Console.CmdArgs
 import System.Directory
-import System.Exit
 import System.FilePath
 import System.Process
-import System.IO (hGetContents, Handle)
-
+import System.IO (hGetContents)
 import Paths_elm_server (version)
 import qualified Elm.Internal.Paths as Elm
 import Snap.Core
@@ -21,6 +22,10 @@ import Snap.Http.Server
 import Snap.Util.FileServe
 
 import Index
+import qualified Debugger
+import qualified Generate
+import qualified Socket
+import qualified Utils
 
 data Flags = Flags
   { port :: Int
@@ -56,7 +61,11 @@ main = do
   httpServe (setPort (port cargs) config) $
       serveRuntime (maybe Elm.runtime id (runtime cargs))
       <|> serveElm
+      <|> route [ ("socket", socket)
+                ]
       <|> serveDirectoryWith directoryConfig "."
+      <|> serveAssets
+      <|> error404
 
 directoryConfig :: MonadSnap m => DirectoryConfig m
 directoryConfig = fancyDirectoryConfig {indexGenerator = elmIndexGenerator}
@@ -70,42 +79,57 @@ serveRuntime runtimePath =
      guard (file == runtimeName)
      serveFileAs "application/javascript" runtimePath
 
+socket :: Snap ()
+socket = maybe error400 socketSnap =<< getParam "files"
+  where
+    socketSnap filesParam =
+      do let watchedFiles = Utils.wordsWhen (','==) $ BSC.unpack filesParam
+         WSS.runWebSocketsSnap $ Socket.fileChangeApp watchedFiles
+
+withFile :: (FilePath -> H.Html) -> Snap ()
+withFile handler =
+  do filePath <- BSC.unpack . rqPathInfo <$> getRequest
+     exists <- liftIO (doesFileExist filePath)
+     if not exists then error404 else
+         serveHtml $ handler filePath
+
+error400 :: Snap ()
+error400 = modifyResponse $ setResponseStatus 400 "Bad Request"
+
+error404 :: Snap ()
+error404 = modifyResponse $ setResponseStatus 404 "Not Found"
+
+serveHtml :: MonadSnap m => H.Html -> m ()
+serveHtml html =
+  do _ <- setContentType "text/html" <$> getResponse
+     writeLBS (BlazeBS.renderHtml html)
+
 serveElm :: Snap ()
 serveElm =
   do file <- BSC.unpack . rqPathInfo <$> getRequest
+     debugParam <- getParam "debug"
+     let doDebug = maybe False (const True) debugParam
      exists <- liftIO $ doesFileExist file
      guard (exists && takeExtension file == ".elm")
-     onSuccess (compile file) (serve file)
-  where
-    compile file =
-        let elmArgs = [ "--make", "--set-runtime=/" ++ runtimeName, file ]
-        in  createProcess $ (proc "elm" elmArgs) { std_out = CreatePipe }
+     if doDebug
+       then withFile Debugger.ide
+       else do result <- liftIO $ Generate.html file
+               serveHtml result
 
-    serve file =
-        serveFileAs "text/html; charset=UTF-8" ("build" </> replaceExtension file "html")
 
-failure :: String -> Snap ()
-failure msg =
-  do modifyResponse $ setResponseStatus 404 "Not found"
-     writeBS $ BSC.pack msg
+serveAsset :: FilePath -> Snap ()
+serveAsset assetPath =
+  do dataPath <- liftIO $ Utils.getDataFile assetPath
+     serveFile dataPath
 
-onSuccess :: IO (t, Maybe Handle, t1, ProcessHandle) -> Snap () -> Snap ()
-onSuccess action success =
-  do (_, stdout, _, handle) <- liftIO action
-     exitCode <- liftIO $ waitForProcess handle
-     case (exitCode, stdout) of
-       (ExitFailure 127, _) ->
-           failure "Error: elm compiler not found in your path."
+staticAssets :: [FilePath]
+staticAssets = [ "debug-wrench-elm-server.png"
+               , "debugger-interface-elm-server.html"
+               , "favicon.ico"
+               ]
 
-       (ExitFailure _, Just out) ->
-           failure =<< liftIO (hGetContents out)
-
-       (ExitFailure _, Nothing) ->
-           failure "See command line for error message."
-
-       (ExitSuccess, _) -> success
-
-{--
-pageTitle :: String -> String
-pageTitle = dropExtension . takeBaseName
---}
+serveAssets :: Snap ()
+serveAssets =
+  do file <- BSC.unpack. rqPathInfo <$> getRequest
+     guard (file `elem` staticAssets)
+     serveAsset $ "assets" </> file
