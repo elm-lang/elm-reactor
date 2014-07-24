@@ -29,22 +29,15 @@ body {
   padding-top: 6px;
 }
 
+#watches > div {
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
 #statusText {
   padding-left:6px;
   font-size: 12px;
   display: inline;
-}
-
-#signalGraphParent {
-  overflow: scroll;
-  width: 100%;
-}
-
-#signalGraphView {
-  -webkit-transform: scale(0.7);
-  -webkit-transform-origin: 0% 0%;
-  -moz-transform: scale(0.5);
-  -moz-transform-origin: 0% 0%;
 }
 
 #timeSlider {
@@ -91,7 +84,7 @@ function updateWatches() {
   var frame = elmDebugger.watchTracker.frames[timeSlider.value];
   for (var tag in frame) {
     var node = document.createElement('div');
-    node.innerHTML = tag + ': <code>' + show(frame[tag]) + '</code>'
+    node.innerHTML = tag + ':<br><code>' + show(frame[tag]) + '</code><br>'
     watchesDiv.appendChild(node);
   }
 }
