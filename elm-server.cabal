@@ -17,9 +17,6 @@ Copyright:           Copyright: (c) 2011-2014 Evan Czaplicki
 Category:            Compiler, Language
 
 Build-type:          Simple
-Data-files:          assets/debug-wrench-elm-server.png
-                     assets/debugger-interface-elm-server.html
-                     assets/favicon.ico
 
 Extra-source-files:  README.md
 Cabal-version:       >=1.8
@@ -32,27 +29,18 @@ Executable elm-server
   Main-is:             Server.hs
   other-modules:       Index
   Build-depends:       base >=4.2 && <5,
-                       blaze-html,
-                       blaze-markup,
                        bytestring,
                        cmdargs,
                        containers >= 0.3,
                        directory,
                        Elm >= 0.12.3,
                        filepath,
-                       fsnotify >= 0.1.0.2,
-                       HTTP,
                        mtl,
                        process,
                        old-locale,
                        snap-core,
                        snap-server,
                        split,
-                       system-filepath,
                        time,
                        transformers,
-                       unordered-containers,
-                       websockets >= 0.8.2.5,
-                       websockets-snap >= 0.8.2.1
-  
-  hs-source-dirs:      server
+                       unordered-containers
