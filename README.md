@@ -1,7 +1,9 @@
 # Elm Server
 
 This is a simple server to make it easier to develop Elm projects. It lets you
-view Elm files in your browser and recompile them by refreshing the page.
+view Elm files in your browser and recompile them by refreshing the page. The
+server also supports hot-swapping on file changes (see the [blog post]
+(http://elm-lang.org/blog/Interactive-Programming.elm) about what hotswapping is).
 
 #### Install
 
@@ -24,3 +26,13 @@ each Elm page looks.
 
 `elm-server` will serve any kind of static content, so you can also look at HTML,
 images, JSON, or whatever else you may need to serve.
+
+#### Debug Mode
+
+To begin navigate to a directory of your choice and click the wrench.
+You will be brought to the debugger. On the bottom are time-travelling
+controls and above is your elm program. When you make a change to the
+source file and save it, the website will update accordingly.
+
+You may hot swap code at any point and maintain program state as long
+as the type signatures don't change.
