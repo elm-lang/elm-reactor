@@ -38,4 +38,3 @@ sendHotSwap :: FilePath -> WS.Connection -> FP.FilePath -> IO ()
 sendHotSwap watchedFile connection _ =
     do result <- liftIO $ Generate.js watchedFile
        WS.sendTextData connection $ BSC.pack result
-
