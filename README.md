@@ -1,9 +1,13 @@
 # Elm Server
 
-This is a simple server to make it easier to develop Elm projects. It lets you
-view Elm files in your browser and recompile them by refreshing the page. The
-server also supports hot-swapping on file changes (see the [blog post]
-(http://elm-lang.org/blog/Interactive-Programming.elm) about what hotswapping is).
+This is a simple server to make it easy to develop Elm projects.
+
+View any kind of file in your browser. Elm files recompile every time you
+refresh the page. The server also supports [hot-swapping][] and [time travel
+debugging](http://debug.elm-lang.org) so you can have a great development
+experience with any editor.
+
+[hot-swapping]: http://elm-lang.org/blog/Interactive-Programming.elm
 
 #### Install
 
@@ -29,10 +33,12 @@ images, JSON, or whatever else you may need to serve.
 
 #### Debug Mode
 
-To begin navigate to a directory of your choice and click the wrench.
-You will be brought to the debugger. On the bottom are time-travelling
-controls and above is your elm program. When you make a change to the
-source file and save it, the website will update accordingly.
+On the project navigation pages, all Elm files are paired with a little picture
+of a wrench. Click that and you go into debug mode! Now you can:
 
-You may hot swap code at any point and maintain program state as long
-as the type signatures don't change.
+  * Update the program by saving a new version in your editor. Updates propagate
+    automatically!
+
+  * Pause your program, rewind, and continue from any point.
+
+  * Add watches and traces to track and visualize values over time.
