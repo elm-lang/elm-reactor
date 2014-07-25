@@ -15,12 +15,12 @@ import System.Process
 
 import qualified Generate
 
-fileChangeApp :: [FilePath] -> WS.ServerApp
-fileChangeApp watchedFiles pendingConnection =
+fileChangeApp :: FilePath -> WS.ServerApp
+fileChangeApp watchedFile pendingConnection =
   do connection <- WS.acceptRequest pendingConnection
      _ <- forkIO $ keepAlive connection
      notifyManager <- liftIO $ Notify.startManager
-     updateOnChange watchedFiles connection notifyManager
+     updateOnChange watchedFile connection notifyManager
      Notify.stopManager notifyManager
 
 keepAlive :: WS.Connection -> IO ()
@@ -29,20 +29,13 @@ keepAlive connection =
      threadDelay $ 10 * (1000000) -- 10 seconds
      keepAlive connection
 
-updateOnChange ::  [FilePath] -> WS.Connection -> Notify.WatchManager -> IO ()
-updateOnChange watchedFiles connection manager =
-  do _ <- NDevel.treeExtExists manager "." "elm" (sendHotSwap watchedFiles connection)
+updateOnChange ::  FilePath -> WS.Connection -> Notify.WatchManager -> IO ()
+updateOnChange watchedFile connection manager =
+  do _ <- NDevel.treeExtExists manager "." "elm" (sendHotSwap watchedFile connection)
      forever $ threadDelay 10000000 -- related to https://ghc.haskell.org/trac/ghc/ticket/5544
 
-sendHotSwap :: [FilePath] -> WS.Connection -> FP.FilePath -> IO ()
-sendHotSwap watchedFiles connection filePath =
-  if any (beginningMatch changedFileTokens) watchedTokens
-  then
-    do result <- liftIO $ Generate.js strChangedFile
+sendHotSwap :: FilePath -> WS.Connection -> FP.FilePath -> IO ()
+sendHotSwap watchedFile connection _ =
+    do result <- liftIO $ Generate.js watchedFile
        WS.sendTextData connection $ BSC.pack result
-  else return ()
-  where
-    strChangedFile = FP.encodeString filePath
-    changedFileTokens = splitDirectories $ normalise strChangedFile
-    watchedTokens = map (\x -> splitDirectories $ normalise x) watchedFiles
-    beginningMatch l r = all (uncurry (==)) $ zip (reverse l) (reverse r)
+

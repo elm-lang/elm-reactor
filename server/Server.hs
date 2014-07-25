@@ -80,11 +80,10 @@ serveRuntime runtimePath =
      serveFileAs "application/javascript" runtimePath
 
 socket :: Snap ()
-socket = maybe error400 socketSnap =<< getParam "files"
+socket = maybe error400 socketSnap =<< getParam "file"
   where
-    socketSnap filesParam =
-      do let watchedFiles = Utils.wordsWhen (','==) $ BSC.unpack filesParam
-         WSS.runWebSocketsSnap $ Socket.fileChangeApp watchedFiles
+    socketSnap fileParam =
+         WSS.runWebSocketsSnap $ Socket.fileChangeApp $ BSC.unpack fileParam
 
 withFile :: (FilePath -> H.Html) -> Snap ()
 withFile handler =
