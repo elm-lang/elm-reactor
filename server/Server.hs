@@ -62,7 +62,7 @@ main = do
       serveRuntime (maybe Elm.runtime id (runtime cargs))
       <|> route [ ("socket", socket)
                 ]
-      <|> serveElm
+      <|> debugRouter
       <|> serveDirectoryWith directoryConfig "."
       <|> serveAssets
       <|> error404
@@ -103,8 +103,8 @@ serveHtml html =
   do _ <- setContentType "text/html" <$> getResponse
      writeLBS (BlazeBS.renderHtml html)
 
-serveElm :: Snap ()
-serveElm =
+debugRouter :: Snap ()
+debugRouter =
   do file <- BSC.unpack . rqPathInfo <$> getRequest
      debugParam <- getParam "debug"
      exists <- liftIO $ doesFileExist file
