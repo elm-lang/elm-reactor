@@ -93,9 +93,16 @@ elmIndexGenerator d = do
         writeS "<table><tr><th>File Name</th><th>MIME type</th><th>Last Modified</th></tr>"
         forM_ otherFiles' $ \f -> do
             tm <- liftIO . getModificationTime $ d </> f
-            writeS "<tr><td><a href='"
+            writeS "<tr><td><a href="
+            case ".html" `isSuffixOf` f of
+                True ->
+                  do writeS $ d </> f
+                     writeS "?debug><img title=\"Debug mode\" src=/debug-wrench-elm-server.png height=\"12\">"
+                     writeS "</a>&#8195;<a href="
+                False ->
+                  liftIO $ return ()
             writeS f
-            writeS "'>"
+            writeS ">"
             writeS f
             writeS "</a></td><td>"
             writeBS $ fileType defaultMimeTypes f
