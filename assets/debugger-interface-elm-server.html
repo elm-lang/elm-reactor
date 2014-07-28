@@ -174,7 +174,7 @@ function hotSwap(raw) {
           error.parentNode.removeChild(error);
       }
       top.output.eval(js);
-      var moduleStr = js.substring(0,js.indexOf('=')).replace(/\s/g,'');
+      var moduleStr = js.match(/(Elm\..+)\ =\ \1/)[1];
       var module = top.output.eval(moduleStr);
       if (top.output.Elm.Debugger) {
           var debuggerState = top.output.Elm.Debugger.getHotSwapState();
