@@ -83,8 +83,7 @@ compile filePath =
      stderr <- exitCode `seq` hGetContents herr
      case exitCode of
        ExitFailure _ ->
-         do removeEverything directory fileName
-            return (Left (stdout ++ stderr))
+         return (Left (stdout ++ stderr))
        ExitSuccess ->
          do result <- readFile (directory </> "build" </> fileName `replaceExtension` "js")
             length result `seq` (removeEverything directory fileName)

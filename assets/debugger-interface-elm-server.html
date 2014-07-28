@@ -152,9 +152,8 @@ parent.window.addEventListener("message", function(e) {
   }
 }, false);
 
-// "/mario.elm" => "mario.elm"
-// Bigger projects may want to list a set of files here to refresh on change
-var filePath = top.location.pathname.substr(1);
+// "/todo.html" => "todo.elm"
+var filePath = top.location.pathname.substr(1).split(".")[0] + ".elm";
 var socketLocation = "ws://" + window.location.host + "/socket?file=" + filePath;
 var serverConnection = new WebSocket(socketLocation);
 serverConnection.onmessage = function(event) {
