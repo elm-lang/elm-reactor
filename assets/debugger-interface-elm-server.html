@@ -178,7 +178,9 @@ function hotSwap(raw) {
       var module = top.output.eval(moduleStr);
       if (top.output.Elm.Debugger) {
           var debuggerState = top.output.Elm.Debugger.getHotSwapState();
-          top.output.runningElmModule.dispose();
+          if (top.output.runningElmModule) {
+            top.output.runningElmModule.dispose();
+          }
           top.output.Elm.Debugger.dispose();
 
           var wrappedModule = top.output.Elm.debuggerAttach(module, debuggerState);
