@@ -73,7 +73,8 @@ addSpaces str =
 
 compile :: FilePath -> IO (Either String String)
 compile filePath =
-  do (_, Just hout, Just herr, p) <- createProcess (proc "elm" $ args fileName)
+  do removeEverything directory fileName
+     (_, Just hout, Just herr, p) <- createProcess (proc "elm" $ args fileName)
                                      { cwd = Just directory
                                      , std_out = CreatePipe
                                      , std_err = CreatePipe
@@ -86,7 +87,6 @@ compile filePath =
          return (Left (stdout ++ stderr))
        ExitSuccess ->
          do result <- readFile (directory </> "build" </> fileName `replaceExtension` "js")
-            length result `seq` (removeEverything directory fileName)
             return (Right result)
   where
     (directory, fileName) = splitFileName filePath
