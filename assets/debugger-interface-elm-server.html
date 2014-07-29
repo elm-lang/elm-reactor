@@ -146,23 +146,26 @@ function startDebugging(elmWindow) {
 parent.window.addEventListener("message", function(e) {
   if (e.data == "elmDebuggerInit") {
     startDebugging(e.source);
+
+    var filePath = top.output.Elm.Debugger.filename;
+    // "/todo.html" => "todo.elm"
+    filePath = filePath || top.location.pathname.substr(1).split(".")[0] + ".elm";
+    var socketLocation = "ws://" + window.location.host + "/socket?file=" + filePath;
+    var serverConnection = new WebSocket(socketLocation);
+    serverConnection.onmessage = messageRoute;
   }
   else if (e.data == "elmNotify") {
     refreshDebuggerUI();
   }
 }, false);
 
-// "/todo.html" => "todo.elm"
-var filePath = top.location.pathname.substr(1).split(".")[0] + ".elm";
-var socketLocation = "ws://" + window.location.host + "/socket?file=" + filePath;
-var serverConnection = new WebSocket(socketLocation);
-serverConnection.onmessage = function(event) {
-  var hotSwapCheckbox = document.getElementById("hotswap");
-  if(hotSwapCheckbox.checked) {
-    hotSwap(event.data);
-  }
-};
 
+function messageRoute(event) {
+      var hotSwapCheckbox = document.getElementById("hotswap");
+      if(hotSwapCheckbox.checked) {
+        hotSwap(event.data);
+      }
+    };
 
 function hotSwap(raw) {
   var top = self.parent;
