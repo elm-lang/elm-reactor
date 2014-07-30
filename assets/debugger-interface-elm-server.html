@@ -159,7 +159,6 @@ parent.window.addEventListener("message", function(e) {
 function initSocket() {
   createdSocket = true;
   var filePath = top.output.Elm.Debugger.filename;
-  console.log(filePath);
   // "/todo.html" => "todo.elm"
   filePath = filePath || top.location.pathname.substr(1).split(".")[0] + ".elm";
   var socketLocation = "ws://" + window.location.host + "/socket?file=" + filePath;
