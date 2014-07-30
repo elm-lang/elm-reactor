@@ -143,8 +143,12 @@ function startDebugging(elmWindow) {
   show = elmWindow.Elm.String.make({}).show;
 }
 
+var createdSocket = false;
 parent.window.addEventListener("message", function(e) {
   if (e.data == "elmDebuggerInit") {
+    if (!createdSocket) {
+      initSocket();
+    }
     startDebugging(e.source);
   }
   else if (e.data == "elmNotify") {
@@ -152,18 +156,22 @@ parent.window.addEventListener("message", function(e) {
   }
 }, false);
 
-// "/mario.elm" => "mario.elm"
-// Bigger projects may want to list a set of files here to refresh on change
-var filePath = top.location.pathname.substr(1);
-var socketLocation = "ws://" + window.location.host + "/socket?file=" + filePath;
-var serverConnection = new WebSocket(socketLocation);
-serverConnection.onmessage = function(event) {
+function initSocket() {
+  createdSocket = true;
+  var filePath = top.output.Elm.Debugger.filename;
+  // "/todo.html" => "todo.elm"
+  filePath = filePath || top.location.pathname.substr(1).split(".")[0] + ".elm";
+  var socketLocation = "ws://" + window.location.host + "/socket?file=" + filePath;
+  var serverConnection = new WebSocket(socketLocation);
+  serverConnection.onmessage = messageRoute;
+}
+
+function messageRoute(event) {
   var hotSwapCheckbox = document.getElementById("hotswap");
   if(hotSwapCheckbox.checked) {
     hotSwap(event.data);
   }
 };
-
 
 function hotSwap(raw) {
   var top = self.parent;
@@ -175,11 +183,13 @@ function hotSwap(raw) {
           error.parentNode.removeChild(error);
       }
       top.output.eval(js);
-      var moduleStr = js.substring(0,js.indexOf('=')).replace(/\s/g,'');
+      var moduleStr = js.match(/(Elm\..+)\ =\ \1/)[1];
       var module = top.output.eval(moduleStr);
       if (top.output.Elm.Debugger) {
           var debuggerState = top.output.Elm.Debugger.getHotSwapState();
-          top.output.runningElmModule.dispose();
+          if (top.output.runningElmModule) {
+            top.output.runningElmModule.dispose();
+          }
           top.output.Elm.Debugger.dispose();
 
           var wrappedModule = top.output.Elm.debuggerAttach(module, debuggerState);

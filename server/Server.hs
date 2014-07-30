@@ -60,9 +60,9 @@ main = do
   putStrLn "Just refresh a page to recompile it!"
   httpServe (setPort (port cargs) config) $
       serveRuntime (maybe Elm.runtime id (runtime cargs))
-      <|> serveElm
       <|> route [ ("socket", socket)
                 ]
+      <|> debugRouter
       <|> serveDirectoryWith directoryConfig "."
       <|> serveAssets
       <|> error404
@@ -103,17 +103,21 @@ serveHtml html =
   do _ <- setContentType "text/html" <$> getResponse
      writeLBS (BlazeBS.renderHtml html)
 
-serveElm :: Snap ()
-serveElm =
+debugRouter :: Snap ()
+debugRouter =
   do file <- BSC.unpack . rqPathInfo <$> getRequest
      debugParam <- getParam "debug"
-     let doDebug = maybe False (const True) debugParam
      exists <- liftIO $ doesFileExist file
-     guard (exists && takeExtension file == ".elm")
-     if doDebug
-       then withFile Debugger.ide
-       else do result <- liftIO $ Generate.html file
-               serveHtml result
+     guard exists
+     case debugParam of
+       Just _ ->
+         withFile Debugger.ide
+       Nothing ->
+         case takeExtension file == ".elm" of
+           True ->
+             do result <- liftIO $ Generate.html file
+                serveHtml result
+           False -> serveFile file
 
 
 serveAsset :: FilePath -> Snap ()
