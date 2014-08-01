@@ -61,6 +61,7 @@ main = do
   httpServe (setPort (port cargs) config) $
       serveRuntime (maybe Elm.runtime id (runtime cargs))
       <|> serveElm
+      <|> serveDebugger
       <|> route [ ("socket", socket)
                 ]
       <|> serveDirectoryWith directoryConfig "."
@@ -115,6 +116,11 @@ serveElm =
        else do result <- liftIO $ Generate.html file
                serveHtml result
 
+serveDebugger :: Snap ()
+serveDebugger =
+  do file <- BSC.unpack . rqPathInfo <$> getRequest
+     guard (file == "debugger.js")
+     serveFileAs "application/javascript" file
 
 serveAsset :: FilePath -> Snap ()
 serveAsset assetPath =
