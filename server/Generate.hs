@@ -48,7 +48,9 @@ html filePath doDebug =
 
     insertDebuggerScript =
       case doDebug of
-        True -> script ! A.src (H.toValue ("/debugger.js" :: String)) $ ""
+        True ->
+          do script ! A.src (H.toValue ("/debugger.js" :: String)) $ ""
+             script ! A.src (H.toValue ("/build/debuggerInterface.js" :: String)) $ ""
         False -> return ()
 
     buildPage content = H.docTypeHtml $ do
@@ -112,7 +114,7 @@ compile filePath =
     removeEverything dir file =
         do remove "cache" "elmi"
            remove "cache" "elmo"
-           remove "build" "js"
+           --remove "build" "js"
         where
           remove :: String -> String -> IO ()
           remove subdir ext = do
