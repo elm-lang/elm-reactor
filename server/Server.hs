@@ -22,7 +22,6 @@ import Snap.Http.Server
 import Snap.Util.FileServe
 
 import Index
-import qualified Debugger
 import qualified Generate
 import qualified Socket
 import qualified Utils
@@ -111,10 +110,8 @@ serveElm =
      let doDebug = maybe False (const True) debugParam
      exists <- liftIO $ doesFileExist file
      guard (exists && takeExtension file == ".elm")
-     if doDebug
-       then withFile Debugger.ide
-       else do result <- liftIO $ Generate.html file
-               serveHtml result
+     result <- liftIO $ Generate.html file doDebug
+     serveHtml result
 
 serveDebugger :: Snap ()
 serveDebugger =
