@@ -59,7 +59,8 @@ html filePath doDebug =
               ("a:link {text-decoration: none; color: rgb(15,102,230);}\n\
                \a:visited {text-decoration: none}\n\
                \a:active {text-decoration: none}\n\
-               \a:hover {text-decoration: underline; color: rgb(234,21,122);}" :: String)
+               \a:hover {text-decoration: underline; color: rgb(234,21,122);}\n\
+               \html,body {height: 100%; margin: 0px;}" :: String)
         H.body $ do
           script ! A.src (H.toValue ("/elm-runtime.js" :: String)) $ ""
           insertDebuggerScript
