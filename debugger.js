@@ -1,34 +1,63 @@
+var elmDebugger = {
+  restart: function() {},
+  pause: function() {},
+  kontinue: function() {},
+  getMaxSteps: function() { return 0; },
+  stepTo: function(i) {},
+  getPaused: function() { return false; },
+  getHotSwapState: function() { return null; },
+  watchTracker: { frames:[{}] }
+};
+
+var mainHandle = {};
+var debuggerHandle = {};
+
 Elm.debugFullscreen = function(module, moduleFile, hotSwapState /* =undefined */) {
   segmentDisplay();
   var elmMain = document.getElementById("elmMain");
-  return Elm.embed(Elm.debuggerAttach(module,hotSwapState), elmMain);
+  mainHandle = Elm.embed(Elm.debuggerAttach(module,hotSwapState), elmMain);
+  return mainHandle;
 }
 
 function segmentDisplay() {
+  var mainDiv = document.createElement("div");
+  mainDiv.id = "elmMain";
+  mainDiv.style.width = "100%";
+  mainDiv.style.height = "100%";
 
-  var elmMain = document.createElement("div");
-  elmMain.id = "elmMain";
-  elmMain.style.width = "100%";
-  elmMain.style.height = "100%";
+  var debuggerDiv = document.createElement("div");
+  debuggerDiv.id = "elmDebugger";
+  debuggerDiv.style.background = "#eee";
+  debuggerDiv.style.width = "90%";
+  debuggerDiv.style.height = "40px";
+  debuggerDiv.style.position = "absolute";
+  debuggerDiv.style.top = 20 + "px";
+  debuggerDiv.style.left = window.innerWidth * 0.05 + "px";
+  debuggerDiv.style.opacity = "0.5";
 
-  var elmDebugger = document.createElement("div");
-  elmDebugger.id = "elmDebugger";
-  elmDebugger.style.background = "#eee";
-  elmDebugger.style.width = "90%";
-  elmDebugger.style.height = "60px";
-  elmDebugger.style.position = "absolute";
-  elmDebugger.style.top = 20 + "px";
-  elmDebugger.style.left = window.innerWidth * 0.05 + "px";
-  elmDebugger.style.opacity = "0.5";
+  debuggerHandle = Elm.embed(Elm.DebuggerInterface, debuggerDiv, {eventCounter: 0});
+  debuggerHandle.ports.controls.subscribe(elmStateRouter)
 
-  createDebuggerDisplay(elmDebugger);
-
-  document.body.appendChild(elmMain);
-  document.body.appendChild(elmDebugger);
+  document.body.appendChild(mainDiv);
+  document.body.appendChild(debuggerDiv);
 }
 
-function createDebuggerDisplay(debugDiv) {
-  Elm.embed(Elm.DebuggerInterface, debugDiv);
+parent.window.addEventListener("message", function(e) {
+  if (e.data === "elmDebuggerInit") {
+    elmDebugger = parent.Elm.Debugger;
+  } else if (e.data === "elmNotify") {
+    debuggerHandle.ports.eventCounter.send(elmDebugger.getMaxSteps());
+  }
+}, false);
+
+function elmStateRouter(state) {
+  var currentEvent = state.events[0];
+  var totalEvents = state.events[1];
+  if (state.paused) {
+    elmDebugger.pause();
+    elmDebugger.stepTo(currentEvent);
+  }
+  console.log(state.events);
 }
 
 // var createdSocket = false;
