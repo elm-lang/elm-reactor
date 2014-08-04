@@ -11,8 +11,6 @@ var elmDebugger = {
 
 var mainHandle = {};
 var debuggerHandle = {};
-var continuing = false;
-var firstPause = true;
 
 Elm.debugFullscreen = function(module, moduleFile, hotSwapState /* =undefined */) {
   segmentDisplay();
@@ -54,8 +52,10 @@ parent.window.addEventListener("message", function(e) {
 }, false);
 
 function scrubber(position) {
-  // console.log(position);
-  // elmDebugger.stepTo(position);
+  if (elmDebugger.getPaused()) {
+    elmDebugger.stepTo(position);
+    console.log(position);
+  }
 }
 
 function elmPauser(paused) {

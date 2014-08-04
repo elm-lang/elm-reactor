@@ -142,9 +142,7 @@ scene = foldp step startState aggregateUpdates
 
 step : Update -> State -> State
 step update state =
-    let currentEvent = case update.paused of
-            True -> sliderPosition update
-            False -> update.maxEvents
+    let currentEvent = sliderPosition update
     in  { paused = update.paused
         , events = (currentEvent, update.maxEvents)
         }
