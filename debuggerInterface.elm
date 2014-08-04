@@ -24,6 +24,15 @@ type State =
     , events : (Int, Int)
     }
 
+{-
+data Action
+    = Noop
+    | Pause
+    | Continue
+    | Restart
+    | Scrub Int
+-}
+
 paused : Input Bool
 paused = input False
 
@@ -34,11 +43,12 @@ port eventCounter : Signal Int
 -- View
 
 objHeight = 40
+buttonWidth = 40
 
 playButton : Element
 playButton =
     let icon = [ngon 3 15.0 |> filled red]
-    in  collage 40 40 icon
+    in  collage buttonWidth objHeight icon
             |> clickable paused.handle False
 
 pauseButton : Element
@@ -50,13 +60,13 @@ pauseButton =
                     |> filled red
                     |> moveX 6
                 ]
-    in collage 40 objHeight icon
+    in collage buttonWidth objHeight icon
             |> clickable paused.handle True
 
 restartButton : Element
 restartButton =
     let icon = [circle 15.0 |> filled orange]
-    in  collage 40 objHeight icon
+    in  collage buttonWidth objHeight icon
             |> clickable paused.handle False
 
 timelinePath : (Int, Int) -> Element
@@ -121,8 +131,11 @@ sliderPosition update =
 main : Signal Element
 main = lift2 view Window.dimensions scene
 
-port controls : Signal State
-port controls = scene
+port scrub : Signal Int
+port scrub = dropRepeats <| lift (fst . .events) scene
+
+port pauseElm : Signal Bool
+port pauseElm = paused.signal
 
 scene : Signal State
 scene = foldp step startState aggregateUpdates
@@ -132,7 +145,6 @@ step update state =
     let currentEvent = case update.paused of
             True -> sliderPosition update
             False -> update.maxEvents
-        _ = Debug.watch "state" state
     in  { paused = update.paused
         , events = (currentEvent, update.maxEvents)
         }
@@ -145,7 +157,7 @@ startState =
 
 aggregateUpdates : Signal Update
 aggregateUpdates =
-    let dampenedMouse = sampleOn Mouse.isDown Mouse.position
+    let dampenedMouse = keepWhen Mouse.isDown (0,0) Mouse.position
         dampnededEvents = keepWhen (lift (not) paused.signal) 0 eventCounter
         mouse down (x,y) =
             { down = down

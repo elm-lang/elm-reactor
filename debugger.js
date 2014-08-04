@@ -11,6 +11,8 @@ var elmDebugger = {
 
 var mainHandle = {};
 var debuggerHandle = {};
+var continuing = false;
+var firstPause = true;
 
 Elm.debugFullscreen = function(module, moduleFile, hotSwapState /* =undefined */) {
   segmentDisplay();
@@ -36,7 +38,8 @@ function segmentDisplay() {
   debuggerDiv.style.opacity = "0.5";
 
   debuggerHandle = Elm.embed(Elm.DebuggerInterface, debuggerDiv, {eventCounter: 0});
-  debuggerHandle.ports.controls.subscribe(elmStateRouter)
+  debuggerHandle.ports.scrub.subscribe(scrubber);
+  debuggerHandle.ports.pauseElm.subscribe(elmPauser);
 
   document.body.appendChild(mainDiv);
   document.body.appendChild(debuggerDiv);
@@ -50,14 +53,18 @@ parent.window.addEventListener("message", function(e) {
   }
 }, false);
 
-function elmStateRouter(state) {
-  var currentEvent = state.events[0];
-  var totalEvents = state.events[1];
-  if (state.paused) {
+function scrubber(position) {
+  // console.log(position);
+  // elmDebugger.stepTo(position);
+}
+
+function elmPauser(paused) {
+  console.log(paused);
+  if (paused) {
     elmDebugger.pause();
-    elmDebugger.stepTo(currentEvent);
+  } else {
+    elmDebugger.kontinue();
   }
-  console.log(state.events);
 }
 
 // var createdSocket = false;
