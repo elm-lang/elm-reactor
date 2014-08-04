@@ -37,7 +37,8 @@ function segmentDisplay() {
 
   debuggerHandle = Elm.embed(Elm.DebuggerInterface, debuggerDiv, {eventCounter: 0});
   debuggerHandle.ports.scrub.subscribe(scrubber);
-  debuggerHandle.ports.pauseElm.subscribe(elmPauser);
+  debuggerHandle.ports.pause.subscribe(elmPauser);
+  debuggerHandle.ports.restart.subscribe(elmRestart);
 
   document.body.appendChild(mainDiv);
   document.body.appendChild(debuggerDiv);
@@ -65,6 +66,11 @@ function elmPauser(paused) {
   } else {
     elmDebugger.kontinue();
   }
+}
+
+function elmRestart() {
+  console.log("restart");
+  elmDebugger.restart();
 }
 
 // var createdSocket = false;

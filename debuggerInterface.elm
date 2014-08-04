@@ -17,6 +17,7 @@ type Update =
     , window : (Int, Int)
     , maxEvents : Int
     , paused : Bool
+    , restart : Bool
     }
 
 type State =
@@ -33,8 +34,11 @@ data Action
     | Scrub Int
 -}
 
-paused : Input Bool
-paused = input False
+pausedInput : Input Bool
+pausedInput = input False
+
+restartInput : Input ()
+restartInput = input ()
 
 -- inport placeholder
 port eventCounter : Signal Int
@@ -49,7 +53,7 @@ playButton : Element
 playButton =
     let icon = [ngon 3 15.0 |> filled red]
     in  collage buttonWidth objHeight icon
-            |> clickable paused.handle False
+            |> clickable pausedInput.handle False
 
 pauseButton : Element
 pauseButton =
@@ -61,13 +65,13 @@ pauseButton =
                     |> moveX 6
                 ]
     in collage buttonWidth objHeight icon
-            |> clickable paused.handle True
+            |> clickable pausedInput.handle True
 
 restartButton : Element
 restartButton =
     let icon = [circle 15.0 |> filled orange]
     in  collage buttonWidth objHeight icon
-            |> clickable paused.handle False
+            |> clickable restartInput.handle ()
 
 timelinePath : (Int, Int) -> Element
 timelinePath (w,_) =
@@ -109,6 +113,8 @@ view dim state =
                      , timelineFilled dim state
                      ]
 
+-- Calcuations from position
+
 mouseOnTimeline : Update -> Maybe Int
 mouseOnTimeline update =
     let mx = fst update.mouse.position
@@ -134,8 +140,11 @@ main = lift2 view Window.dimensions scene
 port scrub : Signal Int
 port scrub = dropRepeats <| lift (fst . .events) scene
 
-port pauseElm : Signal Bool
-port pauseElm = paused.signal
+port pause : Signal Bool
+port pause = pausedInput.signal
+
+port restart : Signal Int
+port restart = lift (\x -> 0) restartInput.signal
 
 scene : Signal State
 scene = foldp step startState aggregateUpdates
@@ -143,9 +152,12 @@ scene = foldp step startState aggregateUpdates
 step : Update -> State -> State
 step update state =
     let currentEvent = sliderPosition update
-    in  { paused = update.paused
-        , events = (currentEvent, update.maxEvents)
-        }
+    in  case update.restart of
+            True -> startState
+            False ->
+                { paused = update.paused
+                , events = (currentEvent, update.maxEvents)
+                }
 
 startState : State
 startState =
@@ -156,16 +168,18 @@ startState =
 aggregateUpdates : Signal Update
 aggregateUpdates =
     let dampenedMouse = keepWhen Mouse.isDown (0,0) Mouse.position
-        dampnededEvents = keepWhen (lift (not) paused.signal) 0 eventCounter
+        dampenedEvents = keepWhen (lift (not) pausedInput.signal) 0 eventCounter
+        restartBool = merge (sampleOn combinedMouse <| constant False) (lift (\x -> True) restartInput.signal)
         mouse down (x,y) =
             { down = down
             , position = (toFloat x, toFloat y)
             }
         combinedMouse = lift2 mouse Mouse.isDown dampenedMouse
-        aggregator window mouse paused eventCounter =
+        aggregator window mouse paused restart eventCounter =
             { mouse = mouse
             , window = window
             , maxEvents = eventCounter
             , paused = paused
+            , restart = restart
             }
-    in  lift4 aggregator Window.dimensions combinedMouse paused.signal dampnededEvents
+    in  lift5 aggregator Window.dimensions combinedMouse pausedInput.signal restartBool dampenedEvents
