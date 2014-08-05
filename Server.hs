@@ -75,14 +75,17 @@ serveElm =
   do file <- BSC.unpack . rqPathInfo <$> getRequest
      exists <- liftIO $ doesFileExist file
      guard (exists && takeExtension file == ".elm")
-     onSuccess (compile file) (serve file)
+     onlyJs <- getQueryParam "only-js"
+     let (args, ext) = case onlyJs of Nothing -> ([], "html")
+                                      Just _ -> (["--only-js"], "js")
+     onSuccess (compile file args) (serve file ext)
   where
-    compile file =
-        let elmArgs = [ "--make", "--set-runtime=/" ++ runtimeName, file ]
+    compile file args =
+        let elmArgs = args ++ [ "--make", "--set-runtime=/" ++ runtimeName, file ]
         in  createProcess $ (proc "elm" elmArgs) { std_out = CreatePipe }
 
-    serve file =
-        serveFileAs "text/html; charset=UTF-8" ("build" </> replaceExtension file "html")
+    serve file ext =
+        serveFileAs "text/html; charset=UTF-8" ("build" </> replaceExtension file ext)
 
 failure :: String -> Snap ()
 failure msg =
