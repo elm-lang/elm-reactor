@@ -31,25 +31,33 @@ darkGrey = rgb 92 92 92
 
 playButton : Element
 playButton =
-    let icon = [ngon 3 15.0 |> filled blue]
+    let icon =
+            [ rect 35 35 |> filled blue
+            , ngon 3 12.0 |> filled lightGrey
+            ]
     in  collage buttonWidth objHeight icon
             |> clickable pausedInput.handle False
 
 pauseButton : Element
 pauseButton =
-    let icon = [ rect 7.5 20
-                    |> filled blue
-                    |> moveX -6
-               , rect 7.5 20
-                    |> filled blue
-                    |> moveX 6
-                ]
+    let icon =
+            [ rect 35 35 |> filled blue
+            , rect 7 17
+                |> filled lightGrey
+                |> moveX -5
+           , rect 7 17
+                |> filled lightGrey
+                |> moveX 5
+            ]
     in collage buttonWidth objHeight icon
             |> clickable pausedInput.handle True
 
 restartButton : Element
 restartButton =
-    let icon = [circle 15.0 |> filled lightGrey]
+    let icon =
+            [ rect 35 35 |> filled lightGrey
+            , circle 12.0 |> filled darkGrey
+            ]
     in  collage buttonWidth objHeight icon
             |> clickable restartInput.handle ()
 
