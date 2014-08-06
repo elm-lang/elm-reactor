@@ -35,8 +35,8 @@ function segmentDisplay() {
   debuggerDiv.style.left = window.innerWidth * 0.05 + "px";
   debuggerDiv.style.opacity = "0.5";
 
-  debuggerHandle = Elm.embed(Elm.DebuggerInterface, debuggerDiv, {eventCounter: 0});
-  debuggerHandle.ports.scrub.subscribe(scrubber);
+  debuggerHandle = Elm.embed(Elm.DebuggerInterface, debuggerDiv, {eventCounter: 0, restartPort: false});
+  debuggerHandle.ports.scrubTo.subscribe(scrubber);
   debuggerHandle.ports.pause.subscribe(elmPauser);
   debuggerHandle.ports.restart.subscribe(elmRestart);
 
@@ -55,13 +55,11 @@ parent.window.addEventListener("message", function(e) {
 function scrubber(position) {
   if (elmDebugger.getPaused()) {
     elmDebugger.stepTo(position);
-    console.log(position);
   }
 }
 
-function elmPauser(paused) {
-  console.log(paused);
-  if (paused) {
+function elmPauser(doPause) {
+  if (doPause) {
     elmDebugger.pause();
   } else {
     elmDebugger.kontinue();
@@ -69,7 +67,8 @@ function elmPauser(paused) {
 }
 
 function elmRestart() {
-  console.log("restart");
+  debuggerHandle.ports.restartPort.send(true);
+  debuggerHandle.ports.restartPort.send(false);
   elmDebugger.restart();
 }
 

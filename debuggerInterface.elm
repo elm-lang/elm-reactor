@@ -29,9 +29,10 @@ restartInput = input ()
 scrubInput : Input Int
 scrubInput = input 0
 
--- inport placeholder
---port eventCounter : Signal Int
-eventCounter = count <| fps 1
+port eventCounter : Signal Int
+
+-- When we restart at any time we need to be notified of what state to go to.
+port restartPort : Signal Bool
 
 -- View
 
@@ -73,16 +74,8 @@ scrubSlider (w,_) state =
             , value <- toFloat <| fst state.events
             , disabled <- not state.paused
             }
-        sliderStyle' =
-            if  | state.paused ->
-                    sliderStyle
-                | otherwise ->
-                    { sliderStyle
-                    | value <- toFloat <| fst state.events
-                    }
-        _ = Debug.watch "value" sliderStyle'.value
     in  container sliderLength objHeight midLeft
-            <| slider scrubInput.handle round sliderStyle'
+            <| slider scrubInput.handle round sliderStyle
 
 view : (Int, Int) -> State -> Element
 view dim state =
@@ -95,8 +88,8 @@ view dim state =
 main : Signal Element
 main = lift2 view Window.dimensions scene
 
-port scrub : Signal Int
-port scrub = scrubInput.signal
+port scrubTo : Signal Int
+port scrubTo = scrubInput.signal
 
 port pause : Signal Bool
 port pause = pausedInput.signal
@@ -107,10 +100,16 @@ port restart = lift (\x -> 0) restartInput.signal
 scene : Signal State
 scene = foldp step startState aggregateUpdates
 
+startState : State
+startState =
+    { paused = False
+    , events = (0,0)
+    }
+
 step : Update -> State -> State
 step update state =
-    if  | Debug.watch "case step" update.restart ->
-            startState
+    if  | update.restart ->
+            Debug.log "restart" startState
         | otherwise ->
             if  | update.paused ->
                     { paused = update.paused
@@ -121,25 +120,18 @@ step update state =
                     , events = (update.maxEvents, update.maxEvents)
                     }
 
-startState : State
-startState =
-    { paused = False
-    , events = (0,0)
-    }
-
 aggregateUpdates : Signal Update
 aggregateUpdates =
     let dampenedEvents = keepWhen (lift not pausedInput.signal) 0 eventCounter
-        restartBool = merge (sampleOn (fps 60) (constant False)) (lift (\x -> True) restartInput.signal)
         aggregator window paused restart eventCounter scrubPosition =
             { window = window
-            , paused = Debug.watch "paused" paused
-            , restart = Debug.watch "restart" restart
+            , paused = paused
+            , restart = restart
             , maxEvents = eventCounter
-            , scrub = Debug.watch "scrub position" scrubPosition
+            , scrub = scrubPosition
             }
     in  aggregator <~ Window.dimensions
                     ~ pausedInput.signal
-                    ~ restartBool
+                    ~ restartPort
                     ~ dampenedEvents
                     ~ scrubInput.signal
