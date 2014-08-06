@@ -30,6 +30,16 @@ blue = rgb 49 139 255
 lightGrey = rgb 228 228 228
 darkGrey = rgb 74 74 74
 
+textStyle : String -> Text
+textStyle =
+    style
+        { defaultStyle
+        | typeface <- ["Gotham", "sans-serif"]
+        , color <- lightGrey
+        , height <- Just 11
+        }
+    . toText
+
 playButton : Element
 playButton =
     let icon =
@@ -72,24 +82,40 @@ scrubSlider (w,_) state =
             , value <- toFloat <| state.scrubPosition
             , disabled <- not state.paused
             }
-    in  container sliderLength objHeight bottomLeft
+    in  container sliderLength 20 midLeft
             <| slider scrubInput.handle round sliderStyle
+
+sliderCurrentEvent : Int -> State -> Element
+sliderCurrentEvent w state =
+    let textHeight = 20
+        scrubPosition = toFloat state.scrubPosition
+        totalEvents = toFloat state.totalEvents
+        w' = toFloat w
+        leftDistance = scrubPosition / totalEvents * w'
+        xPos = absolute (round leftDistance)
+        yPos = absolute (round (textHeight / 2))
+        textPosition = middleAt xPos yPos
+        text' = show state.scrubPosition |> textStyle |> centered
+    in  container w textHeight textPosition text'
+
 
 view : (Int, Int) -> State -> Element
 view (w,h) state =
     let sideMargin = (2 * 20)
         spacerHeight = 15
         textHeight = 30
-        controlsHeight = objHeight + 24 + spacerHeight + textHeight + 10
+        controlsHeight = objHeight + 24 + spacerHeight + 2 * textHeight + 10
         buttons = flow right
             [ restartButton
             , spacer (panelWidth - 2 * buttonWidth - sideMargin) objHeight
             , (if state.paused then playButton else pauseButton)
             ]
         slider = flow down
-            [ scrubSlider (w - sideMargin, h) state
+            [ sliderCurrentEvent (w - sideMargin) state
+            , scrubSlider (w - sideMargin, h) state
             , sliderBottomText
             ]
+        --sliderCurrentEvent = container (w - sideMargin) textHeight
         sliderBottomText = flow outward
             [ sliderStartText
             , sliderTotalEvents
@@ -98,14 +124,6 @@ view (w,h) state =
             (textStyle "0" |> leftAligned)
         sliderTotalEvents = container (w-sideMargin) textHeight midRight
             (show state.totalEvents |> textStyle |> rightAligned)
-        textStyle =
-            style
-                { defaultStyle
-                | typeface <- ["Gotham", "sans-serif"]
-                , color <- lightGrey
-                , height <- Just 11
-                }
-            . toText
         controlsContainer = container w controlsHeight midTop centeredControls
         centeredControls = flow down
             [ spacer (w - sideMargin) spacerHeight
