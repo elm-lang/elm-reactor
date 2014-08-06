@@ -14,7 +14,7 @@ var debuggerHandle = {};
 var createdSocket = false;
 var filePath;
 
-var debuggingPanelExpanded = false;
+var debuggingPanelExpanded = true;
 
 var ELM_MAIN_ID = "elmMain";
 var ELM_DEBUGGER_ID = "elmDebugger";
@@ -29,7 +29,7 @@ function createMainElement() {
 
 function createDebuggingElement() {
   var debuggerWidth = 275;
-  var darkGrey = "#5C5C5C";
+  var darkGrey = "#4A4A4A";
 
   var debugTools = document.createElement("div");
   debugTools.id = "debugTools"
@@ -45,16 +45,18 @@ function createDebuggingElement() {
   debugTools.style.top = "0px";
   debugTools.style.left = window.innerWidth - debuggerWidth + "px";
   debugTools.style.transitionDuration = "0.3s";
+  debugTools.style.opacity = 0.97;
 
   // Create and style the button
   var debugTab = document.createElement("div");
   debugTab.id = "debugtoggle";
   debugTab.style.position = "absolute";
-  debugTab.style.width = "20px";
+  debugTab.style.width = "15px";
   debugTab.style.height = "30px";
   debugTab.style.top = window.innerHeight / 2 + "px";
   debugTab.style.left = "-15px";
-  debugTab.style.borderRadius = "3px";
+  debugTab.style.borderTopLeftRadius = "3px";
+  debugTab.style.borderBottomLeftRadius = "3px";
   debugTab.style.background = darkGrey;
 
   // Wire the button
@@ -62,9 +64,11 @@ function createDebuggingElement() {
     var toolPanel = document.getElementById("debugTools");
     if (debuggingPanelExpanded){
       toolPanel.style.left = window.innerWidth + "px";
+      toolPanel.style.width = "0px";
       debuggingPanelExpanded = false;
     } else {
       toolPanel.style.left = window.innerWidth - debuggerWidth + "px";
+      toolPanel.style.width = debuggerWidth + "px";
       debuggingPanelExpanded = true;
     }
   }

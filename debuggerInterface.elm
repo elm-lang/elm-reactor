@@ -2,6 +2,7 @@ module DebuggerInterface where
 
 import Window
 import Graphics.Input (..)
+import Text (..)
 import Debug
 import Slider (..)
 
@@ -25,9 +26,9 @@ objHeight = 40
 buttonWidth = 40
 panelWidth = 275
 
-blue = rgb 60 160 255
-lightGrey = rgb 233 233 233
-darkGrey = rgb 92 92 92
+blue = rgb 49 139 255
+lightGrey = rgb 228 228 228
+darkGrey = rgb 74 74 74
 
 playButton : Element
 playButton =
@@ -71,25 +72,55 @@ scrubSlider (w,_) state =
             , value <- toFloat <| state.scrubPosition
             , disabled <- not state.paused
             }
-    in  container sliderLength objHeight midLeft
+    in  container sliderLength objHeight bottomLeft
             <| slider scrubInput.handle round sliderStyle
 
 view : (Int, Int) -> State -> Element
 view (w,h) state =
     let sideMargin = (2 * 20)
         spacerHeight = 15
-        controlsHeight = objHeight + 24 + spacerHeight + 10
-        controls =
-            container w controlsHeight midTop <|
-                spacer (w - sideMargin) spacerHeight
-                `above` (container (w - sideMargin) controlsHeight midTop 
-                <| restartButton
-                `beside` spacer (panelWidth - 2 * buttonWidth - sideMargin) objHeight
-                `beside` (if state.paused then playButton else pauseButton)
-                `above` scrubSlider (w - sideMargin,h) state)
-    in  controls
-        `above` [markdown| <br /> |]
-        `above` asText "watches not implemented yet :("
+        textHeight = 30
+        controlsHeight = objHeight + 24 + spacerHeight + textHeight + 10
+        buttons = flow right
+            [ restartButton
+            , spacer (panelWidth - 2 * buttonWidth - sideMargin) objHeight
+            , (if state.paused then playButton else pauseButton)
+            ]
+        slider = flow down
+            [ scrubSlider (w - sideMargin, h) state
+            , sliderBottomText
+            ]
+        sliderBottomText = flow outward
+            [ sliderStartText
+            , sliderTotalEvents
+            ]
+        sliderStartText = container (w-sideMargin) textHeight midLeft
+            (textStyle "0" |> leftAligned)
+        sliderTotalEvents = container (w-sideMargin) textHeight midRight
+            (show state.totalEvents |> textStyle |> rightAligned)
+        textStyle =
+            style
+                { defaultStyle
+                | typeface <- ["Gotham", "sans-serif"]
+                , color <- lightGrey
+                , height <- Just 11
+                }
+            . toText
+        controlsContainer = container w controlsHeight midTop centeredControls
+        centeredControls = flow down
+            [ spacer (w - sideMargin) spacerHeight
+            , container (w - sideMargin) controlsHeight midTop controls
+            ]
+        controls = flow down
+            [ buttons
+            , slider
+            ]
+    in  flow down
+            [ controlsContainer
+            --, [markdown| <hr/> |]
+            --, asText "watches not implemented yet :("
+            ]
+        
 
 
 -- The wiring
