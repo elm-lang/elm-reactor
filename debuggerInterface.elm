@@ -85,7 +85,7 @@ view (w,h) state =
         controls =
             container w controlsHeight midTop <|
                 spacer (w - sideMargin) spacerHeight
-                `above`  (container (w - sideMargin) controlsHeight midTop 
+                `above` (container (w - sideMargin) controlsHeight midTop 
                 <| restartButton
                 `beside` spacer (panelWidth - 2 * buttonWidth - sideMargin) objHeight
                 `beside` (if state.paused then playButton else pauseButton)
@@ -93,10 +93,7 @@ view (w,h) state =
     in  controls
         `above` [markdown| <br /> |]
         `above` asText "watches not implemented yet :("
-        
-        
-            
-            
+
 
 -- The wiring
 

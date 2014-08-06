@@ -15,6 +15,7 @@ var createdSocket = false;
 var filePath;
 
 var ELM_MAIN_ID = "elmMain";
+var ELM_DEBUGGER_ID = "elmDebugger";
 
 Elm.debugFullscreen = function(module, moduleFile, hotSwapState /* =undefined */) {
   filePath = moduleFile;
@@ -34,7 +35,7 @@ function createMainElement() {
 
 function createDebuggingElement() {
   var debuggerDiv = document.createElement("div");
-  debuggerDiv.id = "elmDebugger";
+  debuggerDiv.id = ELM_DEBUGGER_ID;
   debuggerDiv.style.background = "#eee";
   debuggerDiv.style.width = "275px";
   debuggerDiv.style.height = "100%";
@@ -63,7 +64,7 @@ parent.window.addEventListener("message", function(e) {
   if (e.data === "elmDebuggerInit") {
     elmDebugger = parent.Elm.Debugger;
     if (!createdSocket) {
-      // initSocket();
+      initSocket();
     }
   } else if (e.data === "elmNotify") {
     debuggerHandle.ports.eventCounter.send(elmDebugger.getMaxSteps());
@@ -101,12 +102,11 @@ function initSocket() {
 }
 
 function messageRoute(event) {
-  console.log(event);
   hotSwap(event.data);
 };
 
 function hotSwap(raw) {
-  var elmMain = document.getElementById(ELM_MAIN_ID);
+  var debuggerDiv = document.getElementById(ELM_DEBUGGER_ID);
   var result = JSON.parse(raw);
   var js = result.success;
   if (js) {
@@ -123,7 +123,7 @@ function hotSwap(raw) {
           Elm.Debugger.dispose();
 
           var newMainNode = createMainElement();
-          document.body.appendChild(newMainNode);
+          debuggerDiv.parentElement.insertBefore(newMainNode,debuggerDiv);
 
           var wrappedModule = Elm.debuggerAttach(module, debuggerState);
           mainHandle = Elm.embed(wrappedModule, newMainNode);
