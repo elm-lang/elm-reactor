@@ -34,15 +34,24 @@ function createMainElement() {
 }
 
 function createDebuggingElement() {
+  var debuggerWidth = 275;
+  // var debuggerMasterDiv = document.createElement("div");
+  // var debuggerTab = document.createElement("div");
   var debuggerDiv = document.createElement("div");
+
+  // debuggerMasterDiv.appendChild(debuggerTab);
+  // debuggerMasterDiv.appendChild(debuggerDiv);
+
+  // debuggerMasterDiv.id = "sliderout";
+
   debuggerDiv.id = ELM_DEBUGGER_ID;
-  debuggerDiv.style.background = "#eee";
-  debuggerDiv.style.width = "275px";
+  debuggerDiv.style.background = "#5C5C5C";
+  debuggerDiv.style.width = debuggerWidth + "px";
   debuggerDiv.style.height = "100%";
   debuggerDiv.style.position = "absolute";
   debuggerDiv.style.top = "0px";
-  debuggerDiv.style.left = "0px";
-  debuggerDiv.style.opacity = "0.5";
+  debuggerDiv.style.left = window.innerWidth - 275 + "px";
+  // debuggerDiv.style.opacity = "0.5";
   return debuggerDiv;
 }
 
@@ -51,7 +60,7 @@ function segmentDisplay() {
 
   var debuggerDiv = createDebuggingElement();
 
-  debuggerHandle = Elm.embed(Elm.DebuggerInterface, debuggerDiv, {eventCounter: 0, restartPort: false});
+  debuggerHandle = Elm.embed(Elm.DebuggerInterface, debuggerDiv, {eventCounter: 0});
   debuggerHandle.ports.scrubTo.subscribe(scrubber);
   debuggerHandle.ports.pause.subscribe(elmPauser);
   debuggerHandle.ports.restart.subscribe(elmRestart);
@@ -86,8 +95,6 @@ function elmPauser(doPause) {
 }
 
 function elmRestart() {
-  debuggerHandle.ports.restartPort.send(true);
-  debuggerHandle.ports.restartPort.send(false);
   elmDebugger.restart();
 }
 

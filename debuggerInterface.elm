@@ -7,17 +7,16 @@ import Slider (..)
 
 -- Model
 
-type Update =
-    { window : (Int, Int)
-    , paused : Bool
-    , restart : Bool
-    , maxEvents : Int
-    , scrub : Int
-    }
+data Update
+    = Restart
+    | Pause Bool
+    | TotalEvents Int
+    | ScrubPosition Int
 
 type State =
     { paused : Bool
-    , events : (Int, Int)
+    , totalEvents : Int
+    , scrubPosition : Int
     }
 
 pausedInput : Input Bool
@@ -30,9 +29,6 @@ scrubInput : Input Int
 scrubInput = input 0
 
 port eventCounter : Signal Int
-
--- When we restart at any time we need to be notified of what state to go to.
-port restartPort : Signal Bool
 
 -- View
 
@@ -70,8 +66,8 @@ scrubSlider (w,_) state =
         sliderStyle =
             { defaultSlider
             | length <- sliderLength
-            , max <- toFloat <| snd state.events
-            , value <- toFloat <| fst state.events
+            , max <- toFloat <| state.totalEvents
+            , value <- toFloat <| state.scrubPosition
             , disabled <- not state.paused
             }
     in  container sliderLength objHeight midLeft
@@ -115,27 +111,26 @@ scene = foldp step startState aggregateUpdates
 startState : State
 startState =
     { paused = False
-    , events = (0,0)
+    , totalEvents = 0
+    , scrubPosition = 0
     }
 
 step : Update -> State -> State
-step update state =
-    if  | update.restart ->
-            Debug.log "restart" startState
-        | otherwise ->
-            if  | update.paused ->
-                    { paused = update.paused
-                    , events = (update.scrub, update.maxEvents)
-                    }
-                | otherwise ->
-                    { paused = update.paused
-                    , events = (update.maxEvents, update.maxEvents)
-                    }
+step update state = case update of
+    Restart ->
+        startState
+    Pause doPause ->
+        { state | paused <- doPause }
+    TotalEvents events ->
+        { state | totalEvents <- events
+                , scrubPosition <- events}
+    ScrubPosition pos ->
+        { state | scrubPosition <- pos}
 
 aggregateUpdates : Signal Update
-aggregateUpdates =
-    Update <~ Window.dimensions
-            ~ pausedInput.signal
-            ~ restartPort
-            ~ eventCounter
-            ~ scrubInput.signal
+aggregateUpdates = merges
+    [ always Restart <~ restartInput.signal
+    , Pause <~ pausedInput.signal
+    , TotalEvents <~ eventCounter
+    , ScrubPosition <~ scrubInput.signal
+    ]
