@@ -19,14 +19,6 @@ var debuggingPanelExpanded = false;
 var ELM_MAIN_ID = "elmMain";
 var ELM_DEBUGGER_ID = "elmDebugger";
 
-Elm.debugFullscreen = function(module, moduleFile, hotSwapState /* =undefined */) {
-  filePath = moduleFile;
-  segmentDisplay();
-  var elmMain = document.getElementById(ELM_MAIN_ID);
-  mainHandle = Elm.embed(Elm.debuggerAttach(module, hotSwapState), elmMain);
-  return mainHandle;
-}
-
 function createMainElement() {
   var mainDiv = document.createElement("div");
   mainDiv.id = ELM_MAIN_ID;
@@ -41,29 +33,11 @@ function createDebuggingElement() {
 
   var debugTools = document.createElement("div");
   debugTools.id = "debugTools"
+
   var debuggerDiv = document.createElement("div");
   debuggerDiv.id = ELM_DEBUGGER_ID;
 
-  var debugToggleButton = document.createElement("div");
-  debugToggleButton.id = "debugtoggle";
-  debugToggleButton.style.position = "absolute";
-  debugToggleButton.style.width = "30px";
-  debugToggleButton.style.height = "50px";
-  debugToggleButton.style.top = window.innerHeight / 2 + "px";
-  debugToggleButton.style.left = "-30px";
-  debugToggleButton.style.background = darkGrey;
-
-  debugToggleButton.onclick = function() {
-    var dd = document.getElementById("debugTools");
-    if (debuggingPanelExpanded){
-      dd.style.left = window.innerWidth + "px";
-      debuggingPanelExpanded = false;
-    } else {
-      dd.style.left = window.innerWidth - debuggerWidth + "px";
-      debuggingPanelExpanded = true;
-    }
-  }
-
+  // Create and style the panel
   debugTools.style.background = darkGrey;
   debugTools.style.width = debuggerWidth + "px";
   debugTools.style.height = "100%";
@@ -71,10 +45,44 @@ function createDebuggingElement() {
   debugTools.style.top = "0px";
   debugTools.style.left = window.innerWidth - debuggerWidth + "px";
   debugTools.style.transitionDuration = "0.3s";
+
+  // Create and style the button
+  var debugTab = document.createElement("div");
+  debugTab.id = "debugtoggle";
+  debugTab.style.position = "absolute";
+  debugTab.style.width = "20px";
+  debugTab.style.height = "30px";
+  debugTab.style.top = window.innerHeight / 2 + "px";
+  debugTab.style.left = "-15px";
+  debugTab.style.borderRadius = "3px";
+  debugTab.style.background = darkGrey;
+
+  // Wire the button
+  debugTab.onclick = function() {
+    var toolPanel = document.getElementById("debugTools");
+    if (debuggingPanelExpanded){
+      toolPanel.style.left = window.innerWidth + "px";
+      debuggingPanelExpanded = false;
+    } else {
+      toolPanel.style.left = window.innerWidth - debuggerWidth + "px";
+      debuggingPanelExpanded = true;
+    }
+  }
   
-  debugTools.appendChild(debugToggleButton);
+  debugTools.appendChild(debugTab);
   debugTools.appendChild(debuggerDiv);
   document.body.appendChild(debugTools);
+}
+
+
+
+
+Elm.debugFullscreen = function(module, moduleFile, hotSwapState /* =undefined */) {
+  filePath = moduleFile;
+  segmentDisplay();
+  var elmMain = document.getElementById(ELM_MAIN_ID);
+  mainHandle = Elm.embed(Elm.debuggerAttach(module, hotSwapState), elmMain);
+  return mainHandle;
 }
 
 function segmentDisplay() {
