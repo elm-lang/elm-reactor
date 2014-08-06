@@ -30,43 +30,37 @@ function createMainElement() {
   mainDiv.id = ELM_MAIN_ID;
   mainDiv.style.width = "100%";
   mainDiv.style.height = "100%";
-  return mainDiv;
+  document.body.appendChild(mainDiv);
 }
 
 function createDebuggingElement() {
   var debuggerWidth = 275;
-  // var debuggerMasterDiv = document.createElement("div");
-  // var debuggerTab = document.createElement("div");
+  var darkGrey = "#5C5C5C";
+
   var debuggerDiv = document.createElement("div");
 
-  // debuggerMasterDiv.appendChild(debuggerTab);
-  // debuggerMasterDiv.appendChild(debuggerDiv);
-
-  // debuggerMasterDiv.id = "sliderout";
-
   debuggerDiv.id = ELM_DEBUGGER_ID;
-  debuggerDiv.style.background = "#5C5C5C";
+  debuggerDiv.style.background = darkGrey;
   debuggerDiv.style.width = debuggerWidth + "px";
   debuggerDiv.style.height = "100%";
   debuggerDiv.style.position = "absolute";
   debuggerDiv.style.top = "0px";
-  debuggerDiv.style.left = window.innerWidth - 275 + "px";
-  // debuggerDiv.style.opacity = "0.5";
-  return debuggerDiv;
+  debuggerDiv.style.left = window.innerWidth - debuggerWidth + "px";
+  debuggerDiv.style.opacity = 0.8;
+
+  document.body.appendChild(debuggerDiv);
 }
 
 function segmentDisplay() {
-  var mainDiv = createMainElement();
+  createMainElement();
 
-  var debuggerDiv = createDebuggingElement();
+  createDebuggingElement();
+  var debuggerDiv = document.getElementById(ELM_DEBUGGER_ID);
 
   debuggerHandle = Elm.embed(Elm.DebuggerInterface, debuggerDiv, {eventCounter: 0});
   debuggerHandle.ports.scrubTo.subscribe(scrubber);
   debuggerHandle.ports.pause.subscribe(elmPauser);
   debuggerHandle.ports.restart.subscribe(elmRestart);
-
-  document.body.appendChild(mainDiv);
-  document.body.appendChild(debuggerDiv);
 }
 
 parent.window.addEventListener("message", function(e) {

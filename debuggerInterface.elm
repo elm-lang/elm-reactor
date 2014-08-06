@@ -19,36 +19,29 @@ type State =
     , scrubPosition : Int
     }
 
-pausedInput : Input Bool
-pausedInput = input False
-
-restartInput : Input ()
-restartInput = input ()
-
-scrubInput : Input Int
-scrubInput = input 0
-
-port eventCounter : Signal Int
-
 -- View
 
 objHeight = 40
 buttonWidth = 40
 panelWidth = 275
 
+blue = rgb 60 160 255
+lightGrey = rgb 233 233 233
+darkGrey = rgb 92 92 92
+
 playButton : Element
 playButton =
-    let icon = [ngon 3 15.0 |> filled red]
+    let icon = [ngon 3 15.0 |> filled blue]
     in  collage buttonWidth objHeight icon
             |> clickable pausedInput.handle False
 
 pauseButton : Element
 pauseButton =
     let icon = [ rect 7.5 20
-                    |> filled red
+                    |> filled blue
                     |> moveX -6
                , rect 7.5 20
-                    |> filled red
+                    |> filled blue
                     |> moveX 6
                 ]
     in collage buttonWidth objHeight icon
@@ -56,7 +49,7 @@ pauseButton =
 
 restartButton : Element
 restartButton =
-    let icon = [circle 15.0 |> filled orange]
+    let icon = [circle 15.0 |> filled lightGrey]
     in  collage buttonWidth objHeight icon
             |> clickable restartInput.handle ()
 
@@ -104,6 +97,17 @@ port pause = pausedInput.signal
 
 port restart : Signal Int
 port restart = lift (\x -> 0) restartInput.signal
+
+pausedInput : Input Bool
+pausedInput = input False
+
+restartInput : Input ()
+restartInput = input ()
+
+scrubInput : Input Int
+scrubInput = input 0
+
+port eventCounter : Signal Int
 
 scene : Signal State
 scene = foldp step startState aggregateUpdates
