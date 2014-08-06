@@ -122,16 +122,8 @@ step update state =
 
 aggregateUpdates : Signal Update
 aggregateUpdates =
-    let dampenedEvents = keepWhen (lift not pausedInput.signal) 0 eventCounter
-        aggregator window paused restart eventCounter scrubPosition =
-            { window = window
-            , paused = paused
-            , restart = restart
-            , maxEvents = eventCounter
-            , scrub = scrubPosition
-            }
-    in  aggregator <~ Window.dimensions
-                    ~ pausedInput.signal
-                    ~ restartPort
-                    ~ dampenedEvents
-                    ~ scrubInput.signal
+    Update <~ Window.dimensions
+            ~ pausedInput.signal
+            ~ restartPort
+            ~ eventCounter
+            ~ scrubInput.signal
