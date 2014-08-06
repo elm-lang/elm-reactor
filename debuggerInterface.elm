@@ -38,6 +38,7 @@ port restartPort : Signal Bool
 
 objHeight = 40
 buttonWidth = 40
+panelWidth = 275
 
 playButton : Element
 playButton =
@@ -65,8 +66,7 @@ restartButton =
 
 scrubSlider : (Int, Int) -> State -> Element
 scrubSlider (w,_) state =
-    let leftOffset = sum <| map widthOf [playButton, restartButton]
-        sliderLength = w - leftOffset
+    let sliderLength = w
         sliderStyle =
             { defaultSlider
             | length <- sliderLength
@@ -78,10 +78,25 @@ scrubSlider (w,_) state =
             <| slider scrubInput.handle round sliderStyle
 
 view : (Int, Int) -> State -> Element
-view dim state =
-    (if state.paused then playButton else pauseButton)
-    `beside` restartButton
-    `beside` scrubSlider dim state
+view (w,h) state =
+    let sideMargin = (2 * 20)
+        spacerHeight = 15
+        controlsHeight = objHeight + 24 + spacerHeight + 10
+        controls =
+            container w controlsHeight midTop <|
+                spacer (w - sideMargin) spacerHeight
+                `above`  (container (w - sideMargin) controlsHeight midTop 
+                <| restartButton
+                `beside` spacer (panelWidth - 2 * buttonWidth - sideMargin) objHeight
+                `beside` (if state.paused then playButton else pauseButton)
+                `above` scrubSlider (w - sideMargin,h) state)
+    in  controls
+        `above` [markdown| <br /> |]
+        `above` asText "watches not implemented yet :("
+        
+        
+            
+            
 
 -- The wiring
 
