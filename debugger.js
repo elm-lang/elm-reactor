@@ -14,6 +14,8 @@ var debuggerHandle = {};
 var createdSocket = false;
 var filePath;
 
+var debuggingPanelExpanded = false;
+
 var ELM_MAIN_ID = "elmMain";
 var ELM_DEBUGGER_ID = "elmDebugger";
 
@@ -37,18 +39,42 @@ function createDebuggingElement() {
   var debuggerWidth = 275;
   var darkGrey = "#5C5C5C";
 
+  var debugTools = document.createElement("div");
+  debugTools.id = "debugTools"
   var debuggerDiv = document.createElement("div");
-
   debuggerDiv.id = ELM_DEBUGGER_ID;
-  debuggerDiv.style.background = darkGrey;
-  debuggerDiv.style.width = debuggerWidth + "px";
-  debuggerDiv.style.height = "100%";
-  debuggerDiv.style.position = "absolute";
-  debuggerDiv.style.top = "0px";
-  debuggerDiv.style.left = window.innerWidth - debuggerWidth + "px";
-  debuggerDiv.style.opacity = 0.8;
 
-  document.body.appendChild(debuggerDiv);
+  var debugToggleButton = document.createElement("div");
+  debugToggleButton.id = "debugtoggle";
+  debugToggleButton.style.position = "absolute";
+  debugToggleButton.style.width = "30px";
+  debugToggleButton.style.height = "50px";
+  debugToggleButton.style.top = window.innerHeight / 2 + "px";
+  debugToggleButton.style.left = "-30px";
+  debugToggleButton.style.background = darkGrey;
+
+  debugToggleButton.onclick = function() {
+    var dd = document.getElementById("debugTools");
+    if (debuggingPanelExpanded){
+      dd.style.left = window.innerWidth + "px";
+      debuggingPanelExpanded = false;
+    } else {
+      dd.style.left = window.innerWidth - debuggerWidth + "px";
+      debuggingPanelExpanded = true;
+    }
+  }
+
+  debugTools.style.background = darkGrey;
+  debugTools.style.width = debuggerWidth + "px";
+  debugTools.style.height = "100%";
+  debugTools.style.position = "absolute";
+  debugTools.style.top = "0px";
+  debugTools.style.left = window.innerWidth - debuggerWidth + "px";
+  debugTools.style.transitionDuration = "0.3s";
+  
+  debugTools.appendChild(debugToggleButton);
+  debugTools.appendChild(debuggerDiv);
+  document.body.appendChild(debugTools);
 }
 
 function segmentDisplay() {
