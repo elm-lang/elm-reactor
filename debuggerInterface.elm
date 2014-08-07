@@ -2,9 +2,11 @@ module DebuggerInterface where
 
 import Window
 import Graphics.Input (..)
+import Graphics.Element as GE
 import Text (..)
 import Debug
 import Slider (..)
+import Json (..)
 
 -- Model
 
@@ -81,6 +83,7 @@ restartButton =
     let icon =
             [ roundedSquare 35 3 (filled lightGrey)
             , circle 12.0 |> filled darkGrey
+            , circle 8 |> filled lightGrey
             ]
     in  collage buttonWidth objHeight icon
             |> clickable restartInput.handle ()
@@ -112,13 +115,15 @@ sliderCurrentEvent w state =
         text' = show state.scrubPosition |> textStyle |> rightAligned
     in  container w textHeight textPosition text'
 
+--showWatches : Value -> Element
+--showWatches json =
 
-view : (Int, Int) -> State -> Element
-view (w,h) state =
+view : (Int, Int) -> Value -> State -> Element
+view (w,h) watches state =
     let sideMargin = (2 * 20)
         spacerHeight = 15
         textHeight = 30
-        controlsHeight = objHeight + 24 + spacerHeight + 2 * textHeight + 10
+        controlsHeight = objHeight + 24 + spacerHeight + textHeight + 20
         buttons = flow right
             [ restartButton
             , spacer (panelWidth - 2 * buttonWidth - sideMargin) objHeight
@@ -129,14 +134,13 @@ view (w,h) state =
             , scrubSlider (w - sideMargin, h) state
             , sliderBottomText
             ]
-        --sliderCurrentEvent = container (w - sideMargin) textHeight
         sliderBottomText = flow outward
             [ sliderStartText
             , sliderTotalEvents
             ]
-        sliderStartText = container (w-sideMargin) textHeight midLeft
+        sliderStartText = container (w-sideMargin) textHeight topLeft
             (textStyle "0" |> leftAligned)
-        sliderTotalEvents = container (w-sideMargin) textHeight midRight
+        sliderTotalEvents = container (w-sideMargin) textHeight topRight
             (show state.totalEvents |> textStyle |> rightAligned)
         controlsContainer = container w controlsHeight midTop centeredControls
         centeredControls = flow down
@@ -147,10 +151,11 @@ view (w,h) state =
             [ buttons
             , slider
             ]
+        bar = spacer w 1 |> GE.color lightGrey |> opacity 0.3
     in  flow down
             [ controlsContainer
-            --, [markdown| <hr/> |]
-            --, asText "watches not implemented yet :("
+            , bar
+            , (asText watches) |> width w
             ]
         
 
@@ -158,7 +163,7 @@ view (w,h) state =
 -- The wiring
 
 main : Signal Element
-main = lift2 view Window.dimensions scene
+main = lift3 view Window.dimensions watches scene
 
 port scrubTo : Signal Int
 port scrubTo = scrubInput.signal
@@ -179,6 +184,8 @@ scrubInput : Input Int
 scrubInput = input 0
 
 port eventCounter : Signal Int
+
+port watches : Signal Value
 
 scene : Signal State
 scene = foldp step startState aggregateUpdates

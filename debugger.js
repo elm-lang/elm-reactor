@@ -95,7 +95,10 @@ function segmentDisplay() {
   createDebuggingElement();
   var debuggerDiv = document.getElementById(ELM_DEBUGGER_ID);
 
-  debuggerHandle = Elm.embed(Elm.DebuggerInterface, debuggerDiv, {eventCounter: 0});
+  debuggerHandle = Elm.embed(Elm.DebuggerInterface, debuggerDiv,
+      { eventCounter: 0,
+        watches: JSON.stringify({})
+      });
   debuggerHandle.ports.scrubTo.subscribe(scrubber);
   debuggerHandle.ports.pause.subscribe(elmPauser);
   debuggerHandle.ports.restart.subscribe(elmRestart);
@@ -108,13 +111,16 @@ parent.window.addEventListener("message", function(e) {
       initSocket();
     }
   } else if (e.data === "elmNotify") {
-    debuggerHandle.ports.eventCounter.send(elmDebugger.getMaxSteps());
+    var currentPosition = elmDebugger.getMaxSteps();
+    debuggerHandle.ports.eventCounter.send(currentPosition);
+    sendWatches(currentPosition);
   }
 }, false);
 
 function scrubber(position) {
   if (elmDebugger.getPaused()) {
     elmDebugger.stepTo(position);
+    sendWatches(position);
   }
 }
 
@@ -128,6 +134,12 @@ function elmPauser(doPause) {
 
 function elmRestart() {
   elmDebugger.restart();
+  sendWatches(0);
+}
+
+function sendWatches(position) {
+  var watchAtPoint = elmDebugger.watchTracker.frames[position];
+  debuggerHandle.ports.watches.send(watchAtPoint);
 }
 
 
