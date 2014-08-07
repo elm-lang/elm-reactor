@@ -15,9 +15,10 @@ var createdSocket = false;
 var filePath;
 
 var debuggingPanelExpanded = true;
+var ELM_PAUSE_STATE = false;
 
 var ELM_MAIN_ID = "elmMain";
-var ELM_DEBUGGER_ID = "elmDebugger";
+var ELM_DEBUGGER_ID = "elmToolPanel";
 
 function createMainElement() {
   var mainDiv = document.createElement("div");
@@ -32,10 +33,11 @@ function createDebuggingElement() {
   var darkGrey = "#4A4A4A";
 
   var debugTools = document.createElement("div");
-  debugTools.id = "debugTools"
+  debugTools.id = ELM_DEBUGGER_ID;
 
   var debuggerDiv = document.createElement("div");
-  debuggerDiv.id = ELM_DEBUGGER_ID;
+  debuggerDiv.id = "elmDebugger";
+  debuggerDiv.style.overflow = "hidden";
 
   // Create and style the panel
   debugTools.style.background = darkGrey;
@@ -61,7 +63,7 @@ function createDebuggingElement() {
 
   // Wire the button
   debugTab.onclick = function() {
-    var toolPanel = document.getElementById("debugTools");
+    var toolPanel = document.getElementById("elmToolPanel");
     if (debuggingPanelExpanded){
       toolPanel.style.left = window.innerWidth + "px";
       toolPanel.style.width = "0px";
@@ -93,11 +95,11 @@ function segmentDisplay() {
   createMainElement();
 
   createDebuggingElement();
-  var debuggerDiv = document.getElementById(ELM_DEBUGGER_ID);
+  var debuggerDiv = document.getElementById("elmDebugger");
 
   debuggerHandle = Elm.embed(Elm.DebuggerInterface, debuggerDiv,
       { eventCounter: 0,
-        watches: JSON.stringify({})
+        watches: [["",""]]
       });
   debuggerHandle.ports.scrubTo.subscribe(scrubber);
   debuggerHandle.ports.pause.subscribe(elmPauser);
@@ -130,6 +132,7 @@ function elmPauser(doPause) {
   } else {
     elmDebugger.kontinue();
   }
+  ELM_PAUSE_STATE = doPause;
 }
 
 function elmRestart() {
@@ -139,9 +142,9 @@ function elmRestart() {
 
 function sendWatches(position) {
   var watchAtPoint = elmDebugger.watchTracker.frames[position];
-  debuggerHandle.ports.watches.send(watchAtPoint);
+  var watchList = showWatches(watchAtPoint);
+  debuggerHandle.ports.watches.send(watchList);
 }
-
 
 function initSocket() {
   createdSocket = true;
@@ -173,7 +176,8 @@ function hotSwap(raw) {
           mainHandle.dispose();
           Elm.Debugger.dispose();
 
-          var newMainNode = createMainElement();
+          createMainElement();
+          var newMainNode = document.getElementById(ELM_MAIN_ID);
           debuggerDiv.parentElement.insertBefore(newMainNode,debuggerDiv);
 
           var wrappedModule = Elm.debuggerAttach(module, debuggerState);
@@ -183,4 +187,16 @@ function hotSwap(raw) {
           mainHandle = mainHandle.swap(module);
       }
   }
+}
+
+function showWatches(frame) {
+  var output = [];
+  for (key in frame) {
+    var value = frame[key];
+    var valueType = typeof(value);
+    if (valueType === "object") {
+
+    }
+  }
+  return [["",""]];
 }

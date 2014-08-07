@@ -6,7 +6,6 @@ import Graphics.Element as GE
 import Text (..)
 import Debug
 import Slider (..)
-import Json (..)
 
 -- Model
 
@@ -115,10 +114,12 @@ sliderCurrentEvent w state =
         text' = show state.scrubPosition |> textStyle |> rightAligned
     in  container w textHeight textPosition text'
 
---showWatches : Value -> Element
---showWatches json =
+showWatch : (String, String) -> Element
+showWatch (k, v) =
+    let toElem x = x |> textStyle |> leftAligned
+    in  flow right <| map toElem [k, v]
 
-view : (Int, Int) -> Value -> State -> Element
+view : (Int, Int) -> [(String, String)] -> State -> Element
 view (w,h) watches state =
     let sideMargin = (2 * 20)
         spacerHeight = 15
@@ -155,7 +156,7 @@ view (w,h) watches state =
     in  flow down
             [ controlsContainer
             , bar
-            , (asText watches) |> width w
+            , map showWatch watches |> flow down |> width w
             ]
         
 
@@ -185,7 +186,7 @@ scrubInput = input 0
 
 port eventCounter : Signal Int
 
-port watches : Signal Value
+port watches : Signal [(String,String)]
 
 scene : Signal State
 scene = foldp step startState aggregateUpdates
