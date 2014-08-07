@@ -170,6 +170,11 @@ function hotSwap(raw) {
   var debuggerDiv = document.getElementById(ELM_DEBUGGER_ID);
   var result = JSON.parse(raw);
   var js = result.success;
+  var errorMessage = result.error;
+  var error = document.getElementById('ErrorMessage');
+  if (error) {
+      error.parentNode.removeChild(error);
+  }
   if (js) {
       var error = document.getElementById('ErrorMessage');
       if (error) {
@@ -193,5 +198,16 @@ function hotSwap(raw) {
       else {
           mainHandle = mainHandle.swap(module);
       }
+  } else if (errorMessage) {
+      var errorNode = document.createElement("pre");
+      errorNode.id = "ErrorMessage";
+      errorNode.innerHTML = errorMessage;
+      errorNode.style.zindex = 1;
+      errorNode.style.position = "absolute";
+      errorNode.style.top = "0px";
+      errorNode.style.background = "#E4E4E4";
+
+      var mainNode = document.getElementById(ELM_MAIN_ID);
+      mainNode.parentElement.appendChild(errorNode);
   }
 }
