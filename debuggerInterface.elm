@@ -40,10 +40,23 @@ textStyle =
         }
     . toText
 
+roundedSquare : Float -> Float -> (Shape -> Form) -> Form
+roundedSquare side radius toForm =
+    let shortSide = side - 2 * radius
+        xRect = rect side shortSide |> toForm
+        yRect = rect shortSide side |> toForm
+        circleOffset = shortSide / 2
+        formedCircle = circle radius |> toForm
+        tl = formedCircle |> move (-circleOffset, circleOffset)
+        tr = formedCircle |> move ( circleOffset, circleOffset)
+        bl = formedCircle |> move (-circleOffset,-circleOffset)
+        br = formedCircle |> move ( circleOffset,-circleOffset)
+    in group [xRect, yRect, tl, tr, bl, br]
+
 playButton : Element
 playButton =
     let icon =
-            [ rect 35 35 |> filled blue
+            [ roundedSquare 35 3 (filled blue)
             , ngon 3 12.0 |> filled lightGrey
             ]
     in  collage buttonWidth objHeight icon
@@ -52,7 +65,7 @@ playButton =
 pauseButton : Element
 pauseButton =
     let icon =
-            [ rect 35 35 |> filled blue
+            [ roundedSquare 35 3 (filled blue)
             , rect 7 17
                 |> filled lightGrey
                 |> moveX -5
@@ -66,7 +79,7 @@ pauseButton =
 restartButton : Element
 restartButton =
     let icon =
-            [ rect 35 35 |> filled lightGrey
+            [ roundedSquare 35 3 (filled lightGrey)
             , circle 12.0 |> filled darkGrey
             ]
     in  collage buttonWidth objHeight icon
@@ -88,14 +101,15 @@ scrubSlider (w,_) state =
 sliderCurrentEvent : Int -> State -> Element
 sliderCurrentEvent w state =
     let textHeight = 20
+        displayPercent = 0.85
         scrubPosition = toFloat state.scrubPosition
         totalEvents = toFloat state.totalEvents
         w' = toFloat w
-        leftDistance = scrubPosition / totalEvents * w'
+        leftDistance = scrubPosition / totalEvents * w' * displayPercent + (w' * (1 - displayPercent)/2)
         xPos = absolute (round leftDistance)
         yPos = absolute (round (textHeight / 2))
         textPosition = middleAt xPos yPos
-        text' = show state.scrubPosition |> textStyle |> centered
+        text' = show state.scrubPosition |> textStyle |> rightAligned
     in  container w textHeight textPosition text'
 
 
