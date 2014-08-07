@@ -26,12 +26,14 @@ type State =
     }
 
 --
--- View
+-- Style
 --
 
 objHeight = 40
 buttonWidth = 40
 panelWidth = 275
+sideMargin = 2 * 20
+textHeight = 20
 
 blue = rgb 49 139 255
 lightGrey = rgb 228 228 228
@@ -46,6 +48,10 @@ textStyle =
         , height <- Just 11
         }
     . toText
+
+--
+-- View
+--
 
 playButton : Element
 playButton =
@@ -106,8 +112,8 @@ scrubSlider (w,_) state =
     in  slider scrubInput.handle round sliderStyle
             |> container sliderLength 20 midLeft
 
-sliderCurrentEvent : Int -> State -> Element
-sliderCurrentEvent w state =
+sliderEventText : Int -> State -> Element
+sliderEventText w state =
     let textHeight = 20
         displayPercent = 0.85
         scrubPosition = toFloat state.scrubPosition
@@ -120,13 +126,22 @@ sliderCurrentEvent w state =
         text' = show state.scrubPosition |> textStyle |> rightAligned
     in  container w textHeight textPosition text'
 
+sliderInfoText : Int -> State -> Element
+sliderInfoText w state =
+    let sliderStartText = container w textHeight topLeft
+            (textStyle "0" |> leftAligned)
+        sliderTotalEvents = container w textHeight topRight
+            (show state.totalEvents |> textStyle |> rightAligned)
+    in  flow outward
+            [ sliderStartText
+            , sliderTotalEvents
+            ]
+
 view : (Int, Int) -> Json.Value -> Bool -> State -> Element
 view (w,h) watches permitHotswap state =
-    let sideMargin = (2 * 20)
-        midWidth = w - sideMargin
+    let midWidth = w - sideMargin
         spacerHeight = 15
-        textHeight = 30
-        controlsHeight = objHeight + 24 + spacerHeight + textHeight + 20
+        controlsHeight = objHeight + 24 + spacerHeight + 2 * textHeight
         fittedHotSwapButton =
             hotswapButton permitHotswap
             |> container (panelWidth - 2 * buttonWidth - sideMargin) objHeight middle
@@ -136,18 +151,10 @@ view (w,h) watches permitHotswap state =
             , (if state.paused then playButton else pauseButton)
             ]
         slider = flow down
-            [ sliderCurrentEvent midWidth state
+            [ sliderEventText midWidth state
             , scrubSlider (midWidth, h) state
-            , sliderBottomText
+            , sliderInfoText midWidth state
             ]
-        sliderBottomText = flow outward
-            [ sliderStartText
-            , sliderTotalEvents
-            ]
-        sliderStartText = container midWidth textHeight topLeft
-            (textStyle "0" |> leftAligned)
-        sliderTotalEvents = container midWidth textHeight topRight
-            (show state.totalEvents |> textStyle |> rightAligned)
         controlsContainer = container w controlsHeight midTop centeredControls
         centeredControls = flow down
             [ spacer midWidth spacerHeight
@@ -158,10 +165,14 @@ view (w,h) watches permitHotswap state =
             , slider
             ]
         bar = spacer w 1 |> GE.color lightGrey |> opacity 0.3
+        watchView = flow right
+            [ spacer 20 1
+            , showValue watches |> textStyle |> leftAligned |> width w
+            ]
     in  flow down
             [ controlsContainer
             , bar
-            , showValue watches |> textStyle |> leftAligned |> width w
+            , watchView
             ]
         
 

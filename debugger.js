@@ -134,7 +134,7 @@ function elmPauser(doPause) {
   } else {
     elmDebugger.kontinue();
   }
-  ELM_PAUSE_STATE = doPause;
+  elmPauseState = doPause;
 }
 
 function elmRestart() {
