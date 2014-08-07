@@ -6,8 +6,12 @@ import Graphics.Element as GE
 import Text (..)
 import Debug
 import Slider (..)
+import Dict as D
+import Json
 
+--
 -- Model
+--
 
 data Update
     = Restart
@@ -21,7 +25,9 @@ type State =
     , scrubPosition : Int
     }
 
+--
 -- View
+--
 
 objHeight = 40
 buttonWidth = 40
@@ -40,19 +46,6 @@ textStyle =
         , height <- Just 11
         }
     . toText
-
-roundedSquare : Float -> Float -> (Shape -> Form) -> Form
-roundedSquare side radius toForm =
-    let shortSide = side - 2 * radius
-        xRect = rect side shortSide |> toForm
-        yRect = rect shortSide side |> toForm
-        circleOffset = shortSide / 2
-        formedCircle = circle radius |> toForm
-        tl = formedCircle |> move (-circleOffset, circleOffset)
-        tr = formedCircle |> move ( circleOffset, circleOffset)
-        bl = formedCircle |> move (-circleOffset,-circleOffset)
-        br = formedCircle |> move ( circleOffset,-circleOffset)
-    in group [xRect, yRect, tl, tr, bl, br]
 
 playButton : Element
 playButton =
@@ -127,12 +120,7 @@ sliderCurrentEvent w state =
         text' = show state.scrubPosition |> textStyle |> rightAligned
     in  container w textHeight textPosition text'
 
-showWatch : (String, String) -> Element
-showWatch (k, v) =
-    let toElem x = x |> textStyle |> leftAligned
-    in  flow right <| map toElem [k, v]
-
-view : (Int, Int) -> [(String, String)] -> Bool -> State -> Element
+view : (Int, Int) -> Json.Value -> Bool -> State -> Element
 view (w,h) watches permitHotswap state =
     let sideMargin = (2 * 20)
         midWidth = w - sideMargin
@@ -173,12 +161,13 @@ view (w,h) watches permitHotswap state =
     in  flow down
             [ controlsContainer
             , bar
-            , map showWatch watches |> flow down |> width w
+            , showValue watches |> textStyle |> leftAligned |> width w
             ]
         
 
-
+--
 -- The wiring
+--
 
 main : Signal Element
 main = view <~ Window.dimensions
@@ -212,7 +201,7 @@ scrubInput = input 0
 
 port eventCounter : Signal Int
 
-port watches : Signal [(String,String)]
+port watches : Signal Json.Value
 
 scene : Signal State
 scene = foldp step startState aggregateUpdates
@@ -243,3 +232,23 @@ aggregateUpdates = merges
     , TotalEvents <~ eventCounter
     , ScrubPosition <~ scrubInput.signal
     ]
+
+--
+-- Utilities
+--
+
+showValue : Json.Value -> String
+showValue value = Json.toString "  " value
+
+roundedSquare : Float -> Float -> (Shape -> Form) -> Form
+roundedSquare side radius toForm =
+    let shortSide = side - 2 * radius
+        xRect = rect side shortSide |> toForm
+        yRect = rect shortSide side |> toForm
+        circleOffset = shortSide / 2
+        formedCircle = circle radius |> toForm
+        tl = formedCircle |> move (-circleOffset, circleOffset)
+        tr = formedCircle |> move ( circleOffset, circleOffset)
+        bl = formedCircle |> move (-circleOffset,-circleOffset)
+        br = formedCircle |> move ( circleOffset,-circleOffset)
+    in group [xRect, yRect, tl, tr, bl, br]

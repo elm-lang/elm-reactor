@@ -100,7 +100,7 @@ function segmentDisplay() {
 
   debuggerHandle = Elm.embed(Elm.DebuggerInterface, debuggerDiv,
       { eventCounter: 0,
-        watches: [["",""]]
+        watches: {}
       });
   debuggerHandle.ports.scrubTo.subscribe(scrubber);
   debuggerHandle.ports.pause.subscribe(elmPauser);
@@ -149,7 +149,7 @@ function elmHotswap(permitHotswaps) {
 function sendWatches(position) {
   var watchAtPoint = elmDebugger.watchTracker.frames[position];
   var watchList = showWatches(watchAtPoint);
-  debuggerHandle.ports.watches.send(watchList);
+  debuggerHandle.ports.watches.send(watchAtPoint);
 }
 
 function initSocket() {
@@ -201,10 +201,6 @@ function showWatches(frame) {
   var output = [];
   for (key in frame) {
     var value = frame[key];
-    var valueType = typeof(value);
-    if (valueType === "object") {
-
-    }
   }
   return [["",""]];
 }
