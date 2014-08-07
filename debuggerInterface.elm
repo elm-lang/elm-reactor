@@ -87,6 +87,19 @@ restartButton =
     in  collage buttonWidth objHeight icon
             |> clickable restartInput.handle ()
 
+hotswapButton : Bool -> Element
+hotswapButton permitHotswap =
+    let bgButton = roundedSquare 24 2 (filled lightGrey)
+        trueButton = [bgButton, roundedSquare 22 2 (filled blue)]
+        falseButton = [bgButton, roundedSquare 22 2 (filled darkGrey)]
+        buttonElem =
+            if  | permitHotswap -> trueButton
+                | otherwise -> falseButton
+        hsButton = collage 25 25 buttonElem
+            |> clickable permitHotswapInput.handle (not permitHotswap)
+        info = "hotswap" |> textStyle |> leftAligned
+    in  flow right [ info, spacer 10 1, hsButton ]
+
 scrubSlider : (Int, Int) -> State -> Element
 scrubSlider (w,_) state =
     let sliderLength = w
@@ -97,8 +110,8 @@ scrubSlider (w,_) state =
             , value <- toFloat <| state.scrubPosition
             , disabled <- not state.paused
             }
-    in  container sliderLength 20 midLeft
-            <| slider scrubInput.handle round sliderStyle
+    in  slider scrubInput.handle round sliderStyle
+            |> container sliderLength 20 midLeft
 
 sliderCurrentEvent : Int -> State -> Element
 sliderCurrentEvent w state =
@@ -119,34 +132,38 @@ showWatch (k, v) =
     let toElem x = x |> textStyle |> leftAligned
     in  flow right <| map toElem [k, v]
 
-view : (Int, Int) -> [(String, String)] -> State -> Element
-view (w,h) watches state =
+view : (Int, Int) -> [(String, String)] -> Bool -> State -> Element
+view (w,h) watches permitHotswap state =
     let sideMargin = (2 * 20)
+        midWidth = w - sideMargin
         spacerHeight = 15
         textHeight = 30
         controlsHeight = objHeight + 24 + spacerHeight + textHeight + 20
+        fittedHotSwapButton =
+            hotswapButton permitHotswap
+            |> container (panelWidth - 2 * buttonWidth - sideMargin) objHeight middle
         buttons = flow right
             [ restartButton
-            , spacer (panelWidth - 2 * buttonWidth - sideMargin) objHeight
+            , fittedHotSwapButton
             , (if state.paused then playButton else pauseButton)
             ]
         slider = flow down
-            [ sliderCurrentEvent (w - sideMargin) state
-            , scrubSlider (w - sideMargin, h) state
+            [ sliderCurrentEvent midWidth state
+            , scrubSlider (midWidth, h) state
             , sliderBottomText
             ]
         sliderBottomText = flow outward
             [ sliderStartText
             , sliderTotalEvents
             ]
-        sliderStartText = container (w-sideMargin) textHeight topLeft
+        sliderStartText = container midWidth textHeight topLeft
             (textStyle "0" |> leftAligned)
-        sliderTotalEvents = container (w-sideMargin) textHeight topRight
+        sliderTotalEvents = container midWidth textHeight topRight
             (show state.totalEvents |> textStyle |> rightAligned)
         controlsContainer = container w controlsHeight midTop centeredControls
         centeredControls = flow down
-            [ spacer (w - sideMargin) spacerHeight
-            , container (w - sideMargin) controlsHeight midTop controls
+            [ spacer midWidth spacerHeight
+            , container midWidth controlsHeight midTop controls
             ]
         controls = flow down
             [ buttons
@@ -164,7 +181,10 @@ view (w,h) watches state =
 -- The wiring
 
 main : Signal Element
-main = lift3 view Window.dimensions watches scene
+main = view <~ Window.dimensions
+             ~ watches
+             ~ permitHotswapInput.signal
+             ~ scene
 
 port scrubTo : Signal Int
 port scrubTo = scrubInput.signal
@@ -175,8 +195,14 @@ port pause = pausedInput.signal
 port restart : Signal Int
 port restart = lift (\x -> 0) restartInput.signal
 
+port permitHotswap : Signal Bool
+port permitHotswap = permitHotswapInput.signal
+
 pausedInput : Input Bool
 pausedInput = input False
+
+permitHotswapInput : Input Bool
+permitHotswapInput = input True
 
 restartInput : Input ()
 restartInput = input ()

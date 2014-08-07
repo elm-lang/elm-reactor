@@ -15,7 +15,8 @@ var createdSocket = false;
 var filePath;
 
 var debuggingPanelExpanded = true;
-var ELM_PAUSE_STATE = false;
+var elmPauseState = false;
+var elmPermitHotswaps = true;
 
 var ELM_MAIN_ID = "elmMain";
 var ELM_DEBUGGER_ID = "elmToolPanel";
@@ -104,6 +105,7 @@ function segmentDisplay() {
   debuggerHandle.ports.scrubTo.subscribe(scrubber);
   debuggerHandle.ports.pause.subscribe(elmPauser);
   debuggerHandle.ports.restart.subscribe(elmRestart);
+  debuggerHandle.ports.permitHotswap.subscribe(elmHotswap);
 }
 
 parent.window.addEventListener("message", function(e) {
@@ -140,6 +142,10 @@ function elmRestart() {
   sendWatches(0);
 }
 
+function elmHotswap(permitHotswaps) {
+  elmPermitHotswaps = permitHotswaps;
+}
+
 function sendWatches(position) {
   var watchAtPoint = elmDebugger.watchTracker.frames[position];
   var watchList = showWatches(watchAtPoint);
@@ -156,7 +162,9 @@ function initSocket() {
 }
 
 function messageRoute(event) {
-  hotSwap(event.data);
+  if (elmPermitHotswaps) {
+    hotSwap(event.data);
+  }
 };
 
 function hotSwap(raw) {
