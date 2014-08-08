@@ -4,10 +4,7 @@ import Window
 import Graphics.Input (..)
 import Graphics.Element as GE
 import Text (..)
-import Debug
 import Slider (..)
-import Dict as D
-import Json
 
 --
 -- Model
@@ -31,7 +28,6 @@ type State =
 
 objHeight = 40
 buttonWidth = 40
-panelWidth = 275
 sideMargin = 2 * 20
 textHeight = 20
 
@@ -69,7 +65,7 @@ pauseButton =
             , rect 7 17
                 |> filled lightGrey
                 |> moveX -5
-           , rect 7 17
+            , rect 7 17
                 |> filled lightGrey
                 |> moveX 5
             ]
@@ -144,7 +140,7 @@ view (w,h) watches permitHotswap state =
         controlsHeight = objHeight + 24 + spacerHeight + 2 * textHeight
         fittedHotSwapButton =
             hotswapButton permitHotswap
-            |> container (panelWidth - 2 * buttonWidth - sideMargin) objHeight middle
+            |> container (w - 2 * buttonWidth - sideMargin) objHeight middle
         buttons = flow right
             [ restartButton
             , fittedHotSwapButton
@@ -155,13 +151,10 @@ view (w,h) watches permitHotswap state =
             , scrubSlider (midWidth, h) state
             , sliderInfoText midWidth state
             ]
-        controlsContainer = container w controlsHeight midTop centeredControls
-        centeredControls = flow down
-            [ spacer midWidth spacerHeight
-            , container midWidth controlsHeight midTop controls
-            ]
+        controlsContainer = container w controlsHeight midTop controls
         controls = flow down
-            [ buttons
+            [ spacer midWidth spacerHeight
+            , buttons
             , slider
             ]
         bar = spacer w 1 |> GE.color lightGrey |> opacity 0.3
