@@ -54,7 +54,7 @@ function createDebuggingElement() {
 
     // Create and style the button
     var debugTab = document.createElement("div");
-    debugTab.id = "debugtoggle";
+    debugTab.id = "debugToggle";
     debugTab.style.position = "absolute";
     debugTab.style.width = "15px";
     debugTab.style.height = "30px";
@@ -125,7 +125,7 @@ function initDebugger() {
 
     debuggerHandle = Elm.embed(Elm.DebuggerInterface, debuggerDiv,
         { eventCounter: 0,
-          watches: ""
+          watches: []
         });
     debuggerHandle.ports.scrubTo.subscribe(scrubber);
     debuggerHandle.ports.pause.subscribe(elmPauser);
@@ -154,14 +154,24 @@ function sendWatches(position) {
         }
         return value;
     }
+    var separator = "  ";
+    var output = [];
 
     var watchAtPoint = elmDebugger.watchTracker.frames[position];
-    var jsonWatch = JSON.stringify(watchAtPoint, censor, "  ");
-    // Thanks http://stackoverflow.com/questions/11233498/json-stringify-without-quotes-on-properties
-    jsonWatch.replace(/\\"/g,"\uFFFF"); // U+FFFF
-    jsonWatch = jsonWatch.replace(/\"([^"]+)\":/g,"$1:").replace(/\uFFFF/g,"\\\"");
-    jsonWatch = jsonWatch.substr(2, jsonWatch.length - 4); // Removes outer {}
-    debuggerHandle.ports.watches.send(jsonWatch);
+
+    for(key in watchAtPoint) {
+        var value = watchAtPoint[key];
+        var jsonWatch = JSON.stringify(value, censor, separator);
+        // Thanks http://stackoverflow.com/questions/11233498/json-stringify-without-quotes-on-properties
+        jsonWatch.replace(/\\"/g,"\uFFFF"); // U+FFFF
+        jsonWatch = jsonWatch.replace(/\"([^"]+)\":/g,"$1:").replace(/\uFFFF/g,"\\\"");
+        if (typeof value === "object" || typeof value === "array") {
+            jsonWatch = jsonWatch.substr(2, jsonWatch.length - 4); // Removes outer {}
+        }
+        output.push([key, jsonWatch]);
+    }
+    
+    debuggerHandle.ports.watches.send(output);
 }
 
 function initSocket() {

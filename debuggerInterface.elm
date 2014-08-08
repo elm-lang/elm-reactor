@@ -41,7 +41,7 @@ textStyle =
         { defaultStyle
         | typeface <- ["Gotham", "sans-serif"]
         , color <- lightGrey
-        , height <- Just 11
+        , height <- Just 12
         }
     . toText
 
@@ -137,7 +137,7 @@ sliderInfoText w state =
             , sliderTotalEvents
             ]
 
-view : (Int, Int) -> String -> Bool -> State -> Element
+view : (Int, Int) -> [(String, String)] -> Bool -> State -> Element
 view (w,h) watches permitHotswap state =
     let midWidth = w - sideMargin
         spacerHeight = 15
@@ -162,9 +162,13 @@ view (w,h) watches permitHotswap state =
             , slider
             ]
         bar = spacer w 1 |> GE.color lightGrey |> opacity 0.3
+        showWatch (k,v) = flow down
+            [ k |> textStyle |> bold |> leftAligned |> width w
+            , v |> textStyle |> leftAligned |> width w
+            ]
         watchView = flow right
             [ spacer 20 1
-            , watches |> textStyle |> leftAligned |> width w
+            , map showWatch watches |> flow down
             ]
     in  flow down
             [ controlsContainer
@@ -209,7 +213,7 @@ scrubInput = input 0
 
 port eventCounter : Signal Int
 
-port watches : Signal String
+port watches : Signal [(String, String)]
 
 scene : Signal State
 scene = foldp step startState aggregateUpdates
