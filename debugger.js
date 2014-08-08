@@ -164,7 +164,7 @@ function sendWatches(position) {
         var jsonWatch = JSON.stringify(value, censor, separator);
         // Thanks http://stackoverflow.com/questions/11233498/json-stringify-without-quotes-on-properties
         jsonWatch.replace(/\\"/g,"\uFFFF"); // U+FFFF
-        jsonWatch = jsonWatch.replace(/\"([^"]+)\":/g,"$1:").replace(/\uFFFF/g,"\\\"");
+        jsonWatch = jsonWatch.replace(/\"([^"]+)\":/g,"$1 =").replace(/\uFFFF/g,"\\\"");
         if (typeof value === "object" || typeof value === "array") {
             jsonWatch = jsonWatch.substr(2, jsonWatch.length - 4); // Removes outer {}
         }
