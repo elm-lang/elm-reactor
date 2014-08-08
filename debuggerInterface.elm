@@ -137,7 +137,7 @@ sliderInfoText w state =
             , sliderTotalEvents
             ]
 
-view : (Int, Int) -> Json.Value -> Bool -> State -> Element
+view : (Int, Int) -> String -> Bool -> State -> Element
 view (w,h) watches permitHotswap state =
     let midWidth = w - sideMargin
         spacerHeight = 15
@@ -167,7 +167,7 @@ view (w,h) watches permitHotswap state =
         bar = spacer w 1 |> GE.color lightGrey |> opacity 0.3
         watchView = flow right
             [ spacer 20 1
-            , showValue watches |> textStyle |> leftAligned |> width w
+            , watches |> textStyle |> leftAligned |> width w
             ]
     in  flow down
             [ controlsContainer
@@ -212,7 +212,7 @@ scrubInput = input 0
 
 port eventCounter : Signal Int
 
-port watches : Signal Json.Value
+port watches : Signal String
 
 scene : Signal State
 scene = foldp step startState aggregateUpdates
@@ -247,9 +247,6 @@ aggregateUpdates = merges
 --
 -- Utilities
 --
-
-showValue : Json.Value -> String
-showValue value = Json.toString "  " value
 
 roundedSquare : Float -> Float -> (Shape -> Form) -> Form
 roundedSquare side radius toForm =

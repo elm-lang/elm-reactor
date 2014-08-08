@@ -9,6 +9,7 @@ var elmDebugger = {
   watchTracker: { frames:[{}] }
 };
 
+console.log("meep");
 var mainHandle = {};
 var debuggerHandle = {};
 var createdSocket = false;
@@ -100,7 +101,7 @@ function segmentDisplay() {
 
   debuggerHandle = Elm.embed(Elm.DebuggerInterface, debuggerDiv,
       { eventCounter: 0,
-        watches: {}
+        watches: ""
       });
   debuggerHandle.ports.scrubTo.subscribe(scrubber);
   debuggerHandle.ports.pause.subscribe(elmPauser);
@@ -146,9 +147,21 @@ function elmHotswap(permitHotswaps) {
   elmPermitHotswaps = permitHotswaps;
 }
 
+function censor(key, value) {
+  if (key === "_") {
+    return undefined;
+  }
+  return value;
+}
+
 function sendWatches(position) {
   var watchAtPoint = elmDebugger.watchTracker.frames[position];
-  debuggerHandle.ports.watches.send(watchAtPoint);
+  var jsonWatch = JSON.stringify(watchAtPoint, censor, "  ");
+  // Thanks http://stackoverflow.com/questions/11233498/json-stringify-without-quotes-on-properties
+  jsonWatch.replace(/\\"/g,"\uFFFF"); // U+FFFF
+  jsonWatch = jsonWatch.replace(/\"([^"]+)\":/g,"$1:").replace(/\uFFFF/g,"\\\"");
+  jsonWatch = jsonWatch.substr(2, jsonWatch.length - 4); // Removes outer {}
+  debuggerHandle.ports.watches.send(jsonWatch);
 }
 
 function initSocket() {
