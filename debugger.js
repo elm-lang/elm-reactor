@@ -9,30 +9,30 @@ var elmDebugger = {
   watchTracker: { frames:[{}] }
 };
 
-console.log("meep");
 var mainHandle = {};
 var debuggerHandle = {};
 var createdSocket = false;
 var filePath;
 
-var debuggingPanelExpanded = true;
 var elmPauseState = false;
 var elmPermitHotswaps = true;
 
 var ELM_MAIN_ID = "elmMain";
 var ELM_DEBUGGER_ID = "elmToolPanel";
+var ELM_DARK_GREY = "#4A4A4A";
+var ELM_LIGHT_GREY = "#E4E4E4";
 
 function createMainElement() {
   var mainDiv = document.createElement("div");
   mainDiv.id = ELM_MAIN_ID;
   mainDiv.style.width = "100%";
   mainDiv.style.height = "100%";
-  document.body.appendChild(mainDiv);
+  return mainDiv;
 }
 
 function createDebuggingElement() {
+  var debuggingPanelExpanded = true;
   var debuggerWidth = 275;
-  var darkGrey = "#4A4A4A";
 
   var debugTools = document.createElement("div");
   debugTools.id = ELM_DEBUGGER_ID;
@@ -42,7 +42,7 @@ function createDebuggingElement() {
   debuggerDiv.style.overflow = "hidden";
 
   // Create and style the panel
-  debugTools.style.background = darkGrey;
+  debugTools.style.background = ELM_DARK_GREY;
   debugTools.style.width = debuggerWidth + "px";
   debugTools.style.height = "100%";
   debugTools.style.position = "absolute";
@@ -61,7 +61,7 @@ function createDebuggingElement() {
   debugTab.style.left = "-15px";
   debugTab.style.borderTopLeftRadius = "3px";
   debugTab.style.borderBottomLeftRadius = "3px";
-  debugTab.style.background = darkGrey;
+  debugTab.style.background = ELM_DARK_GREY;
 
   // Wire the button
   debugTab.onclick = function() {
@@ -79,7 +79,7 @@ function createDebuggingElement() {
   
   debugTools.appendChild(debugTab);
   debugTools.appendChild(debuggerDiv);
-  document.body.appendChild(debugTools);
+  return debugTools;
 }
 
 
@@ -87,16 +87,41 @@ function createDebuggingElement() {
 
 Elm.debugFullscreen = function(module, moduleFile, hotSwapState /* =undefined */) {
   filePath = moduleFile;
-  segmentDisplay();
-  var elmMain = document.getElementById(ELM_MAIN_ID);
+  var elmMain = createMainElement();
+  document.body.appendChild(elmMain);
+  initDebugger();
   mainHandle = Elm.embed(Elm.debuggerAttach(module, hotSwapState), elmMain);
   return mainHandle;
 }
 
-function segmentDisplay() {
-  createMainElement();
+function initDebugger() {
+  function scrubber(position) {
+    if (elmDebugger.getPaused()) {
+      elmDebugger.stepTo(position);
+      sendWatches(position);
+    }
+  }
 
-  createDebuggingElement();
+  function elmPauser(doPause) {
+    if (doPause) {
+      elmDebugger.pause();
+    } else {
+      elmDebugger.kontinue();
+    }
+    elmPauseState = doPause;
+  }
+
+  function elmRestart() {
+    elmDebugger.restart();
+    sendWatches(0);
+  }
+
+  function elmHotswap(permitHotswaps) {
+    elmPermitHotswaps = permitHotswaps;
+  }
+
+  var debugTools = createDebuggingElement();
+  document.body.appendChild(debugTools);
   var debuggerDiv = document.getElementById("elmDebugger");
 
   debuggerHandle = Elm.embed(Elm.DebuggerInterface, debuggerDiv,
@@ -122,39 +147,15 @@ parent.window.addEventListener("message", function(e) {
   }
 }, false);
 
-function scrubber(position) {
-  if (elmDebugger.getPaused()) {
-    elmDebugger.stepTo(position);
-    sendWatches(position);
-  }
-}
-
-function elmPauser(doPause) {
-  if (doPause) {
-    elmDebugger.pause();
-  } else {
-    elmDebugger.kontinue();
-  }
-  elmPauseState = doPause;
-}
-
-function elmRestart() {
-  elmDebugger.restart();
-  sendWatches(0);
-}
-
-function elmHotswap(permitHotswaps) {
-  elmPermitHotswaps = permitHotswaps;
-}
-
-function censor(key, value) {
-  if (key === "_") {
-    return undefined;
-  }
-  return value;
-}
 
 function sendWatches(position) {
+  function censor(key, value) {
+    if (key === "_") {
+      return undefined;
+    }
+    return value;
+  }
+
   var watchAtPoint = elmDebugger.watchTracker.frames[position];
   var jsonWatch = JSON.stringify(watchAtPoint, censor, "  ");
   // Thanks http://stackoverflow.com/questions/11233498/json-stringify-without-quotes-on-properties
@@ -170,14 +171,12 @@ function initSocket() {
   filePath = filePath || window.location.pathname.substr(1).split(".")[0] + ".elm";
   var socketLocation = "ws://" + window.location.host + "/socket?file=" + filePath;
   var serverConnection = new WebSocket(socketLocation);
-  serverConnection.onmessage = messageRoute;
+  serverConnection.onmessage = function(event) {
+    if (elmPermitHotswaps) {
+      hotSwap(event.data);
+    }
+  };
 }
-
-function messageRoute(event) {
-  if (elmPermitHotswaps) {
-    hotSwap(event.data);
-  }
-};
 
 function hotSwap(raw) {
   var debuggerDiv = document.getElementById(ELM_DEBUGGER_ID);
@@ -201,8 +200,7 @@ function hotSwap(raw) {
           mainHandle.dispose();
           Elm.Debugger.dispose();
 
-          createMainElement();
-          var newMainNode = document.getElementById(ELM_MAIN_ID);
+          var newMainNode = createMainElement();
           debuggerDiv.parentElement.insertBefore(newMainNode,debuggerDiv);
 
           var wrappedModule = Elm.debuggerAttach(module, debuggerState);
@@ -218,7 +216,7 @@ function hotSwap(raw) {
       errorNode.style.zindex = 1;
       errorNode.style.position = "absolute";
       errorNode.style.top = "0px";
-      errorNode.style.background = "#E4E4E4";
+      errorNode.style.background = ELM_LIGHT_GREY;
 
       var mainNode = document.getElementById(ELM_MAIN_ID);
       mainNode.parentElement.appendChild(errorNode);
