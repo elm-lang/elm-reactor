@@ -115,7 +115,11 @@ sliderEventText w state =
         scrubPosition = toFloat state.scrubPosition
         totalEvents = toFloat state.totalEvents
         w' = toFloat w
-        leftDistance = scrubPosition / totalEvents * w' * displayPercent + (w' * (1 - displayPercent)/2)
+        leftDistance = 
+            if  | totalEvents == 0 -> w' * (1 - displayPercent) /2
+                | otherwise ->
+                    scrubPosition / totalEvents * w' * displayPercent
+                    + (w' * (1 - displayPercent)/2)
         xPos = absolute (round leftDistance)
         yPos = absolute (round (textHeight / 2))
         textPosition = middleAt xPos yPos
