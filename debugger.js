@@ -50,6 +50,7 @@ function createDebuggingElement() {
     debugTools.style.left = window.innerWidth - debuggerWidth + "px";
     debugTools.style.transitionDuration = "0.3s";
     debugTools.style.opacity = 0.97;
+    debugTools.style.zIndex = 1;
 
     // Create and style the button
     var debugTab = document.createElement("div");
@@ -87,10 +88,8 @@ function createDebuggingElement() {
 
 Elm.debugFullscreen = function(module, moduleFile, hotSwapState /* =undefined */) {
     filePath = moduleFile;
-    var elmMain = createMainElement();
-    document.body.appendChild(elmMain);
     initDebugger();
-    mainHandle = Elm.embed(Elm.debuggerAttach(module, hotSwapState), elmMain);
+    mainHandle = Elm.fullscreen(Elm.debuggerAttach(module, hotSwapState));
     return mainHandle;
 }
 
