@@ -122,7 +122,6 @@ scrubSlider (w,_) state =
             | length <- sliderLength
             , max <- toFloat <| state.totalEvents
             , value <- toFloat <| state.scrubPosition
-            , disabled <- not state.paused
             }
     in  slider scrubInput.handle round sliderStyle
             |> container sliderLength 20 middle
@@ -219,10 +218,10 @@ main = view <~ ((\(w, h) -> (panelWidth, h)) <~ Window.dimensions)
              ~ scene
 
 port scrubTo : Signal Int
-port scrubTo = scrubInput.signal
+port scrubTo = .scrubPosition <~ scene
 
 port pause : Signal Bool
-port pause = pausedInput.signal
+port pause = .paused <~ scene
 
 port restart : Signal Int
 port restart = lift (\x -> 0) restartInput.signal
@@ -266,7 +265,8 @@ step update state = case update of
         { state | totalEvents <- events
                 , scrubPosition <- events}
     ScrubPosition pos ->
-        { state | scrubPosition <- pos}
+        { state | scrubPosition <- pos
+                , paused <- True}
 
 aggregateUpdates : Signal Update
 aggregateUpdates = merges
@@ -301,20 +301,17 @@ roundedSquare side radius toForm =
 noWatches : Element
 noWatches = [markdown|
 
-### <span style="font-family: Gotham; font-size: 12pt; color: rgb(228,228,228)"> You don't have any watches! </span>
+### <span style="font-family: Gotham; font-size: 12pt; color: rgb(170,170,170)"> You don't have any watches! </span>
 
-<span style="color: rgb(228,228,228)">
-<span style="font-family: Gotham; font-size: 10pt; color: rgb(228,228,228)"> 
-Use [<span style="text-decoration:underline; color: rgb(228,228,228)">Debug.watch</span>](http://library.elm-lang.org/catalog/elm-lang-Elm/0.12.3/Debug#watch)
+<span style="color: rgb(170,170,170)">
+<span style="font-family: Gotham; font-size: 10pt; color: rgb(170,170,170)">
+Use [<span style="text-decoration:underline; color: rgb(170,170,170)">Debug.watch</span>](http://library.elm-lang.org/catalog/elm-lang-Elm/0.12.3/Debug#watch)
 to show any value. <br>
 `watch : String -> a -> a`</span>
 
-<span style="font-family: Gotham; font-size: 10pt; color: rgb(228,228,228)"> 
-Use [<span style="text-decoration:underline; color: rgb(228,228,228)">Debug.watchSummary</span>](http://library.elm-lang.org/catalog/elm-lang-Elm/0.12.3/Debug#watchSummary) to show a <br>
+<span style="font-family: Gotham; font-size: 10pt; color: rgb(170,170,170)">
+Use [<span style="text-decoration:underline; color: rgb(170,170,170)">Debug.watchSummary</span>](http://library.elm-lang.org/catalog/elm-lang-Elm/0.12.3/Debug#watchSummary) to show a <br>
 summary or subvalue of any value. </span><br>
-<span style="color: rgb(228,228,228)">
-`watchSummary :`<br>
-`String -> (a -> b) -> a -> a`</span>
 |]
 
 

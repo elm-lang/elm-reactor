@@ -5,6 +5,7 @@ var elmDebugger = {
     getMaxSteps: function() { return 0; },
     stepTo: function(i) {},
     getPaused: function() { return false; },
+    dispose: function() {},
     getHotSwapState: function() { return null; },
     watchTracker: { frames:[{}] }
 };
@@ -54,12 +55,12 @@ function createDebuggingElement() {
     debugTools.style.zIndex = 1;
 
     // Create and style the button
-    var tabWidth = 30;
+    var tabWidth = 25;
     var debugTab = document.createElement("div");
     debugTab.id = "debugToggle";
     debugTab.style.position = "absolute";
     debugTab.style.width = tabWidth + "px";
-    debugTab.style.height = "40px";
+    debugTab.style.height = "60px";
     debugTab.style.top = window.innerHeight / 2 + "px";
     debugTab.style.left = "-" + tabWidth + "px";
     debugTab.style.borderTopLeftRadius = "3px";
@@ -208,10 +209,17 @@ function hotSwap(raw) {
             Elm.Debugger.dispose();
 
             var newMainNode = createMainElement();
-            debuggerDiv.parentElement.insertBefore(newMainNode,debuggerDiv);
+            debuggerDiv.parentElement.appendChild(newMainNode);
 
             var wrappedModule = Elm.debuggerAttach(module, debuggerState);
             mainHandle = Elm.embed(wrappedModule, newMainNode);
+
+            // The div that rejects events must be after Elm
+            var ignoringDiv = document.getElementById("elmEventIgnorer");
+            if (ignoringDiv) {
+                var lastChild = newMainNode.children[newMainNode.children.length - 1];
+                newMainNode.insertBefore(lastChild,ignoringDiv);
+            }
         }
         else {
             mainHandle = mainHandle.swap(module);
