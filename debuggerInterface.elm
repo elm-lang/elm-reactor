@@ -31,8 +31,9 @@ objHeight = 40
 buttonWidth = 40
 sideMargin = 2 * 20
 textHeight = 20
+panelWidth = 275
 
-blue = rgb 49 139 255
+blue = rgb 28 129 218
 lightGrey = rgb 228 228 228
 darkGrey = rgb 74 74 74
 
@@ -59,15 +60,6 @@ codeStyle = dataStyle ["Menlo for Powerline", "monospace"] 12
 -- View
 --
 
---playButton : Element
---playButton =
---    let icon =
---            [ roundedSquare 35 3 (filled blue)
---            , ngon 3 12.0 |> filled lightGrey
---            ]
---    in  collage buttonWidth objHeight icon
---            |> clickable pausedInput.handle False
-
 playButton : Element
 playButton =
     customButton pausedInput.handle False
@@ -75,36 +67,12 @@ playButton =
         (image 40 40 "/assets/scaled/play-button-hover.png")
         (image 40 40 "/assets/scaled/play-button-click.png")
 
---pauseButton : Element
---pauseButton =
---    let icon =
---            [ roundedSquare 35 3 (filled blue)
---            , rect 7 17
---                |> filled lightGrey
---                |> moveX -5
---            , rect 7 17
---                |> filled lightGrey
---                |> moveX 5
---            ]
---    in collage buttonWidth objHeight icon
---            |> clickable pausedInput.handle True
-
 pauseButton : Element
 pauseButton =
     customButton pausedInput.handle True
         (image 40 40 "/assets/scaled/pause-button.png")
         (image 40 40 "/assets/scaled/pause-button-hover.png")
         (image 40 40 "/assets/scaled/pause-button-click.png")
-
---restartButton : Element
---restartButton =
---    let icon =
---            [ roundedSquare 35 3 (filled lightGrey)
---            , circle 12.0 |> filled darkGrey
---            , circle 8 |> filled lightGrey
---            ]
---    in  collage buttonWidth objHeight icon
---            |> clickable restartInput.handle ()
 
 restartButton : Element
 restartButton =
@@ -115,16 +83,36 @@ restartButton =
 
 hotswapButton : Bool -> Element
 hotswapButton permitHotswap =
-    let bgButton = roundedSquare 24 2 (filled lightGrey)
-        trueButton = [bgButton, roundedSquare 22 2 (filled blue)]
-        falseButton = [bgButton, roundedSquare 22 2 (filled darkGrey)]
-        buttonElem =
-            if  | permitHotswap -> trueButton
-                | otherwise -> falseButton
-        hsButton = collage 25 25 buttonElem
-            |> clickable permitHotswapInput.handle (not permitHotswap)
+    let hsWidth = 25
+        radius = 4
+        bgButton = roundedSquare hsWidth radius (filled lightGrey)
+        trueButton = [bgButton, roundedSquare 22 radius (filled blue)]
+        trueButtonHover =
+            [ bgButton
+            , roundedSquare 22 radius (filled blue)
+            , roundedSquare 22 radius (filled darkGrey) |> alpha 0.1
+            ]
+        trueButtonClick = falseButton
+        falseButton = [bgButton, roundedSquare 22 radius (filled darkGrey)]
+        falseButtonHover =
+            [ bgButton
+            , roundedSquare 22 radius (filled darkGrey)
+            , roundedSquare 22 radius (filled blue) |> alpha 0.1
+            ]
+        falseButtonClick = trueButton
+        button =
+            if  | permitHotswap ->
+                    customButton permitHotswapInput.handle False
+                        (collage hsWidth hsWidth trueButton)
+                        (collage hsWidth hsWidth trueButtonHover)
+                        (collage hsWidth hsWidth trueButtonClick)
+                | otherwise ->
+                    customButton permitHotswapInput.handle True
+                        (collage hsWidth hsWidth falseButton)
+                        (collage hsWidth hsWidth falseButtonHover)
+                        (collage hsWidth hsWidth falseButtonClick)
         info = "hotswap" |> textStyle |> leftAligned
-    in  flow right [ info, spacer 10 1, hsButton ]
+    in  flow right [ info, spacer 10 1, button ]
 
 scrubSlider : (Int, Int) -> State -> Element
 scrubSlider (w,_) state =
@@ -139,34 +127,21 @@ scrubSlider (w,_) state =
     in  slider scrubInput.handle round sliderStyle
             |> container sliderLength 20 middle
 
---sliderEventText : Int -> State -> Element
---sliderEventText w state =
---    let textHeight = 20
---        scrubPosition = toFloat state.scrubPosition
---        totalEvents = toFloat state.totalEvents
---        midWidth = (toFloat w) - sideMargin
---        leftDistance = 
---            if  | totalEvents == 0 -> sideMargin / 2
---                | otherwise ->
---                    scrubPosition / totalEvents * midWidth + (sideMargin/2)
---        _ = Debug.log "leftDistance" (round leftDistance)
---        xPos = absolute (round leftDistance)
---        yPos = absolute (round (textHeight / 2))
---        textPosition = midLeftAt xPos yPos
---        text' = show state.scrubPosition |> textStyle |> centered
---    in  container (round leftDistance) textHeight midRight text'
-
-
 sliderEventText : Int -> State -> Element
 sliderEventText w state =
     let textHeight = 20
         scrubPosition = toFloat state.scrubPosition
         totalEvents = toFloat state.totalEvents
-        innerWidth = toFloat <| w - sideMargin
-        w' = toFloat w
-        leftDistance = scrubPosition / totalEvents * innerWidth + 20
-        text' = show state.scrubPosition |> textStyle |> rightAligned
-    in  container (round leftDistance) textHeight midRight text'
+        midWidth = (toFloat w) - sideMargin - 12
+        leftDistance = 
+            if  | totalEvents == 0 -> sideMargin / 2
+                | otherwise ->
+                    scrubPosition / totalEvents * midWidth + (sideMargin/2) + 6
+        xPos = absolute (round leftDistance)
+        yPos = absolute (round (textHeight / 2))
+        textPosition = middleAt xPos yPos
+        text' = show state.scrubPosition |> textStyle |> centered
+    in  container w textHeight textPosition text'
 
 sliderInfoText : Int -> State -> Element
 sliderInfoText w state =
@@ -182,8 +157,9 @@ sliderInfoText w state =
 view : (Int, Int) -> [(String, String)] -> Bool -> State -> Element
 view (w,h) watches permitHotswap state =
     let midWidth = w - sideMargin
-        spacerHeight = 15
-        controlsHeight = objHeight + 24 + spacerHeight + 2 * textHeight
+        topSpacerHeight = 15
+        buttonSliderSpaceHeight = 10
+        controlsHeight = objHeight + 24 + topSpacerHeight + 2 * textHeight + buttonSliderSpaceHeight
         fittedHotSwapButton =
             hotswapButton permitHotswap
             |> container (w - 2 * buttonWidth - sideMargin) objHeight middle
@@ -204,9 +180,11 @@ view (w,h) watches permitHotswap state =
             |> container w (24 + 2* textHeight) midTop
         buttonContainer = container w objHeight midTop buttons
         controls = flow down
-            [ spacer midWidth spacerHeight
+            [ spacer midWidth topSpacerHeight
             , buttonContainer
+            , spacer midWidth buttonSliderSpaceHeight
             , slider
+            , spacer midWidth 10
             ]
         bar = flow down 
             [ spacer w 1 |> GE.color lightGrey |> opacity 0.3
@@ -235,7 +213,7 @@ view (w,h) watches permitHotswap state =
 --
 
 main : Signal Element
-main = view <~ Window.dimensions
+main = view <~ ((\(w, h) -> (panelWidth, h)) <~ Window.dimensions)
              ~ watches
              ~ permitHotswapInput.signal
              ~ scene
