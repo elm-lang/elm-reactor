@@ -47,7 +47,8 @@ function createDebuggingElement() {
     debugTools.style.height = "100%";
     debugTools.style.position = "absolute";
     debugTools.style.top = "0px";
-    debugTools.style.left = window.innerWidth - debuggerWidth + "px";
+    // debugTools.style.left = window.innerWidth - debuggerWidth + "px";
+    debugTools.style.right = "0px";
     debugTools.style.transitionDuration = "0.3s";
     debugTools.style.opacity = 0.97;
     debugTools.style.zIndex = 1;
@@ -76,15 +77,16 @@ function createDebuggingElement() {
     debugTab.onclick = function() {
         var toolPanel = document.getElementById("elmToolPanel");
         if (debuggingPanelExpanded){
-            toolPanel.style.left = window.innerWidth + "px";
             toolPanel.style.width = "0px";
             debuggingPanelExpanded = false;
         } else {
-            toolPanel.style.left = window.innerWidth - debuggerWidth + "px";
+            toolPanel.style.right = "0px";
             toolPanel.style.width = debuggerWidth + "px";
             debuggingPanelExpanded = true;
         }
     }
+
+
 
     debugTools.appendChild(debugTab);
     debugTools.appendChild(debuggerDiv);
