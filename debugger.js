@@ -53,16 +53,24 @@ function createDebuggingElement() {
     debugTools.style.zIndex = 1;
 
     // Create and style the button
+    var tabWidth = 40;
     var debugTab = document.createElement("div");
     debugTab.id = "debugToggle";
     debugTab.style.position = "absolute";
-    debugTab.style.width = "15px";
-    debugTab.style.height = "30px";
+    debugTab.style.width = tabWidth + "px";
+    debugTab.style.height = "40px";
     debugTab.style.top = window.innerHeight / 2 + "px";
-    debugTab.style.left = "-15px";
+    debugTab.style.left = "-" + tabWidth + "px";
     debugTab.style.borderTopLeftRadius = "3px";
     debugTab.style.borderBottomLeftRadius = "3px";
     debugTab.style.background = ELM_DARK_GREY;
+
+    var wrenchIcon = document.createElement("img");
+    wrenchIcon.src = "/debug-wrench-elm-server.png";
+    wrenchIcon.height = 30;
+    wrenchIcon.title = "Debug panel";
+    wrenchIcon.style.margin = "5px";
+    debugTab.appendChild(wrenchIcon);
 
     // Wire the button
     debugTab.onclick = function() {
@@ -161,14 +169,7 @@ function sendWatches(position) {
 
     for(key in watchAtPoint) {
         var value = watchAtPoint[key];
-        // var jsonWatch = JSON.stringify(value, censor, separator);
         var stringified = toString(value, separator);
-        // Thanks http://stackoverflow.com/questions/11233498/json-stringify-without-quotes-on-properties
-        // jsonWatch.replace(/\\"/g,"\uFFFF"); // U+FFFF
-        // jsonWatch = jsonWatch.replace(/\"([^"]+)\":/g,"$1 =").replace(/\uFFFF/g,"\\\"");
-        // if (typeof value === "object" || typeof value === "array") {
-            // jsonWatch = jsonWatch.substr(2, jsonWatch.length - 4); // Removes outer {} or []
-        // }
         output.push([key, stringified]);
     }
     
@@ -234,6 +235,14 @@ function hotSwap(raw) {
 }
 
 
+
+
+
+
+
+
+// Utilities
+
 var toString = function(v, separator) {
     var type = typeof v;
     if (type === "function") {
@@ -297,8 +306,11 @@ var toString = function(v, separator) {
             for (var i in v) {
                 if (i === 'ctor') continue;
                 var str = toString(v[i], separator);
-                var parenless = str[0] === '{' || str[0] === '<' || str.indexOf(' ') < 0;
-                output += ' ' + (parenless ? str : '(' + str + ')');
+                var parenless = str[0] === '{' ||
+                                str[0] === '<' ||
+                                str[0] === "[" ||
+                                str.indexOf(' ') < 0;
+                output += ' ' + (parenless ? str : "(" + str + ')');
             }
             return v.ctor + output;
         }

@@ -5,6 +5,7 @@ import Graphics.Input (..)
 import Graphics.Element as GE
 import Text (..)
 import Slider (..)
+import Debug
 
 --
 -- Model
@@ -35,15 +36,24 @@ blue = rgb 49 139 255
 lightGrey = rgb 228 228 228
 darkGrey = rgb 74 74 74
 
+dataStyle : [String] -> Float -> String -> Text
+dataStyle typefaces height =
+    let myStyle =
+             { defaultStyle
+             | typeface <- typefaces
+             , color <- lightGrey
+             , height <- Just height
+             }
+    in style myStyle . toText
+
 textStyle : String -> Text
-textStyle =
-    style
-        { defaultStyle
-        | typeface <- ["Gotham", "sans-serif"]
-        , color <- lightGrey
-        , height <- Just 12
-        }
-    . toText
+textStyle = dataStyle ["Gotham", "sans-serif"] 12
+
+watchStyle : String -> Text
+watchStyle = dataStyle ["Gotham", "sans-serif"] 14
+
+codeStyle : String -> Text
+codeStyle = dataStyle ["Menlo for Powerline", "monospace"] 12
 
 --
 -- View
@@ -106,25 +116,36 @@ scrubSlider (w,_) state =
             , disabled <- not state.paused
             }
     in  slider scrubInput.handle round sliderStyle
-            |> container sliderLength 20 midLeft
+            |> container sliderLength 20 middle
+
+--sliderEventText : Int -> State -> Element
+--sliderEventText w state =
+--    let textHeight = 20
+--        scrubPosition = toFloat state.scrubPosition
+--        totalEvents = toFloat state.totalEvents
+--        midWidth = (toFloat w) - sideMargin
+--        leftDistance = 
+--            if  | totalEvents == 0 -> sideMargin / 2
+--                | otherwise ->
+--                    scrubPosition / totalEvents * midWidth + (sideMargin/2)
+--        _ = Debug.log "leftDistance" (round leftDistance)
+--        xPos = absolute (round leftDistance)
+--        yPos = absolute (round (textHeight / 2))
+--        textPosition = midLeftAt xPos yPos
+--        text' = show state.scrubPosition |> textStyle |> centered
+--    in  container (round leftDistance) textHeight midRight text'
+
 
 sliderEventText : Int -> State -> Element
 sliderEventText w state =
     let textHeight = 20
-        displayPercent = 0.85
         scrubPosition = toFloat state.scrubPosition
         totalEvents = toFloat state.totalEvents
+        innerWidth = toFloat <| w - sideMargin
         w' = toFloat w
-        leftDistance = 
-            if  | totalEvents == 0 -> w' * (1 - displayPercent) /2
-                | otherwise ->
-                    scrubPosition / totalEvents * w' * displayPercent
-                    + (w' * (1 - displayPercent)/2)
-        xPos = absolute (round leftDistance)
-        yPos = absolute (round (textHeight / 2))
-        textPosition = middleAt xPos yPos
+        leftDistance = scrubPosition / totalEvents * innerWidth + 20
         text' = show state.scrubPosition |> textStyle |> rightAligned
-    in  container w textHeight textPosition text'
+    in  container (round leftDistance) textHeight midRight text'
 
 sliderInfoText : Int -> State -> Element
 sliderInfoText w state =
@@ -150,28 +171,37 @@ view (w,h) watches permitHotswap state =
             , fittedHotSwapButton
             , (if state.paused then playButton else pauseButton)
             ]
-        slider = flow down
-            [ sliderEventText midWidth state
-            , scrubSlider (midWidth, h) state
+        centeredSliderContainer = flow down
+            [ scrubSlider (midWidth, h) state
             , sliderInfoText midWidth state
             ]
-        controlsContainer = container w controlsHeight midTop controls
+            |> container w (24 + textHeight) midTop
+        slider = flow down
+            [ sliderEventText w state
+            , centeredSliderContainer
+            ]
+            |> container w (24 + 2* textHeight) midTop
+        buttonContainer = container w objHeight midTop buttons
         controls = flow down
             [ spacer midWidth spacerHeight
-            , buttons
+            , buttonContainer
             , slider
             ]
-        bar = spacer w 1 |> GE.color lightGrey |> opacity 0.3
+        bar = flow down 
+            [ spacer w 1 |> GE.color lightGrey |> opacity 0.3
+            , spacer w 12
+            ]
         showWatch (k,v) = flow down
-            [ k |> textStyle |> bold |> leftAligned |> width w
-            , v |> textStyle |> leftAligned |> width w
+            [ k |> watchStyle |> bold |> leftAligned |> width w
+            , v |> codeStyle |> leftAligned |> width w
+            , spacer 1 12
             ]
         watchView = flow right
             [ spacer 20 1
             , map showWatch watches |> flow down
             ]
     in  flow down
-            [ controlsContainer
+            [ controls
             , bar
             , watchView
             ]
