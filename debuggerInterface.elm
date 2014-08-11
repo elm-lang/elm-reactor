@@ -59,38 +59,59 @@ codeStyle = dataStyle ["Menlo for Powerline", "monospace"] 12
 -- View
 --
 
+--playButton : Element
+--playButton =
+--    let icon =
+--            [ roundedSquare 35 3 (filled blue)
+--            , ngon 3 12.0 |> filled lightGrey
+--            ]
+--    in  collage buttonWidth objHeight icon
+--            |> clickable pausedInput.handle False
+
 playButton : Element
 playButton =
-    let icon =
-            [ roundedSquare 35 3 (filled blue)
-            , ngon 3 12.0 |> filled lightGrey
-            ]
-    in  collage buttonWidth objHeight icon
-            |> clickable pausedInput.handle False
+    customButton pausedInput.handle False
+        (image 40 40 "/assets/scaled/play-button.png")
+        (image 40 40 "/assets/scaled/play-button-hover.png")
+        (image 40 40 "/assets/scaled/play-button-click.png")
+
+--pauseButton : Element
+--pauseButton =
+--    let icon =
+--            [ roundedSquare 35 3 (filled blue)
+--            , rect 7 17
+--                |> filled lightGrey
+--                |> moveX -5
+--            , rect 7 17
+--                |> filled lightGrey
+--                |> moveX 5
+--            ]
+--    in collage buttonWidth objHeight icon
+--            |> clickable pausedInput.handle True
 
 pauseButton : Element
 pauseButton =
-    let icon =
-            [ roundedSquare 35 3 (filled blue)
-            , rect 7 17
-                |> filled lightGrey
-                |> moveX -5
-            , rect 7 17
-                |> filled lightGrey
-                |> moveX 5
-            ]
-    in collage buttonWidth objHeight icon
-            |> clickable pausedInput.handle True
+    customButton pausedInput.handle True
+        (image 40 40 "/assets/scaled/pause-button.png")
+        (image 40 40 "/assets/scaled/pause-button-hover.png")
+        (image 40 40 "/assets/scaled/pause-button-click.png")
+
+--restartButton : Element
+--restartButton =
+--    let icon =
+--            [ roundedSquare 35 3 (filled lightGrey)
+--            , circle 12.0 |> filled darkGrey
+--            , circle 8 |> filled lightGrey
+--            ]
+--    in  collage buttonWidth objHeight icon
+--            |> clickable restartInput.handle ()
 
 restartButton : Element
 restartButton =
-    let icon =
-            [ roundedSquare 35 3 (filled lightGrey)
-            , circle 12.0 |> filled darkGrey
-            , circle 8 |> filled lightGrey
-            ]
-    in  collage buttonWidth objHeight icon
-            |> clickable restartInput.handle ()
+    customButton restartInput.handle ()
+        (image 40 40 "/assets/scaled/restart-button.png")
+        (image 40 40 "/assets/scaled/restart-button-hover.png")
+        (image 40 40 "/assets/scaled/restart-button-click.png")
 
 hotswapButton : Bool -> Element
 hotswapButton permitHotswap =
@@ -198,7 +219,9 @@ view (w,h) watches permitHotswap state =
             ]
         watchView = flow right
             [ spacer 20 1
-            , map showWatch watches |> flow down
+            , case watches of
+                [] -> noWatches
+                ws -> map showWatch ws |> flow down
             ]
     in  flow down
             [ controls
@@ -291,3 +314,29 @@ roundedSquare side radius toForm =
         bl = formedCircle |> move (-circleOffset,-circleOffset)
         br = formedCircle |> move ( circleOffset,-circleOffset)
     in group [xRect, yRect, tl, tr, bl, br]
+
+
+--
+-- Copy
+--
+
+noWatches : Element
+noWatches = [markdown|
+
+### <span style="font-family: Gotham; font-size: 12pt; color: rgb(228,228,228)"> You don't have any watches! </span>
+
+<span style="color: rgb(228,228,228)">
+<span style="font-family: Gotham; font-size: 10pt; color: rgb(228,228,228)"> 
+Use [<span style="text-decoration:underline; color: rgb(228,228,228)">Debug.watch</span>](http://library.elm-lang.org/catalog/elm-lang-Elm/0.12.3/Debug#watch)
+to show any value. <br>
+`watch : String -> a -> a`</span>
+
+<span style="font-family: Gotham; font-size: 10pt; color: rgb(228,228,228)"> 
+Use [<span style="text-decoration:underline; color: rgb(228,228,228)">Debug.watchSummary</span>](http://library.elm-lang.org/catalog/elm-lang-Elm/0.12.3/Debug#watchSummary) to show a <br>
+summary or subvalue of any value. </span><br>
+<span style="color: rgb(228,228,228)">
+`watchSummary :`<br>
+`String -> (a -> b) -> a -> a`</span>
+|]
+
+
