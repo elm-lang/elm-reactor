@@ -54,7 +54,7 @@ function createDebuggingElement() {
     debugTools.style.zIndex = 1;
 
     // Create and style the button
-    var tabWidth = 40;
+    var tabWidth = 30;
     var debugTab = document.createElement("div");
     debugTab.id = "debugToggle";
     debugTab.style.position = "absolute";
@@ -66,12 +66,6 @@ function createDebuggingElement() {
     debugTab.style.borderBottomLeftRadius = "3px";
     debugTab.style.background = ELM_DARK_GREY;
 
-    var wrenchIcon = document.createElement("img");
-    wrenchIcon.src = "/debug-wrench-elm-server.png";
-    wrenchIcon.height = 30;
-    wrenchIcon.title = "Debug panel";
-    wrenchIcon.style.margin = "5px";
-    debugTab.appendChild(wrenchIcon);
 
     // Wire the button
     debugTab.onclick = function() {
