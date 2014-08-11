@@ -284,7 +284,7 @@ var toString = function(v, separator) {
                 output += ",\n" + toString(v._0, separator);
                 v = v._1;
             }
-            output += ' ]';
+            output += '\n]';
             return output.replace(/\n/g,"\n" + separator);
         } else if (v.ctor === "[]") {
             return "[]";
