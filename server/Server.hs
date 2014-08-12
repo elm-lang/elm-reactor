@@ -60,7 +60,6 @@ main = do
   httpServe (setPort (port cargs) config) $
       serveRuntime (maybe Elm.runtime id (runtime cargs))
       <|> serveElm
-      <|> serveDebugger
       <|> route [ ("socket", socket)
                 ]
       <|> serveDirectoryWith directoryConfig "."
@@ -113,21 +112,26 @@ serveElm =
      result <- liftIO $ Generate.html file doDebug
      serveHtml result
 
-serveDebugger :: Snap ()
-serveDebugger =
-  do file <- BSC.unpack . rqPathInfo <$> getRequest
-     guard (file == "debugger.js")
-     serveFileAs "application/javascript" file
-
 serveAsset :: FilePath -> Snap ()
 serveAsset assetPath =
   do dataPath <- liftIO $ Utils.getDataFile assetPath
      serveFile dataPath
 
 staticAssets :: [FilePath]
-staticAssets = [ "debug-wrench-elm-server.png"
-               , "debugger-interface-elm-server.html"
+staticAssets = [ "debuggerInterface.js"
+               , "debugger.js"
+               , "toString.js"
+               , "debug-wrench-elm-server.png"
                , "favicon.ico"
+               , "pause-button.png"
+               , "pause-button-click.png"
+               , "pause-button-hover.png"
+               , "play-button.png"
+               , "play-button-click.png"
+               , "play-button-hover.png"
+               , "restart-button.png"
+               , "restart-button-click.png"
+               , "restart-button-hover.png"
                ]
 
 serveAssets :: Snap ()

@@ -62,23 +62,23 @@ codeStyle = dataStyle ["Menlo for Powerline", "monospace"] 12
 playButton : Element
 playButton =
     customButton pausedInput.handle False
-        (image 40 40 "/assets/scaled/play-button.png")
-        (image 40 40 "/assets/scaled/play-button-hover.png")
-        (image 40 40 "/assets/scaled/play-button-click.png")
+        (image 40 40 "/play-button.png")
+        (image 40 40 "/play-button-hover.png")
+        (image 40 40 "/play-button-click.png")
 
 pauseButton : Element
 pauseButton =
     customButton pausedInput.handle True
-        (image 40 40 "/assets/scaled/pause-button.png")
-        (image 40 40 "/assets/scaled/pause-button-hover.png")
-        (image 40 40 "/assets/scaled/pause-button-click.png")
+        (image 40 40 "/pause-button.png")
+        (image 40 40 "/pause-button-hover.png")
+        (image 40 40 "/pause-button-click.png")
 
 restartButton : Element
 restartButton =
     customButton restartInput.handle ()
-        (image 40 40 "/assets/scaled/restart-button.png")
-        (image 40 40 "/assets/scaled/restart-button-hover.png")
-        (image 40 40 "/assets/scaled/restart-button-click.png")
+        (image 40 40 "/restart-button.png")
+        (image 40 40 "/restart-button-hover.png")
+        (image 40 40 "/restart-button-click.png")
 
 hotswapButton : Bool -> Element
 hotswapButton permitHotswap =
