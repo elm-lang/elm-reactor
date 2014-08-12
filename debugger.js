@@ -81,8 +81,6 @@ function createDebuggingElement() {
         }
     }
 
-
-
     debugTools.appendChild(debugTab);
     debugTools.appendChild(debuggerDiv);
     return debugTools;
@@ -153,12 +151,6 @@ parent.window.addEventListener("message", function(e) {
 
 
 function sendWatches(position) {
-    function censor(key, value) {
-        if (key === "_") {
-            return undefined;
-        }
-        return value;
-    }
     var separator = "  ";
     var output = [];
 
@@ -247,6 +239,13 @@ function hotSwap(raw) {
 
 // Utilities
 
+var independentElm = {};
+var NList = Elm.Native.List.make(independentElm);
+var List = Elm.List.make(independentElm);
+var ElmArray = Elm.Array.make(independentElm);
+var Dict = Elm.Dict.make(independentElm);
+var Tuple2 = Elm.Native.Utils.make(independentElm).Tuple2;
+
 var toString = function(v, separator) {
     var type = typeof v;
     if (type === "function") {
@@ -283,12 +282,12 @@ var toString = function(v, separator) {
             }
             return "(" + output.join(", ") + ")";
         } else if (v.ctor === "_Array") {
-            var list = Array.toList(v);
+            var list = ElmArray.toList(v);
             return "Array.fromList " + toString(list, separator);
         } else if (v.ctor === "::") {
             var output = '[\n' + toString(v._0, separator);
             v = v._1;
-            while (v.ctor === "::") {
+            while (v && v.ctor === "::") {
                 output += ",\n" + toString(v._0, separator);
                 v = v._1;
             }

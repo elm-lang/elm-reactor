@@ -129,13 +129,14 @@ scrubSlider (w,_) state =
 sliderEventText : Int -> State -> Element
 sliderEventText w state =
     let textHeight = 20
+        textWidthOffset = 14
         scrubPosition = toFloat state.scrubPosition
         totalEvents = toFloat state.totalEvents
-        midWidth = (toFloat w) - sideMargin - 12
+        midWidth = (toFloat w) - sideMargin - textWidthOffset
         leftDistance = 
-            if  | totalEvents == 0 -> sideMargin / 2
+            if  | totalEvents == 0 -> sideMargin/2 + textWidthOffset/2
                 | otherwise ->
-                    scrubPosition / totalEvents * midWidth + (sideMargin/2) + 6
+                    scrubPosition / totalEvents * midWidth + (sideMargin/2) + textWidthOffset/2
         xPos = absolute (round leftDistance)
         yPos = absolute (round (textHeight / 2))
         textPosition = middleAt xPos yPos
