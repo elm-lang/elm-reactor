@@ -138,4 +138,4 @@ serveAssets :: Snap ()
 serveAssets =
   do file <- BSC.unpack. rqPathInfo <$> getRequest
      guard (file `elem` staticAssets)
-     serveAsset $ "assets" </> file
+     serveAsset file
