@@ -48,9 +48,7 @@ html filePath doDebug =
 
     insertDebuggerScript =
       case doDebug of
-        True ->
-          do script ! A.src (H.toValue ("/debugger.js" :: String)) $ ""
-             script ! A.src (H.toValue ("/build/debuggerInterface.js" :: String)) $ ""
+        True -> script ! A.src (H.toValue ("/debugger.js" :: String)) $ ""
         False -> return ()
 
     buildPage content = H.docTypeHtml $ do

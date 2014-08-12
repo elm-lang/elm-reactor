@@ -97,43 +97,53 @@ Elm.debugFullscreen = function(module, moduleFile, hotSwapState /* =undefined */
 }
 
 function initDebugger() {
-    function scrubber(position) {
-        if (elmDebugger.getPaused()) {
-            elmDebugger.stepTo(position);
-            sendWatches(position);
+    var head = document.getElementsByTagName('head')[0];
+    var debuggerScript = document.createElement("script");
+    debuggerScript.type = "text/javascript";
+    debuggerScript.src = "/build/debuggerInterface.js";
+    debuggerScript.onreadystatechange = onload;
+    debuggerScript.onload = onload;
+
+    function onload() {
+        function scrubber(position) {
+            if (elmDebugger.getPaused()) {
+                elmDebugger.stepTo(position);
+                sendWatches(position);
+            }
         }
-    }
 
-    function elmPauser(doPause) {
-        if (doPause) {
-          elmDebugger.pause();
-        } else {
-            elmDebugger.kontinue();
+        function elmPauser(doPause) {
+            if (doPause) {
+              elmDebugger.pause();
+            } else {
+                elmDebugger.kontinue();
+            }
+            elmPauseState = doPause;
         }
-        elmPauseState = doPause;
-    }
 
-    function elmRestart() {
-        elmDebugger.restart();
-        sendWatches(0);
-    }
+        function elmRestart() {
+            elmDebugger.restart();
+            sendWatches(0);
+        }
 
-    function elmHotswap(permitHotswaps) {
-        elmPermitHotswaps = permitHotswaps;
-    }
+        function elmHotswap(permitHotswaps) {
+            elmPermitHotswaps = permitHotswaps;
+        }
 
-    var debugTools = createDebuggingElement();
-    document.body.appendChild(debugTools);
-    var debuggerDiv = document.getElementById("elmDebugger");
+        var debugTools = createDebuggingElement();
+        document.body.appendChild(debugTools);
+        var debuggerDiv = document.getElementById("elmDebugger");
 
-    debuggerHandle = Elm.embed(Elm.DebuggerInterface, debuggerDiv,
-        { eventCounter: 0,
-          watches: []
-        });
-    debuggerHandle.ports.scrubTo.subscribe(scrubber);
-    debuggerHandle.ports.pause.subscribe(elmPauser);
-    debuggerHandle.ports.restart.subscribe(elmRestart);
-    debuggerHandle.ports.permitHotswap.subscribe(elmHotswap);
+        debuggerHandle = Elm.embed(Elm.DebuggerInterface, debuggerDiv,
+            { eventCounter: 0,
+              watches: []
+            });
+        debuggerHandle.ports.scrubTo.subscribe(scrubber);
+        debuggerHandle.ports.pause.subscribe(elmPauser);
+        debuggerHandle.ports.restart.subscribe(elmRestart);
+        debuggerHandle.ports.permitHotswap.subscribe(elmHotswap);
+    };
+    head.appendChild(debuggerScript);
 }
 
 parent.window.addEventListener("message", function(e) {
@@ -144,8 +154,10 @@ parent.window.addEventListener("message", function(e) {
         }
     } else if (e.data === "elmNotify") {
         var currentPosition = elmDebugger.getMaxSteps();
-        debuggerHandle.ports.eventCounter.send(currentPosition);
-        sendWatches(currentPosition);
+        if (debuggerHandle.ports) {
+            debuggerHandle.ports.eventCounter.send(currentPosition);
+            sendWatches(currentPosition);
+        }
     }
 }, false);
 
@@ -161,7 +173,6 @@ function sendWatches(position) {
         var stringified = toString(value, separator);
         output.push([key, stringified]);
     }
-    
     debuggerHandle.ports.watches.send(output);
 }
 
@@ -172,7 +183,7 @@ function initSocket() {
     var socketLocation = "ws://" + window.location.host + "/socket?file=" + filePath;
     var serverConnection = new WebSocket(socketLocation);
     serverConnection.onmessage = function(event) {
-        if (elmPermitHotswaps) {
+        if (elmPermitHotswaps && debuggerHandle.ports) {
             hotSwap(event.data);
         }
     };
