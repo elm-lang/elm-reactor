@@ -59,26 +59,21 @@ codeStyle = dataStyle ["Menlo for Powerline", "monospace"] 12
 -- View
 --
 
+myButton handle value name =
+    let img state = image 40 40 ("/" ++ name ++ "-button-" ++ state ++ ".png") in
+    customButton handle value (img "up") (img "hover") (img "down")
+
 playButton : Element
 playButton =
-    customButton pausedInput.handle False
-        (image 40 40 "/play-button.png")
-        (image 40 40 "/play-button-hover.png")
-        (image 40 40 "/play-button-click.png")
+    myButton pausedInput.handle False "play"
 
 pauseButton : Element
 pauseButton =
-    customButton pausedInput.handle True
-        (image 40 40 "/pause-button.png")
-        (image 40 40 "/pause-button-hover.png")
-        (image 40 40 "/pause-button-click.png")
+    myButton pausedInput.handle True "pause"
 
 restartButton : Element
 restartButton =
-    customButton restartInput.handle ()
-        (image 40 40 "/restart-button.png")
-        (image 40 40 "/restart-button-hover.png")
-        (image 40 40 "/restart-button-click.png")
+    myButton restartInput.handle () "restart"
 
 hotswapButton : Bool -> Element
 hotswapButton permitHotswap =
