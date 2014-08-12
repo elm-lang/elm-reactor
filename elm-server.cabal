@@ -16,21 +16,23 @@ Copyright:           Copyright: (c) 2011-2014 Evan Czaplicki
 
 Category:            Compiler, Language
 
-Build-type:          Simple
-Data-files:          assets/debuggerInterface.js
-                     assets/debugger.js
-                     assets/toString.js
-                     assets/debug-wrench-elm-server.png
-                     assets/favicon.ico
-                     assets/pause-button.png
-                     assets/pause-button-click.png
-                     assets/pause-button-hover.png
-                     assets/play-button.png
-                     assets/play-button-click.png
-                     assets/play-button-hover.png
-                     assets/restart-button.png
-                     assets/restart-button-click.png
-                     assets/restart-button-hover.png
+Build-type:          Custom
+
+Data-dir:            assets
+Data-files:          debuggerInterface.js
+                     debugger.js
+                     toString.js
+                     debug-wrench-elm-server.png
+                     favicon.ico
+                     pause-button.png
+                     pause-button-click.png
+                     pause-button-hover.png
+                     play-button.png
+                     play-button-click.png
+                     play-button-hover.png
+                     restart-button.png
+                     restart-button-click.png
+                     restart-button-hover.png
 
 Extra-source-files:  README.md
 Cabal-version:       >=1.8
