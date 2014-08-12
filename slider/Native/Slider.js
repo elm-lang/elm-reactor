@@ -68,7 +68,7 @@ Elm.Native.Slider.make = function(elm) {
         });
     }
 
-    return elm.Native.Slider.values =
-        { slider:F3(slider)
-        }
+    return elm.Native.Slider.values = {
+        slider:F3(slider)
+    };
 }
