@@ -52,7 +52,7 @@ buildInterface lbi =
                remove "build" "js"
             where
                 remove :: String -> String -> IO ()
-                remove dir ext = do
-                    let path = dir </> subdir </> file`replaceExtension` ext
-                        exists <- doesFileExist path
-                        when exists (removeFile path)
+                remove dir ext =
+                    do let path = dir </> subdir </> file`replaceExtension` ext
+                       exists <- doesFileExist path
+                       when exists (removeFile path)
