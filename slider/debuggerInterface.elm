@@ -119,8 +119,8 @@ scrubSlider (w,_) state =
         sliderStyle =
             { defaultSlider
             | length <- sliderLength
-            , max <- toFloat <| state.totalEvents
-            , value <- toFloat <| state.scrubPosition
+            , max <- toFloat state.totalEvents
+            , value <- toFloat state.scrubPosition
             }
     in  slider scrubInput.handle round sliderStyle
             |> container sliderLength 20 middle
@@ -130,11 +130,11 @@ sliderEventText w state =
     let textWidthOffset = 14
         scrubPosition = toFloat state.scrubPosition
         totalEvents = toFloat state.totalEvents
-        midWidth = (toFloat w) - sideMargin - textWidthOffset
+        midWidth = toFloat w - sideMargin - textWidthOffset
         leftDistance = 
             if  | totalEvents == 0 -> sideMargin/2 + textWidthOffset/2
                 | otherwise ->
-                    scrubPosition / totalEvents * midWidth + (sideMargin/2) + textWidthOffset/2
+                    scrubPosition / totalEvents * midWidth + sideMargin/2 + textWidthOffset/2
         xPos = absolute (round leftDistance)
         yPos = absolute (round (textHeight / 2))
         textPosition = middleAt xPos yPos
@@ -143,10 +143,15 @@ sliderEventText w state =
 
 sliderMinMaxText : Int -> State -> Element
 sliderMinMaxText w state =
-    let sliderStartText = container w textHeight topLeft
-            (textStyle "0" |> leftAligned)
-        sliderTotalEvents = container w textHeight topRight
-            (show state.totalEvents |> textStyle |> rightAligned)
+    let sliderStartText =
+            textStyle "0"
+                |> leftAligned
+                |> container w textHeight topLeft
+        sliderTotalEvents =
+            show state.totalEvents
+                |> textStyle
+                |> rightAligned
+                |> container w textHeight topRight
     in  flow outward
             [ sliderStartText
             , sliderTotalEvents
