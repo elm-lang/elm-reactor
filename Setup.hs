@@ -51,8 +51,8 @@ buildInterface lbi =
                remove "cache" "elmo"
                remove "build" "js"
             where
-              remove :: String -> String -> IO ()
-              remove dir ext = do
-                let path = dir </> subdir </> file`replaceExtension` ext
-                exists <- doesFileExist path
-                when exists (removeFile path)
+                remove :: String -> String -> IO ()
+                remove dir ext = do
+                    let path = dir </> subdir </> file`replaceExtension` ext
+                        exists <- doesFileExist path
+                        when exists (removeFile path)
