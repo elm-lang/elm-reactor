@@ -5,7 +5,6 @@ import Graphics.Input (..)
 import Graphics.Element as GE
 import Text (..)
 import Slider (..)
-import Debug
 
 --
 -- Model
@@ -27,7 +26,7 @@ type State =
 -- Style
 --
 
-objHeight = 40
+buttonHeight = 40
 buttonWidth = 40
 sideMargin = 2 * 20
 textHeight = 20
@@ -48,10 +47,10 @@ dataStyle typefaces height =
     in style myStyle . toText
 
 textStyle : String -> Text
-textStyle = dataStyle ["Gotham", "sans-serif"] 12
+textStyle = dataStyle ["Gotham", "Futura", "Lucida Grande", "sans-serif"] 12
 
 watchStyle : String -> Text
-watchStyle = dataStyle ["Gotham", "sans-serif"] 14
+watchStyle = dataStyle ["Gotham", "Futura", "Lucida Grande", "sans-serif"] 14
 
 codeStyle : String -> Text
 codeStyle = dataStyle ["Menlo for Powerline", "monospace"] 12
@@ -128,8 +127,7 @@ scrubSlider (w,_) state =
 
 sliderEventText : Int -> State -> Element
 sliderEventText w state =
-    let textHeight = 20
-        textWidthOffset = 14
+    let textWidthOffset = 14
         scrubPosition = toFloat state.scrubPosition
         totalEvents = toFloat state.totalEvents
         midWidth = (toFloat w) - sideMargin - textWidthOffset
@@ -143,8 +141,8 @@ sliderEventText w state =
         text' = show state.scrubPosition |> textStyle |> centered
     in  container w textHeight textPosition text'
 
-sliderInfoText : Int -> State -> Element
-sliderInfoText w state =
+sliderMinMaxText : Int -> State -> Element
+sliderMinMaxText w state =
     let sliderStartText = container w textHeight topLeft
             (textStyle "0" |> leftAligned)
         sliderTotalEvents = container w textHeight topRight
@@ -159,10 +157,9 @@ view (w,h) watches permitHotswap state =
     let midWidth = w - sideMargin
         topSpacerHeight = 15
         buttonSliderSpaceHeight = 10
-        controlsHeight = objHeight + 24 + topSpacerHeight + 2 * textHeight + buttonSliderSpaceHeight
         fittedHotSwapButton =
             hotswapButton permitHotswap
-            |> container (w - 2 * buttonWidth - sideMargin) objHeight middle
+            |> container (w - 2 * buttonWidth - sideMargin) buttonHeight middle
         buttons = flow right
             [ restartButton
             , fittedHotSwapButton
@@ -170,7 +167,7 @@ view (w,h) watches permitHotswap state =
             ]
         centeredSliderContainer = flow down
             [ scrubSlider (midWidth, h) state
-            , sliderInfoText midWidth state
+            , sliderMinMaxText midWidth state
             ]
             |> container w (24 + textHeight) midTop
         slider = flow down
@@ -178,7 +175,7 @@ view (w,h) watches permitHotswap state =
             , centeredSliderContainer
             ]
             |> container w (24 + 2* textHeight) midTop
-        buttonContainer = container w objHeight midTop buttons
+        buttonContainer = container w buttonHeight midTop buttons
         controls = flow down
             [ spacer midWidth topSpacerHeight
             , buttonContainer
