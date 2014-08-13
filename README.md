@@ -42,3 +42,18 @@ of a wrench. Click that and you go into debug mode! Now you can:
   * Pause your program, rewind, and continue from any point.
 
   * Add watches and traces to track and visualize values over time.
+
+#### Debug your own custom html file
+
+If you like to play around with special libraries or have some custom css, the standard server setup may not work for you. You will want to insert the debugger where it is best for your file. It's easy:
+
+First load the following script after you load the elm-runtime:
+```html
+<script type="text/javascript" src="/elm-runtime.js"></script>
+<script type="text/javascript" src="/debugger.js"></script>
+```
+Then, initiate your elm program with the debugger:
+```javascript
+var runningElmModule = Elm.debugFullscreen(Elm.Todo, "todo.elm");
+```
+where `"todo.elm"` is the filepath of the main elm file relative to where you run the server.

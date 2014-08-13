@@ -22,7 +22,6 @@ import Snap.Http.Server
 import Snap.Util.FileServe
 
 import Index
-import qualified Debugger
 import qualified Generate
 import qualified Socket
 import qualified Utils
@@ -110,11 +109,8 @@ serveElm =
      let doDebug = maybe False (const True) debugParam
      exists <- liftIO $ doesFileExist file
      guard (exists && takeExtension file == ".elm")
-     if doDebug
-       then withFile Debugger.ide
-       else do result <- liftIO $ Generate.html file
-               serveHtml result
-
+     result <- liftIO $ Generate.html file doDebug
+     serveHtml result
 
 serveAsset :: FilePath -> Snap ()
 serveAsset assetPath =
@@ -122,13 +118,24 @@ serveAsset assetPath =
      serveFile dataPath
 
 staticAssets :: [FilePath]
-staticAssets = [ "debug-wrench-elm-server.png"
-               , "debugger-interface-elm-server.html"
+staticAssets = [ "debuggerInterface.js"
+               , "debugger.js"
+               , "toString.js"
+               , "debug-wrench-elm-server.png"
                , "favicon.ico"
+               , "pause-button-up.png"
+               , "pause-button-down.png"
+               , "pause-button-hover.png"
+               , "play-button-up.png"
+               , "play-button-down.png"
+               , "play-button-hover.png"
+               , "restart-button-up.png"
+               , "restart-button-down.png"
+               , "restart-button-hover.png"
                ]
 
 serveAssets :: Snap ()
 serveAssets =
   do file <- BSC.unpack. rqPathInfo <$> getRequest
      guard (file `elem` staticAssets)
-     serveAsset $ "assets" </> file
+     serveAsset file

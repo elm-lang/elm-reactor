@@ -18,8 +18,8 @@ import qualified Elm.Internal.Utils as Elm
 
 -- | Using a page title and the full source of an Elm program, compile down to
 --   a valid HTML document.
-html :: FilePath -> IO H.Html
-html filePath =
+html :: FilePath -> Bool -> IO H.Html
+html filePath doDebug =
   do src <- readFile filePath
      compilerResult <- compile filePath
      return . buildPage $ formatResult src compilerResult
@@ -37,9 +37,19 @@ html filePath =
                    do preEscapedToMarkup (addSpaces line)
                       H.br
 
+    attachDebugger moduleName =
+      case doDebug of
+        True -> "Elm.debugFullscreen(" ++ moduleName ++ ", \"" ++ filePath ++ "\");"
+        False -> "Elm.fullscreen(" ++ moduleName ++ ");"
+
     runFullscreen src =
         let moduleName = "Elm." ++ fromMaybe "Main" (Elm.moduleName src)
-        in  "var runningElmModule = Elm.fullscreen(Elm.debuggerAttach(" ++  moduleName ++ "))"
+        in  "var runningElmModule = " ++ (attachDebugger moduleName)
+
+    insertDebuggerScript =
+      case doDebug of
+        True -> script ! A.src (H.toValue ("/debugger.js" :: String)) $ ""
+        False -> return ()
 
     buildPage content = H.docTypeHtml $ do
         H.head $ do
@@ -49,9 +59,11 @@ html filePath =
               ("a:link {text-decoration: none; color: rgb(15,102,230);}\n\
                \a:visited {text-decoration: none}\n\
                \a:active {text-decoration: none}\n\
-               \a:hover {text-decoration: underline; color: rgb(234,21,122);}" :: String)
+               \a:hover {text-decoration: underline; color: rgb(234,21,122);}\n\
+               \html,body {height: 100%; margin: 0px;}" :: String)
         H.body $ do
           script ! A.src (H.toValue ("/elm-runtime.js" :: String)) $ ""
+          insertDebuggerScript
           content
 
 -- | Creates the javascript for the elm program and returns it as a 
