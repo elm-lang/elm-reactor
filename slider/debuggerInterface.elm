@@ -153,14 +153,16 @@ sliderMinMaxText w state =
             , sliderTotalEvents
             ]
 
-view : (Int, Int) -> [(String, String)] -> Bool -> State -> Element
-view (w,h) watches permitHotswap state =
+view : Bool -> (Int, Int) -> [(String, String)] -> Bool -> State -> Element
+view showHotswap (w,h) watches permitHotswap state =
     let midWidth = w - sideMargin
         topSpacerHeight = 15
         buttonSliderSpaceHeight = 10
         fittedHotSwapButton =
-            hotswapButton permitHotswap
-            |> container (w - 2 * buttonWidth - sideMargin) buttonHeight middle
+            if  | showHotswap ->
+                    hotswapButton permitHotswap
+                        |> container (w - 2 * buttonWidth - sideMargin) buttonHeight middle
+                | otherwise -> spacer (2 * buttonWidth) 1
         buttons = flow right
             [ restartButton
             , fittedHotSwapButton
@@ -211,10 +213,10 @@ view (w,h) watches permitHotswap state =
 --
 
 main : Signal Element
-main = view <~ ((\(w, h) -> (panelWidth, h)) <~ Window.dimensions)
-             ~ watches
-             ~ permitHotswapInput.signal
-             ~ scene
+main = (view showHotswap) <~ ((\(w, h) -> (panelWidth, h)) <~ Window.dimensions)
+                           ~ watches
+                           ~ permitHotswapInput.signal
+                           ~ scene
 
 port scrubTo : Signal Int
 port scrubTo = .scrubPosition <~ scene
@@ -243,6 +245,8 @@ scrubInput = input 0
 port eventCounter : Signal Int
 
 port watches : Signal [(String, String)]
+
+port showHotswap : Bool
 
 scene : Signal State
 scene = foldp step startState aggregateUpdates
