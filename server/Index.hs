@@ -65,7 +65,7 @@ elmIndexGenerator d = do
             tm <- liftIO . getModificationTime $ d </> f
             writeS "<tr><td><a href=/"
             writeS $ d </> f
-            writeS "?debug><img title=\"Debug mode\" src=/_reactor/debugger-wrench-elm-server.png height=\"12\">"
+            writeS "?debug><img title=\"Debug mode\" src=/_reactor/wrench.png height=\"12\">"
             writeS "</a>&#8195;<a href="
             writeS f
             writeS ">"

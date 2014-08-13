@@ -22,7 +22,7 @@ Data-dir:            assets
 Data-files:          favicon.ico
                      debugger.js
                      _reactor/toString.js
-                     _reactor/debugger-wrench-elm-server.png
+                     _reactor/wrench.png
                      _reactor/debuggerInterface.js
                      _reactor/debugger/pause-button-up.png
                      _reactor/debugger/pause-button-down.png
