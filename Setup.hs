@@ -18,7 +18,19 @@ myPostBuild :: Args -> BuildFlags -> PackageDescription -> LocalBuildInfo -> IO 
 myPostBuild args flags pd lbi =
     do putStrLn "Custom build step: compiling debuggerInterface.elm"
        buildInterface lbi
+       concatJS lbi
        postBuild simpleUserHooks args flags pd lbi
+
+concatJS :: LocalBuildInfo -> IO ()
+concatJS lbi =
+  do let files = map ("assets" </>)
+          [ "_reactor" </> "debuggerInterface.js"
+          , "_reactor" </> "toString.js"
+          , "debug-core.js"
+          ]
+     megaJS <- concat `fmap` mapM readFile files
+     _ <- putStrLn "Writing composite debugger.js"
+     writeFile ("assets" </> "debugger.js") megaJS
 
 buildInterface :: LocalBuildInfo -> IO ()
 buildInterface lbi =

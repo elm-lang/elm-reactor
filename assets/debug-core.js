@@ -1,3 +1,7 @@
+// A note to the reader:
+// This file is concatenated with debuggerInterface.elm's compiled
+// javascript and toString.js. This is done at build time in Setup.hs
+
 var elmDebugger = {
     restart: function() {},
     pause: function() {},
@@ -96,60 +100,43 @@ Elm.debugFullscreen = function(module, moduleFile, hotSwapState /* =undefined */
 }
 
 function initDebugger() {
-    // Load the compiled elm for the debugging panel
-    var head = document.getElementsByTagName('head')[0];
-    var debuggerScript = document.createElement("script");
-    debuggerScript.type = "text/javascript";
-    debuggerScript.src = "/_reactor/debuggerInterface.js";
-    debuggerScript.onreadystatechange = onload;
-    debuggerScript.onload = onload;
-
-    // Load the js for our custom toString function
-    var toStringScript = document.createElement("script");
-    toStringScript.type = "text/javascript";
-    toStringScript.src = "/_reactor/toString.js";
-
-    function onload() {
-        function scrubber(position) {
-            if (elmDebugger.getPaused()) {
-                elmDebugger.stepTo(position);
-                sendWatches(position);
-            }
+    function scrubber(position) {
+        if (elmDebugger.getPaused()) {
+            elmDebugger.stepTo(position);
+            sendWatches(position);
         }
+    }
 
-        function elmPauser(doPause) {
-            if (doPause) {
-              elmDebugger.pause();
-            } else {
-                elmDebugger.kontinue();
-            }
-            elmPauseState = doPause;
+    function elmPauser(doPause) {
+        if (doPause) {
+          elmDebugger.pause();
+        } else {
+            elmDebugger.kontinue();
         }
+        elmPauseState = doPause;
+    }
 
-        function elmRestart() {
-            elmDebugger.restart();
-            sendWatches(0);
-        }
+    function elmRestart() {
+        elmDebugger.restart();
+        sendWatches(0);
+    }
 
-        function elmHotswap(permitHotswaps) {
-            elmPermitHotswaps = permitHotswaps;
-        }
+    function elmHotswap(permitHotswaps) {
+        elmPermitHotswaps = permitHotswaps;
+    }
 
-        var debugTools = createDebuggingElement();
-        document.body.appendChild(debugTools);
-        var debuggerDiv = document.getElementById("elmDebugger");
+    var debugTools = createDebuggingElement();
+    document.body.appendChild(debugTools);
+    var debuggerDiv = document.getElementById("elmDebugger");
 
-        debuggerHandle = Elm.embed(Elm.DebuggerInterface, debuggerDiv,
-            { eventCounter: 0,
-              watches: []
-            });
-        debuggerHandle.ports.scrubTo.subscribe(scrubber);
-        debuggerHandle.ports.pause.subscribe(elmPauser);
-        debuggerHandle.ports.restart.subscribe(elmRestart);
-        debuggerHandle.ports.permitHotswap.subscribe(elmHotswap);
-    };
-    head.appendChild(toStringScript);
-    head.appendChild(debuggerScript);
+    debuggerHandle = Elm.embed(Elm.DebuggerInterface, debuggerDiv,
+        { eventCounter: 0,
+          watches: []
+        });
+    debuggerHandle.ports.scrubTo.subscribe(scrubber);
+    debuggerHandle.ports.pause.subscribe(elmPauser);
+    debuggerHandle.ports.restart.subscribe(elmRestart);
+    debuggerHandle.ports.permitHotswap.subscribe(elmHotswap);
 }
 
 parent.window.addEventListener("message", function(e) {
@@ -176,6 +163,8 @@ function sendWatches(position) {
 
     for(key in watchAtPoint) {
         var value = watchAtPoint[key];
+        // The toString object is defined in toString.js
+        // and is prepended to this file at build time.
         var stringified = toString.pretty(value, separator);
         output.push([key, stringified]);
     }
