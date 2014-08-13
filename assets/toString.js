@@ -54,8 +54,7 @@ var toString = function(v, separator) {
                 output += ",\n" + toString(v._0, separator);
                 v = v._1;
             }
-            output += '\n]';
-            return output.replace(/\n/g,"\n" + separator);
+            return output.replace(/\n/g,"\n" + separator) + "\n]";
         } else if (v.ctor === "[]") {
             return "[]";
         } else if (v.ctor === "RBNode" || v.ctor === "RBEmpty") {
