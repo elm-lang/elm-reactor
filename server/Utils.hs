@@ -3,6 +3,7 @@ module Utils where
 import System.Directory (doesFileExist)
 import System.Environment (getEnv)
 import System.FilePath ((</>))
+import System.IO.Error (tryIOError)
 import qualified Paths_elm_server as This
 
 -- |The absolute path to a data file

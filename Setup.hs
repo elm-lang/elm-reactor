@@ -22,37 +22,36 @@ myPostBuild args flags pd lbi =
 
 buildInterface :: LocalBuildInfo -> IO ()
 buildInterface lbi =
-    do exitCode <- compile $ args "slider" "debuggerInterface.elm" "assets"
+    do exitCode <- compile $ args "debuggerInterface.elm"
        case exitCode of
             ExitFailure _ ->
                 putStrLn "Build failed: debuggerInterface"
             ExitSuccess ->
-                do handle <- runCommand "mv assets/slider/debuggerInterface.js assets/"
+                do handle <- runCommand "mv slider/build/debuggerInterface.js assets/"
                    mvExit <- waitForProcess handle
                    return ()
        removeEverything "slider" "Slider.elm"
        removeEverything "slider" "debuggerInterface.elm"
     where
-        args indir infile outdir =
+        args file =
             [ "--make"
             , "--only-js"
-            , "--build-dir=" ++ outdir
-            , "--src-dir=" ++ indir
-            , indir </> infile
+            , file
             ]
 
         compile args =
-            do handle <- runProcess "elm" args Nothing Nothing Nothing Nothing Nothing
+            do let workingDir = Just "slider"
+               handle <- runProcess "elm" args workingDir Nothing Nothing Nothing Nothing
                exitCode <- waitForProcess handle
                return exitCode
 
-        removeEverything subdir file =
+        removeEverything dir file =
             do remove "cache" "elmi"
                remove "cache" "elmo"
                remove "build" "js"
             where
                 remove :: String -> String -> IO ()
-                remove dir ext =
+                remove subdir ext =
                     do let path = dir </> subdir </> file`replaceExtension` ext
                        exists <- doesFileExist path
                        when exists (removeFile path)
