@@ -258,13 +258,17 @@ step update state = case update of
     Restart ->
         startState
     Pause doPause ->
-        { state | paused <- doPause }
+        { state | paused <-
+                    doPause
+                , totalEvents <-
+                    if  | not doPause -> state.scrubPosition
+                        | otherwise -> state.totalEvents }
     TotalEvents events ->
         { state | totalEvents <- events
-                , scrubPosition <- events}
+                , scrubPosition <- events }
     ScrubPosition pos ->
         { state | scrubPosition <- pos
-                , paused <- True}
+                , paused <- True }
 
 aggregateUpdates : Signal Update
 aggregateUpdates = merges
