@@ -123,19 +123,19 @@ staticAssets = [ "debuggerInterface.js"
                , "toString.js"
                , "debug-wrench-elm-server.png"
                , "favicon.ico"
-               , "pause-button-up.png"
-               , "pause-button-down.png"
-               , "pause-button-hover.png"
-               , "play-button-up.png"
-               , "play-button-down.png"
-               , "play-button-hover.png"
-               , "restart-button-up.png"
-               , "restart-button-down.png"
-               , "restart-button-hover.png"
+               , "debugger/reactor-pause-button-up.png"
+               , "debugger/reactor-pause-button-down.png"
+               , "debugger/reactor-pause-button-hover.png"
+               , "debugger/reactor-play-button-up.png"
+               , "debugger/reactor-play-button-down.png"
+               , "debugger/reactor-play-button-hover.png"
+               , "debugger/reactor-restart-button-up.png"
+               , "debugger/reactor-restart-button-down.png"
+               , "debugger/reactor-restart-button-hover.png"
                ]
 
 serveAssets :: Snap ()
 serveAssets =
-  do file <- BSC.unpack. rqPathInfo <$> getRequest
+  do file <- BSC.unpack . rqPathInfo <$> getRequest
      guard (file `elem` staticAssets)
      serveAsset file
