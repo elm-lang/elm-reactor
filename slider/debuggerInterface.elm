@@ -160,7 +160,7 @@ view showHotswap (w,h) watches permitHotswap state =
         fittedHotSwapButton =
             if  | showHotswap ->
                     hotswapButton permitHotswap
-                    |> container (w - 2 * buttonWidth - sideMargin) buttonHeight middle
+                        |> container (w - 2 * buttonWidth - sideMargin) buttonHeight middle
                 | otherwise -> spacer (2 * buttonWidth) 1
         buttons = flow right
             [ restartButton
