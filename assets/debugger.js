@@ -226,8 +226,7 @@ function hotSwap(raw) {
             // The div that rejects events must be after Elm
             var ignoringDiv = document.getElementById("elmEventIgnorer");
             if (ignoringDiv) {
-                var lastChild = newMainNode.children[newMainNode.children.length - 1];
-                newMainNode.insertBefore(lastChild,ignoringDiv);
+                ignoringDiv.parentNode.appendChild(ignoringDiv);
             }
         }
         else {
