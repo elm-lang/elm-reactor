@@ -142,7 +142,7 @@ function initDebugger() {
         debuggerHandle = Elm.embed(Elm.DebuggerInterface, debuggerDiv,
             { eventCounter: 0,
               watches: [],
-              showHotswap: false
+              showHotswap: true
             });
         debuggerHandle.ports.scrubTo.subscribe(scrubber);
         debuggerHandle.ports.pause.subscribe(elmPauser);
