@@ -118,24 +118,24 @@ serveAsset assetPath =
      serveFile dataPath
 
 staticAssets :: [FilePath]
-staticAssets = [ "debuggerInterface.js"
+staticAssets = [ "favicon.ico"
                , "debugger.js"
-               , "toString.js"
-               , "debug-wrench-elm-server.png"
-               , "favicon.ico"
-               , "pause-button-up.png"
-               , "pause-button-down.png"
-               , "pause-button-hover.png"
-               , "play-button-up.png"
-               , "play-button-down.png"
-               , "play-button-hover.png"
-               , "restart-button-up.png"
-               , "restart-button-down.png"
-               , "restart-button-hover.png"
+               , "_reactor/debuggerInterface.js"
+               , "_reactor/toString.js"
+               , "_reactor/debugger-wrench-elm-server.png"
+               , "_reactor/debugger/pause-button-up.png"
+               , "_reactor/debugger/pause-button-down.png"
+               , "_reactor/debugger/pause-button-hover.png"
+               , "_reactor/debugger/play-button-up.png"
+               , "_reactor/debugger/play-button-down.png"
+               , "_reactor/debugger/play-button-hover.png"
+               , "_reactor/debugger/restart-button-up.png"
+               , "_reactor/debugger/restart-button-down.png"
+               , "_reactor/debugger/restart-button-hover.png"
                ]
 
 serveAssets :: Snap ()
 serveAssets =
-  do file <- BSC.unpack. rqPathInfo <$> getRequest
+  do file <- BSC.unpack . rqPathInfo <$> getRequest
      guard (file `elem` staticAssets)
      serveAsset file
