@@ -100,14 +100,14 @@ function initDebugger() {
     var head = document.getElementsByTagName('head')[0];
     var debuggerScript = document.createElement("script");
     debuggerScript.type = "text/javascript";
-    debuggerScript.src = "/debuggerInterface.js";
+    debuggerScript.src = "/_reactor/debuggerInterface.js";
     debuggerScript.onreadystatechange = onload;
     debuggerScript.onload = onload;
 
     // Load the js for our custom toString function
     var toStringScript = document.createElement("script");
     toStringScript.type = "text/javascript";
-    toStringScript.src = "/toString.js";
+    toStringScript.src = "/_reactor/toString.js";
 
     function onload() {
         function scrubber(position) {

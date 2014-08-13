@@ -61,7 +61,7 @@ codeStyle = dataStyle ["Menlo for Powerline", "monospace"] 12
 
 myButton : Handle a -> a -> String -> Element
 myButton handle value name =
-    let img state = image 40 40 ("/debugger/reactor-" ++ name ++ "-button-" ++ state ++ ".png")
+    let img state = image 40 40 ("/_reactor/debugger-" ++ name ++ "-button-" ++ state ++ ".png")
     in  customButton handle value (img "up") (img "hover") (img "down")
 
 playButton : Element

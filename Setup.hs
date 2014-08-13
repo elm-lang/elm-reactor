@@ -27,7 +27,7 @@ buildInterface lbi =
             ExitFailure _ ->
                 putStrLn "Build failed: debuggerInterface"
             ExitSuccess ->
-                do handle <- runCommand "mv slider/build/debuggerInterface.js assets/"
+                do handle <- runCommand "mv slider/build/debuggerInterface.js assets/_reactor/"
                    mvExit <- waitForProcess handle
                    return ()
        removeEverything "slider" "Slider.elm"
