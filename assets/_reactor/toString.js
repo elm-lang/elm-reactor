@@ -1,3 +1,7 @@
+// A note to the reader:
+// This file is concatenated with debuggerInterface.elm's compiled
+// javascript and debug-core.js. This is done at build time in Setup.hs
+
 var toString = function(){
 
 var exports = {};

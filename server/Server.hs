@@ -120,8 +120,6 @@ serveAsset assetPath =
 staticAssets :: [FilePath]
 staticAssets = [ "favicon.ico"
                , "debugger.js"
-               , "_reactor/debuggerInterface.js"
-               , "_reactor/toString.js"
                , "_reactor/wrench.png"
                , "_reactor/debugger/pause-button-up.png"
                , "_reactor/debugger/pause-button-down.png"
