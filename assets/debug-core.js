@@ -19,9 +19,7 @@ Elm.debugFullscreen = function(module, moduleFile, hotSwapState /* =undefined */
     var mainHandle = {};
     var debuggerHandle = {};
     var createdSocket = false;
-    var filePath;
 
-    var elmPauseState = false;
     var elmPermitHotswaps = true;
 
     var ELM_MAIN_ID = "elmMain";
@@ -106,7 +104,6 @@ Elm.debugFullscreen = function(module, moduleFile, hotSwapState /* =undefined */
             } else {
                 elmDebugger.kontinue();
             }
-            elmPauseState = doPause;
         }
 
         function elmRestart() {
@@ -167,8 +164,8 @@ Elm.debugFullscreen = function(module, moduleFile, hotSwapState /* =undefined */
     function initSocket() {
         createdSocket = true;
         // "/todo.html" => "todo.elm"
-        filePath = filePath || window.location.pathname.substr(1).split(".")[0] + ".elm";
-        var socketLocation = "ws://" + window.location.host + "/socket?file=" + filePath;
+        moduleFile = moduleFile || window.location.pathname.substr(1).split(".")[0] + ".elm";
+        var socketLocation = "ws://" + window.location.host + "/socket?file=" + moduleFile;
         var serverConnection = new WebSocket(socketLocation);
         serverConnection.onmessage = function(event) {
             if (elmPermitHotswaps && debuggerHandle.ports) {
@@ -228,7 +225,6 @@ Elm.debugFullscreen = function(module, moduleFile, hotSwapState /* =undefined */
         }
     }
 
-    filePath = moduleFile;
     initDebugger();
     mainHandle = Elm.fullscreen(Elm.debuggerAttach(module, hotSwapState));
     return mainHandle;
