@@ -3,7 +3,7 @@
 // This file is concatenated with debuggerInterface.elm's compiled
 // javascript and debug-core.js. This is done at build time in Setup.hs
 
-var toString = function(){
+var prettyPrint = function(){
 
     var independentElm = {};
     var NList = Elm.Native.List.make(independentElm);
@@ -12,7 +12,7 @@ var toString = function(){
     var Dict = Elm.Dict.make(independentElm);
     var Tuple2 = Elm.Native.Utils.make(independentElm).Tuple2;
 
-    var prettyPrint = function(v, separator) {
+    var toString = function(v, separator) {
         var type = typeof v;
         if (type === "function") {
             var name = v.func ? v.func.name : v.name;
@@ -119,5 +119,5 @@ var toString = function(){
         return true;
     }
 
-    return prettyPrint;
+    return toString;
 }();

@@ -155,7 +155,7 @@ Elm.debugFullscreen = function(module, moduleFile, hotSwapState /* =undefined */
             var value = watchAtPoint[key];
             // The toString object is defined in toString.js
             // and is prepended to this file at build time.
-            var stringified = toString(value, separator);
+            var stringified = prettyPrint(value, separator);
             output.push([key, stringified]);
         }
         debuggerHandle.ports.watches.send(output);
