@@ -88,7 +88,6 @@ Elm.debugFullscreen = function(module, moduleFile, hotSwapState /* =undefined */
         return debugTools;
     }
 
-
     function initDebugger() {
         function scrubber(position) {
             if (mainHandle.debugger.getPaused()) {
@@ -120,7 +119,8 @@ Elm.debugFullscreen = function(module, moduleFile, hotSwapState /* =undefined */
 
         var handle = Elm.embed(Elm.DebuggerInterface, debuggerDiv,
             { eventCounter: 0,
-              watches: []
+              watches: [],
+              showHotswap: true
             });
         handle.ports.scrubTo.subscribe(scrubber);
         handle.ports.pause.subscribe(elmPauser);
