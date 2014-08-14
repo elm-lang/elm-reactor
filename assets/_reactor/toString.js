@@ -1,10 +1,9 @@
+
 // A note to the reader:
 // This file is concatenated with debuggerInterface.elm's compiled
 // javascript and debug-core.js. This is done at build time in Setup.hs
 
 var toString = function(){
-
-var exports = {};
 
 var independentElm = {};
 var NList = Elm.Native.List.make(independentElm);
@@ -13,7 +12,7 @@ var ElmArray = Elm.Array.make(independentElm);
 var Dict = Elm.Dict.make(independentElm);
 var Tuple2 = Elm.Native.Utils.make(independentElm).Tuple2;
 
-var toString = function(v, separator) {
+var prettyPrint = function(v, separator) {
     var type = typeof v;
     if (type === "function") {
         var name = v.func ? v.func.name : v.name;
@@ -120,8 +119,5 @@ function probablyPublic(v) {
     return true;
 }
 
-return exports = {
-    pretty : toString
-};
-
+return prettyPrint;
 }();
