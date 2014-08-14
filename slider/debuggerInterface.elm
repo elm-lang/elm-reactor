@@ -153,8 +153,8 @@ sliderMinMaxText w state =
             , sliderTotalEvents
             ]
 
-view : Bool -> (Int, Int) -> [(String, String)] -> Bool -> State -> Element
-view showHotswap (w,h) watches permitHotswap state =
+view : (Int, Int) -> [(String, String)] -> Bool -> State -> Element
+view (w,h) watches permitHotswap state =
     let midWidth = w - sideMargin
         topSpacerHeight = 15
         buttonSliderSpaceHeight = 10
@@ -213,10 +213,10 @@ view showHotswap (w,h) watches permitHotswap state =
 --
 
 main : Signal Element
-main = (view showHotswap) <~ ((\(w, h) -> (panelWidth, h)) <~ Window.dimensions)
-                           ~ watches
-                           ~ permitHotswapInput.signal
-                           ~ scene
+main = view <~ ((\(w, h) -> (panelWidth, h)) <~ Window.dimensions)
+             ~ watches
+             ~ permitHotswapInput.signal
+             ~ scene
 
 port scrubTo : Signal Int
 port scrubTo = .scrubPosition <~ scene
