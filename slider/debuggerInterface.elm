@@ -308,15 +308,15 @@ roundedSquare side radius toForm =
 noWatches : Element
 noWatches = [markdown|
 
-### <span style="font-family: Gotham; font-size: 12pt; color: rgb(170,170,170)"> You don't have any watches! </span>
+### <span style="font-family: Gotham, Futura, 'Lucida Grande', sans-serif; font-size: 12pt; color: rgb(170,170,170)"> You don't have any watches! </span>
 
 <span style="color: rgb(170,170,170)">
-<span style="font-family: Gotham; font-size: 10pt; color: rgb(170,170,170)">
+<span style="font-family: Gotham, Futura, 'Lucida Grande', sans-serif; font-size: 10pt; color: rgb(170,170,170)">
 Use [<span style="text-decoration:underline; color: rgb(170,170,170)">Debug.watch</span>](http://library.elm-lang.org/catalog/elm-lang-Elm/0.12.3/Debug#watch)
 to show any value. <br>
 `watch : String -> a -> a`</span>
 
-<span style="font-family: Gotham; font-size: 10pt; color: rgb(170,170,170)">
+<span style="font-family: Gotham, Futura, 'Lucida Grande', sans-serif; font-size: 10pt; color: rgb(170,170,170)">
 Use [<span style="text-decoration:underline; color: rgb(170,170,170)">Debug.watchSummary</span>](http://library.elm-lang.org/catalog/elm-lang-Elm/0.12.3/Debug#watchSummary) to show a <br>
 summary or subvalue of any value. </span><br>
 |]
