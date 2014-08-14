@@ -159,8 +159,10 @@ view (w,h) watches permitHotswap state =
         topSpacerHeight = 15
         buttonSliderSpaceHeight = 10
         fittedHotSwapButton =
-            hotswapButton permitHotswap
-            |> container (w - 2 * buttonWidth - sideMargin) buttonHeight middle
+            if  | showHotswap ->
+                    hotswapButton permitHotswap
+                        |> container (w - 2 * buttonWidth - sideMargin) buttonHeight middle
+                | otherwise -> spacer (2 * buttonWidth) 1
         buttons = flow right
             [ restartButton
             , fittedHotSwapButton
@@ -243,6 +245,8 @@ scrubInput = input 0
 port eventCounter : Signal Int
 
 port watches : Signal [(String, String)]
+
+port showHotswap : Bool
 
 scene : Signal State
 scene = foldp step startState aggregateUpdates
