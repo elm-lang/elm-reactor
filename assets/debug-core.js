@@ -4,28 +4,27 @@
 
 Elm.debugFullscreen = function(module, moduleFile, hotSwapState /* =undefined */) {
 
-    var elmDebugger = {
-        restart: function() {},
-        pause: function() {},
-        kontinue: function() {},
-        getMaxSteps: function() { return 0; },
-        stepTo: function(i) {},
-        getPaused: function() { return false; },
-        dispose: function() {},
-        getHotSwapState: function() { return null; },
-        watchTracker: { frames:[{}] }
-    };
-
-    var mainHandle = {};
-    var debuggerHandle = {};
     var createdSocket = false;
-
     var elmPermitHotswaps = true;
 
     var ELM_MAIN_ID = "elmMain";
     var ELM_DEBUGGER_ID = "elmToolPanel";
     var ELM_DARK_GREY = "#4A4A4A";
     var ELM_LIGHT_GREY = "#E4E4E4";
+
+    var mainHandle = Elm.fullscreenDebugHooks(module, hotSwapState);
+    var debuggerHandle = initDebugger();
+    initSocket();
+
+    parent.window.addEventListener("message", function(e) {
+        if (e.data === "elmNotify") {
+            var currentPosition = mainHandle.debugger.getMaxSteps();
+            if (debuggerHandle.ports) {
+                debuggerHandle.ports.eventCounter.send(currentPosition);
+                sendWatches(currentPosition);
+            }
+        }
+    }, false);
 
     function createMainElement() {
         var mainDiv = document.createElement("div");
@@ -91,22 +90,22 @@ Elm.debugFullscreen = function(module, moduleFile, hotSwapState /* =undefined */
 
     function initDebugger() {
         function scrubber(position) {
-            if (elmDebugger.getPaused()) {
-                elmDebugger.stepTo(position);
+            if (mainHandle.debugger.getPaused()) {
+                mainHandle.debugger.stepTo(position);
                 sendWatches(position);
             }
         }
 
         function elmPauser(doPause) {
             if (doPause) {
-              elmDebugger.pause();
+              mainHandle.debugger.pause();
             } else {
-                elmDebugger.kontinue();
+                mainHandle.debugger.kontinue();
             }
         }
 
         function elmRestart() {
-            elmDebugger.restart();
+            mainHandle.debugger.restart();
             sendWatches(0);
         }
 
@@ -118,38 +117,23 @@ Elm.debugFullscreen = function(module, moduleFile, hotSwapState /* =undefined */
         document.body.appendChild(debugTools);
         var debuggerDiv = document.getElementById("elmDebugger");
 
-        debuggerHandle = Elm.embed(Elm.DebuggerInterface, debuggerDiv,
+        var handle = Elm.embed(Elm.DebuggerInterface, debuggerDiv,
             { eventCounter: 0,
               watches: [],
               showHotswap: true
             });
-        debuggerHandle.ports.scrubTo.subscribe(scrubber);
-        debuggerHandle.ports.pause.subscribe(elmPauser);
-        debuggerHandle.ports.restart.subscribe(elmRestart);
-        debuggerHandle.ports.permitHotswap.subscribe(elmHotswap);
+        handle.ports.scrubTo.subscribe(scrubber);
+        handle.ports.pause.subscribe(elmPauser);
+        handle.ports.restart.subscribe(elmRestart);
+        handle.ports.permitHotswap.subscribe(elmHotswap);
+        return handle;
     }
-
-    parent.window.addEventListener("message", function(e) {
-        if (e.data === "elmDebuggerInit") {
-            elmDebugger = Elm.Debugger;
-            if (!createdSocket) {
-                initSocket();
-            }
-        } else if (e.data === "elmNotify") {
-            var currentPosition = elmDebugger.getMaxSteps();
-            if (debuggerHandle.ports) {
-                debuggerHandle.ports.eventCounter.send(currentPosition);
-                sendWatches(currentPosition);
-            }
-        }
-    }, false);
-
 
     function sendWatches(position) {
         var separator = "  ";
         var output = [];
 
-        var watchAtPoint = elmDebugger.watchTracker.frames[position];
+        var watchAtPoint = mainHandle.debugger.watchTracker.frames[position];
 
         for(key in watchAtPoint) {
             var value = watchAtPoint[key];
@@ -191,16 +175,12 @@ Elm.debugFullscreen = function(module, moduleFile, hotSwapState /* =undefined */
             window.eval(js);
             var moduleStr = js.match(/(Elm\..+)\ =\ \1/)[1];
             var module = window.eval(moduleStr);
-            if (Elm.Debugger) {
-                var debuggerState = Elm.Debugger.getHotSwapState();
+            if (mainHandle.debugger) {
+                var debuggerState = mainHandle.debugger.getHotSwapState();
+                mainHandle.debugger.dispose();
                 mainHandle.dispose();
-                Elm.Debugger.dispose();
 
-                var newMainNode = createMainElement();
-                debuggerDiv.parentElement.appendChild(newMainNode);
-
-                var wrappedModule = Elm.debuggerAttach(module, debuggerState);
-                mainHandle = Elm.embed(wrappedModule, newMainNode);
+                mainHandle = Elm.fullscreenDebugHooks(module, debuggerState);
 
                 // The div that rejects events must be after Elm
                 var ignoringDiv = document.getElementById("elmEventIgnorer");
@@ -225,7 +205,5 @@ Elm.debugFullscreen = function(module, moduleFile, hotSwapState /* =undefined */
         }
     }
 
-    initDebugger();
-    mainHandle = Elm.fullscreen(Elm.debuggerAttach(module, hotSwapState));
     return mainHandle;
 }
