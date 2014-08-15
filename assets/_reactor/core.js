@@ -17,7 +17,6 @@ ElmRuntime.debugFullscreenWithOptions = function(options) {
         var createdSocket = false;
         var elmPermitHotswaps = true;
 
-        var ELM_MAIN_ID = "elmMain";
         var ELM_DEBUGGER_ID = "elmToolPanel";
         var ELM_DARK_GREY = "#4A4A4A";
         var ELM_LIGHT_GREY = "#E4E4E4";
@@ -37,14 +36,6 @@ ElmRuntime.debugFullscreenWithOptions = function(options) {
                 }
             }
         }, false);
-
-        function createMainElement() {
-            var mainDiv = document.createElement("div");
-            mainDiv.id = ELM_MAIN_ID;
-            mainDiv.style.width = "100%";
-            mainDiv.style.height = "100%";
-            return mainDiv;
-        }
 
         function createDebuggingElement() {
             var debuggingPanelExpanded = true;
@@ -212,8 +203,7 @@ ElmRuntime.debugFullscreenWithOptions = function(options) {
                 errorNode.style.top = "0px";
                 errorNode.style.background = ELM_LIGHT_GREY;
 
-                var mainNode = document.getElementById(ELM_MAIN_ID);
-                mainNode.parentElement.appendChild(errorNode);
+                document.body.appendChild(errorNode);
             }
         }
 
