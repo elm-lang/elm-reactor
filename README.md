@@ -11,14 +11,15 @@ programs. Key features include:
 [hot-swapping]: http://elm-lang.org/blog/Interactive-Programming.elm
 [debug]: http://debug.elm-lang.org
 
+This means you can get a great development experience whether you are using
+Sublime Text, emacs, vim, or whatever else to edit Elm code.
+
 #### Install
 
 It is bundled with [Elm Platform][platform]. That will give you everything you
 need and is the recommended route.
 
-If you are building Elm tools from source, you can install it individually with
-`cabal install elm-reactor`.
-
+[platform]: https://github.com/elm-lang/elm-platform
 
 #### Use
 
