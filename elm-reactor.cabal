@@ -1,9 +1,10 @@
-Name:                elm-server
+Name:                elm-reactor
 Version:             0.11.0.1
-Synopsis:            Server for developing Elm projects
-Description:         Provides a standalone Snap server that serves static files.
-                     For Elm files, it recompiles them and serves them as HTML,
-                     so you can just refresh to see the new version.
+Synopsis:            Interactive development tool for Elm programs
+Description:         Provides an interactive development tool that makes it easy
+                     to develop and debug Elm programs. It will automatically
+                     compile any Elm program—independent of editor. It permits
+                     hot-swapping and time-traveling debugging.
 
 Homepage:            http://elm-lang.org
 
@@ -37,9 +38,9 @@ Cabal-version:       >=1.8
 
 source-repository head
   type:     git
-  location: git://github.com/elm-lang/elm-server.git
+  location: git://github.com/elm-lang/elm-reactor.git
 
-Executable elm-server
+Executable elm-reactor
   Main-is:             Server.hs
   other-modules:       Index
   Build-depends:       base >=4.2 && <5,
