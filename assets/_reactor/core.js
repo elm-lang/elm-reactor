@@ -219,4 +219,4 @@ ElmRuntime.debugFullscreenWithOptions = function(options) {
 
         return mainHandle;
     };
-}
+};
