@@ -15,7 +15,7 @@ import System.Directory
 import System.FilePath
 import System.Process
 import System.IO (hGetContents)
-import Paths_elm_server (version)
+import Paths_elm_reactor (version)
 import qualified Elm.Internal.Paths as Elm
 import Snap.Core
 import Snap.Http.Server
