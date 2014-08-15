@@ -24,10 +24,10 @@ else it needs.
 ## Use
 
 Navigate to the Elm project you want to work on. A great project to get started
-with is [michaelbjames/elm-examples][examples] which contains a simple Mario
-game and todo list app, both setup to be fun to debug.
+with is [elm-examples][] which contains a simple Mario game and todo list app,
+both setup to be fun to debug.
 
-[examples]: https://github.com/michaelbjames/elm-examples
+[elm-examples]: https://github.com/michaelbjames/elm-examples
 
 In the root of your Elm project start the reactor with:
 
