@@ -112,7 +112,6 @@ compile filePath =
     removeEverything dir file =
         do remove "cache" "elmi"
            remove "cache" "elmo"
-           remove "build" "js"
         where
           remove :: String -> String -> IO ()
           remove subdir ext = do
