@@ -23,17 +23,24 @@ else it needs.
 
 ## Use
 
-Navigate to the Elm project you want to work on. In that directory run:
+Navigate to the Elm project you want to work on. A great project to get started
+with is [michaelbjames/elm-examples][examples] which contains a simple Mario
+game and todo list app, both setup to be fun to debug.
+
+[examples]: https://github.com/michaelbjames/elm-examples
+
+In the root of your Elm project start the reactor with:
 
 ```bash
 elm-reactor
 ```
 
-Now navigate to [http://localhost:8000](http://localhost:8000) which will show
-a navigation page, letting you view any files in your project.
+Now open [http://localhost:8000](http://localhost:8000) in your browser. You
+should see a navigation page for your project.
 
-If you want to use a different port, use the `--port` flag (e.g. `elm-reactor
---port 8080`).
+Click on any file to see what it looks like. For example, you can navigate to
+an Elm file and try it out. If you modify the file, you can just refresh that
+page and see the new version!
 
 #### Time Travel Debugging
 
@@ -44,7 +51,7 @@ start your Elm program with a control panel that lets you:
 
   * Add watches and traces to track and visualize values over time.
 
-  * Hot-swap in new code at any time, maintaining all recorded events. *See* what happens when you change your program.
+  * Hot-swap in new code at any time, maintaining all recorded events.
 
 
 #### Debugging code embedded in HTML
