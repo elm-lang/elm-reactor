@@ -1,5 +1,5 @@
 Name:                elm-reactor
-Version:             0.11.0.1
+Version:             0.1
 Synopsis:            Interactive development tool for Elm programs
 Description:         Provides an interactive development tool that makes it easy
                      to develop and debug Elm programs. It will automatically
