@@ -95,11 +95,9 @@ compile filePath =
      stderr <- exitCode `seq` hGetContents herr
      case exitCode of
        ExitFailure _ ->
-         do removeEverything directory fileName
-            return (Left (stdout ++ stderr))
+         do return (Left (stdout ++ stderr))
        ExitSuccess ->
          do result <- readFile (directory </> "build" </> fileName `replaceExtension` "js")
-            length result `seq` (removeEverything directory fileName)
             return (Right result)
   where
     (directory, fileName) = splitFileName filePath
@@ -108,14 +106,3 @@ compile filePath =
         , "--only-js"
         , file
         ]
-    removeEverything :: FilePath -> FilePath -> IO ()
-    removeEverything dir file =
-        do remove "cache" "elmi"
-           remove "cache" "elmo"
-           remove "build" "js"
-        where
-          remove :: String -> String -> IO ()
-          remove subdir ext = do
-            let path = dir </> subdir </> file`replaceExtension` ext
-            exists <- doesFileExist path
-            when exists (removeFile path)
