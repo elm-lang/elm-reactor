@@ -1,18 +1,23 @@
-# Elm Server
+# Elm Reactor
 
-This is a simple server to make it easy to develop Elm projects.
+Interactive development tool that makes it easy to develop and debug Elm
+programs. Key features include:
 
-View any kind of file in your browser. Elm files recompile every time you
-refresh the page. The server also supports [hot-swapping][] and [time travel
-debugging](http://debug.elm-lang.org) so you can have a great development
-experience with any editor.
+  * Automatically compile any Elm program
+  * [Hot-swapping][]
+  * [Time travel debugging][debug]
+  * Compatible with any editor
 
 [hot-swapping]: http://elm-lang.org/blog/Interactive-Programming.elm
+[debug]: http://debug.elm-lang.org
 
 #### Install
 
-It comes bundled with the Elm Platform or you can install it individually with
-`cabal install elm-server`.
+It is bundled with [Elm Platform][platform]. That will give you everything you
+need and is the recommended route.
+
+If you are building Elm tools from source, you can install it individually with
+`cabal install elm-reactor`.
 
 
 #### Use
@@ -20,40 +25,42 @@ It comes bundled with the Elm Platform or you can install it individually with
 Navigate to the Elm project you want to work on. In that directory run:
 
 ```bash
-elm-server
+elm-reactor
 ```
 
-This will start the server at [http://localhost:8000](http://localhost:8000).
-If you want to use a different port, use the `--port` flag (e.g. `elm-server
---port 8080`). In your browser you can navigate through your project and see how
-each Elm page looks.
+Now navigate to [http://localhost:8000](http://localhost:8000) which will show
+a navigation page, letting you view any files in your project.
 
-`elm-server` will serve any kind of static content, so you can also look at HTML,
-images, JSON, or whatever else you may need to serve.
+If you want to use a different port, use the `--port` flag (e.g. `elm-reactor
+--port 8080`).
 
-#### Debug Mode
+#### Time Travel Debugging
 
-On the project navigation pages, all Elm files are paired with a little picture
-of a wrench. Click that and you go into debug mode! Now you can:
+To use the debugger, click the small wrench next to every Elm file. This will
+start your Elm program with a control panel that lets you:
 
-  * Update the program by saving a new version in your editor. Updates propagate
-    automatically!
-
-  * Pause your program, rewind, and continue from any point.
+  * Pause, rewind, and continue from any point.
 
   * Add watches and traces to track and visualize values over time.
 
-#### Debug your own custom html file
+  * Hot-swap in new code at any time, maintaining all recorded events. *See* what happens when you change your program.
 
-If you like to play around with special libraries or have some custom css, the standard server setup may not work for you. You will want to insert the debugger where it is best for your file. It's easy:
+**Note:** To use the debugger with more complex HTML or CSS, you may want to
+start the debugger from within an HTML file. It's quite easy to set up:
 
 First load the following script after you load the elm-runtime:
+
 ```html
 <script type="text/javascript" src="/elm-runtime.js"></script>
 <script type="text/javascript" src="/debugger.js"></script>
 ```
+
 Then, initiate your elm program with the debugger:
+
 ```javascript
 var runningElmModule = Elm.debugFullscreen(Elm.Todo, "todo.elm");
 ```
-where `"todo.elm"` is the filepath of the main elm file relative to where you run the server.
+
+where `"todo.elm"` is the file path to the root module of your project, the
+one with a `main` value. This file path makes it possible to hot-swap when
+you change any relevant code.
