@@ -63,9 +63,12 @@ elmIndexGenerator d = do
         writeS "<table><tr><th>Elm File</th><th>Last Modified</th></tr>"
         forM_ (sort elmFiles ) $ \f -> do
             tm <- liftIO . getModificationTime $ d </> f
-            writeS "<tr><td><a href='"
+            writeS "<tr><td><a href=/"
+            writeS $ d </> f
+            writeS "?debug><img title=\"Debug mode\" src=/_reactor/wrench.png height=\"12\">"
+            writeS "</a>&#8195;<a href="
             writeS f
-            writeS "'>"
+            writeS ">"
             writeS f
             writeS "</a></td><td>"
             writeS $ formatTime' tm

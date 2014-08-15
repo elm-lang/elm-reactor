@@ -16,7 +16,21 @@ Copyright:           Copyright: (c) 2011-2014 Evan Czaplicki
 
 Category:            Compiler, Language
 
-Build-type:          Simple
+Build-type:          Custom
+
+Data-dir:            assets
+Data-files:          favicon.ico
+                     debugger.js
+                     _reactor/wrench.png
+                     _reactor/debugger/pause-button-up.png
+                     _reactor/debugger/pause-button-down.png
+                     _reactor/debugger/pause-button-hover.png
+                     _reactor/debugger/play-button-up.png
+                     _reactor/debugger/play-button-down.png
+                     _reactor/debugger/play-button-hover.png
+                     _reactor/debugger/restart-button-up.png
+                     _reactor/debugger/restart-button-down.png
+                     _reactor/debugger/restart-button-hover.png
 
 Extra-source-files:  README.md
 Cabal-version:       >=1.8
@@ -29,18 +43,27 @@ Executable elm-server
   Main-is:             Server.hs
   other-modules:       Index
   Build-depends:       base >=4.2 && <5,
+                       blaze-html,
+                       blaze-markup,
                        bytestring,
                        cmdargs,
                        containers >= 0.3,
                        directory,
                        Elm >= 0.12.3,
                        filepath,
+                       fsnotify >= 0.1.0.2,
+                       HTTP,
                        mtl,
                        process,
                        old-locale,
                        snap-core,
                        snap-server,
                        split,
+                       system-filepath,
                        time,
                        transformers,
-                       unordered-containers
+                       unordered-containers,
+                       websockets >= 0.8.2.5,
+                       websockets-snap >= 0.8.2.1
+  
+  hs-source-dirs:      server
