@@ -23,10 +23,11 @@ myPostBuild args flags pd lbi =
 
 concatJS :: LocalBuildInfo -> IO ()
 concatJS lbi =
-  do let files = map ("assets" </>)
-          [ "_reactor" </> "debuggerInterface.js"
-          , "_reactor" </> "toString.js"
-          , "debug-core.js"
+  do let files = map (("assets" </> "_reactor") </>)
+          [ "debuggerInterface.js"
+          , "toString.js"
+          , "core.js"
+          , "reactor.js"
           ]
      megaJS <- concat `fmap` mapM readFile files
      _ <- putStrLn "Writing composite debugger.js"
