@@ -26,6 +26,7 @@ concatJS lbi =
   do let files = map ("assets" </>)
           [ "_reactor" </> "debuggerInterface.js"
           , "_reactor" </> "toString.js"
+          , "js" </> "core.js"
           , "debug-core.js"
           ]
      megaJS <- concat `fmap` mapM readFile files
