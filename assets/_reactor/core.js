@@ -12,6 +12,7 @@
 ElmRuntime.debugFullscreenWithOptions = function(options) {
     var doSocket = options.socket || false;
     var doHotswapButton = options.hotswapButton || false;
+    var exposeHotSwap = options.exposeHotSwap || false;
 
     return function(module, moduleFile, hotSwapState /* =undefined */) {
         var createdSocket = false;
@@ -219,6 +220,9 @@ ElmRuntime.debugFullscreenWithOptions = function(options) {
             }
         }
 
+        if (options.exposeHotSwap) {
+            mainHandle.debugger.hotSwap = hotSwap;
+        }
         return mainHandle;
     };
 };
