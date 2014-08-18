@@ -59,6 +59,19 @@ ElmRuntime.debugFullscreenWithOptions = function(options) {
             debugTools.style.opacity = 0.97;
             debugTools.style.zIndex = 1;
 
+            // Prevent events from reaching the main elm instance under the panel
+            function stopEvents(e) {
+                if (!e) {
+                    var e = window.event;
+                }
+                e.cancelBubble = true;
+                if (e.stopPropagation) {
+                    e.stopPropagation();
+                }
+            }
+            debugTools.addEventListener("click", stopEvents);
+            debugTools.addEventListener("mousemove", stopEvents);
+
             // Create and style the button
             var tabWidth = 25;
             var debugTab = document.createElement("div");
@@ -84,7 +97,7 @@ ElmRuntime.debugFullscreenWithOptions = function(options) {
                     toolPanel.style.width = debuggerWidth + "px";
                     debuggingPanelExpanded = true;
                 }
-            }
+            };
 
             debugTools.appendChild(debugTab);
             debugTools.appendChild(debuggerDiv);
