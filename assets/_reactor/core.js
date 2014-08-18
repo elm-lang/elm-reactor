@@ -10,9 +10,6 @@
 // options.hotswapButton = boolean
 
 ElmRuntime.debugFullscreenWithOptions = function(options) {
-    var doSocket = options.socket || false;
-    var doHotswapButton = options.hotswapButton || false;
-    var exposeHotSwap = options.exposeHotSwap || false;
 
     return function(module, moduleFile, hotSwapState /* =undefined */) {
         var createdSocket = false;
@@ -24,7 +21,7 @@ ElmRuntime.debugFullscreenWithOptions = function(options) {
 
         var mainHandle = Elm.fullscreenDebugHooks(module, hotSwapState);
         var debuggerHandle = initDebugger();
-        if (doSocket) {
+        if (!options.debugElmLangOrg) {
             initSocket();
         }
 
@@ -136,7 +133,7 @@ ElmRuntime.debugFullscreenWithOptions = function(options) {
             var handle = Elm.embed(Elm.DebuggerInterface, debuggerDiv,
                 { eventCounter: 0,
                   watches: [],
-                  showHotswap: doHotswapButton
+                  showHotswap: !options.debugElmLangOrg
                 });
             handle.ports.scrubTo.subscribe(scrubber);
             handle.ports.pause.subscribe(elmPauser);
@@ -220,7 +217,7 @@ ElmRuntime.debugFullscreenWithOptions = function(options) {
             }
         }
 
-        if (options.exposeHotSwap) {
+        if (!options.debugElmLangOrg) {
             mainHandle.debugger.hotSwap = hotSwap;
         }
         return mainHandle;

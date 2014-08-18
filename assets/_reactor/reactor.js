@@ -3,6 +3,5 @@
 // javascript, toString.js, and debug-core.js. This is done at build time in Setup.hs
 
 Elm.debugFullscreen = ElmRuntime.debugFullscreenWithOptions({
-    socket: true,
-    hotswapButton: true,
+    debugElmLangOrg: false
 });
