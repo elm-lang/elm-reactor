@@ -59,7 +59,7 @@ ElmRuntime.debugFullscreenWithOptions = function(options) {
             debugTools.style.opacity = 0.97;
             debugTools.style.zIndex = 1;
 
-            // Prevent events from reaching the main elm instance under the panel
+            // Prevent clicks from reaching the main elm instance under the panel
             function stopEvents(e) {
                 if (!e) {
                     var e = window.event;
@@ -70,7 +70,6 @@ ElmRuntime.debugFullscreenWithOptions = function(options) {
                 }
             }
             debugTools.addEventListener("click", stopEvents);
-            debugTools.addEventListener("mousemove", stopEvents);
 
             // Create and style the button
             var tabWidth = 25;
