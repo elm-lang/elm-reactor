@@ -46,8 +46,13 @@ flags = Flags
                 ", (c) Evan Czaplicki 2011-2014")
 
 
-config :: Config Snap a
-config = setAccessLog ConfigNoLog (setErrorLog ConfigNoLog defaultConfig)
+config :: Int -> Config Snap a
+config portNumber =
+  setBind "localhost" $
+  setPort portNumber $
+  setAccessLog ConfigNoLog $
+  setErrorLog ConfigNoLog $
+  defaultConfig
 
 -- | Set up the reactor.
 main :: IO ()
@@ -56,7 +61,7 @@ main = do
   (_,Just h,_,_) <- createProcess $ (shell "elm --version") { std_out = CreatePipe }
   elmVer <- hGetContents h
   putStrLn (startupMessage elmVer)
-  httpServe (setPort (port cargs) config) $
+  httpServe (config (port cargs)) $
       serveRuntime (maybe Elm.runtime id (runtime cargs))
       <|> serveElm
       <|> route [ ("socket", socket)
