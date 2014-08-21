@@ -4,10 +4,9 @@
 // This is done at build time in Setup.hs.
 
 // Options:
-// Attempt to set up a socket to the server
-// options.socket = boolean
-// Show the hotswap button
-// options.hotswapButton = boolean
+
+// Expose internal hotswap function, disable hotswap button, no socket
+// options.externalHotswap = boolean
 
 ElmRuntime.debugFullscreenWithOptions = function(options) {
 
@@ -21,7 +20,7 @@ ElmRuntime.debugFullscreenWithOptions = function(options) {
 
         var mainHandle = Elm.fullscreenDebugHooks(module, hotSwapState);
         var debuggerHandle = initDebugger();
-        if (!options.debugElmLangOrg) {
+        if (!options.externalHotswap) {
             initSocket();
         }
 
@@ -133,7 +132,7 @@ ElmRuntime.debugFullscreenWithOptions = function(options) {
             var handle = Elm.embed(Elm.DebuggerInterface, debuggerDiv,
                 { eventCounter: 0,
                   watches: [],
-                  showHotswap: !options.debugElmLangOrg
+                  showHotswap: !options.externalHotswap
                 });
             handle.ports.scrubTo.subscribe(scrubber);
             handle.ports.pause.subscribe(elmPauser);
@@ -217,7 +216,7 @@ ElmRuntime.debugFullscreenWithOptions = function(options) {
             }
         }
 
-        if (!options.debugElmLangOrg) {
+        if (!options.externalHotswap) {
             mainHandle.debugger.hotSwap = hotSwap;
         }
         return mainHandle;
