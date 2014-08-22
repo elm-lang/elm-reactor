@@ -2,14 +2,13 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Generate (html, js) where
 
-import Control.Monad    (forM_, when)
-import Data.Maybe       (fromMaybe)
-import System.Directory
+import Control.Monad (forM_)
+import Data.Maybe (fromMaybe)
 import System.Exit
 import System.FilePath
 import System.Process
-import System.IO        (hGetContents)
-import Text.Blaze       (preEscapedToMarkup)
+import System.IO (hGetContents)
+import Text.Blaze (preEscapedToMarkup)
 import Text.Blaze.Html5 ((!))
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
