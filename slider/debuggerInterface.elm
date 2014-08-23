@@ -37,14 +37,15 @@ lightGrey = rgb 228 228 228
 darkGrey = rgb 74 74 74
 
 dataStyle : [String] -> Float -> String -> Text
-dataStyle typefaces height =
+dataStyle typefaces height string =
     let myStyle =
              { defaultStyle
              | typeface <- typefaces
              , color <- lightGrey
              , height <- Just height
              }
-    in style myStyle . toText
+    in
+        style myStyle (toText string)
 
 textStyle : String -> Text
 textStyle = dataStyle ["Gotham", "Futura", "Lucida Grande", "sans-serif"] 12
