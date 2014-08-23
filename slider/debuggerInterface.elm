@@ -136,7 +136,8 @@ sliderEventText w state =
         yPos = absolute (round (textHeight / 2))
         textPosition = middleAt xPos yPos
         text' = show state.scrubPosition |> textStyle |> centered
-    in  container w textHeight textPosition text'
+    in
+        container w textHeight textPosition text'
 
 sliderMinMaxText : Int -> State -> Element
 sliderMinMaxText w state =
@@ -260,21 +261,29 @@ startState =
     }
 
 step : Update -> State -> State
-step update state = case update of
-    Restart ->
-        startState
-    Pause doPause ->
-        { state | paused <-
-                    doPause
-                , totalEvents <-
-                    if  | not doPause -> state.scrubPosition
-                        | otherwise -> state.totalEvents }
-    TotalEvents events ->
-        { state | totalEvents <- events
-                , scrubPosition <- events }
-    ScrubPosition pos ->
-        { state | scrubPosition <- pos
-                , paused <- True }
+step update state =
+    case update of
+        Restart ->
+            startState
+
+        Pause doPause ->
+            { state |
+                paused <- doPause,
+                totalEvents <-
+                    if doPause then state.totalEvents else state.scrubPosition
+            }
+
+        TotalEvents events ->
+            { state |
+                totalEvents <- events,
+                scrubPosition <- events
+            }
+
+        ScrubPosition pos ->
+            { state |
+                scrubPosition <- pos,
+                paused <- True
+            }
 
 aggregateUpdates : Signal Update
 aggregateUpdates = merges
@@ -299,7 +308,8 @@ roundedSquare side radius toForm =
         tr = formedCircle |> move ( circleOffset, circleOffset)
         bl = formedCircle |> move (-circleOffset,-circleOffset)
         br = formedCircle |> move ( circleOffset,-circleOffset)
-    in group [xRect, yRect, tl, tr, bl, br]
+    in
+        group [xRect, yRect, tl, tr, bl, br]
 
 
 --
