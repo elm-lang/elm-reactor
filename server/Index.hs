@@ -14,8 +14,8 @@ import System.Locale (defaultTimeLocale)
 import Snap.Core
 import Snap.Util.FileServe
 
-indexStyle :: BS.ByteString
-indexStyle = S.pack
+indexStyle :: String
+indexStyle =
     "body { margin:0; background:rgb(253,253,253);\
     \       font-family: 'Lucida Grande','Trebuchet MS','Bitstream Vera Sans',Verdana,Helvetica,sans-serif; }\
     \div.topbar {height: 6px; background-color: rgb(96,181,204); }\
@@ -31,20 +31,18 @@ indexStyle = S.pack
 elmIndexGenerator :: MonadSnap m
                       => FilePath   -- ^ Directory to generate index for
                       -> m ()
-elmIndexGenerator d = do
+elmIndexGenerator directory = do
     let writeS = writeBS . S.pack
     let formatTime' = formatTime defaultTimeLocale "%d %b 20%y, %r"
-    modifyResponse $ setContentType $ S.pack "text/html"
+    modifyResponse $ setContentType (S.pack "text/html")
 
-    rq      <- getRequest
-    let uri = S.unpack $ rqURI rq
+    uri <- fmap (S.unpack . rqURI) getRequest
 
-    writeS "<style type='text/css'>"
-    writeBS indexStyle
-    writeS "</style><div class=\"topbar\"></div>"
+    writeS $ "<style type='text/css'>" ++ indexStyle ++ "</style>"
+    writeS $ "<div class=\"topbar\"></div>"
 
     writeS "<div class=\"header\">"
-    writeS "<a href='/'>~</a> / "
+    writeS "<a href=\"/\">~</a> / "
     when (uri /= "/") $ do
         let path = splitOn "/" uri
         let pathScan = scanl1 (\a b -> a ++ '/' : b) path
@@ -52,55 +50,55 @@ elmIndexGenerator d = do
             unless (null p) $ writeS $ "<a href=\""++ps++"\">"++p++"</a> / "
     writeS "</div><div class=\"content\">"
 
-    entries <- liftIO $ getDirectoryContents d
-    dirs    <- liftIO $ filterM (doesDirectoryExist . (d </>)) entries
-    files   <- liftIO $ filterM (doesFileExist . (d </>)) entries
+    entries <- liftIO $ getDirectoryContents directory
+    dirs    <- liftIO $ filterM (doesDirectoryExist . (directory </>)) entries
+    files   <- liftIO $ filterM (doesFileExist . (directory </>)) entries
 
-    let (elmFiles, otherFiles) = partition (isSuffixOf ".elm") files
-    let isHtml5 f = any (flip isSuffixOf f) [".html", ".css", "js"]
+    let (elmFiles, otherFiles) =
+            partition (\file -> takeExtension file == ".elm") files
 
     unless (null elmFiles) $ do
         writeS "<table><tr><th>Elm File</th><th>Last Modified</th></tr>"
-        forM_ (sort elmFiles ) $ \f -> do
-            tm <- liftIO . getModificationTime $ d </> f
-            writeS "<tr><td><a href=/"
-            writeS $ d </> f
-            writeS "?debug><img title=\"Debug mode\" src=/_reactor/wrench.png height=\"12\">"
-            writeS "</a>&#8195;<a href="
-            writeS f
-            writeS ">"
-            writeS f
-            writeS "</a></td><td>"
-            writeS $ formatTime' tm
-            writeS "</td></tr>"
+        forM_ (sort elmFiles) $ \filePath -> do
+            modificationTime <- liftIO . getModificationTime $ directory </> filePath
+            writeS $ "<tr><td>"
+            writeS $ "<a href=/" ++ (directory </> filePath) ++ "?debug>"
+            writeS $ "<img title=\"Debug mode\" src=/_reactor/wrench.png height=\"12\">"
+            writeS $ "</a>&#8195;<a href=" ++ filePath ++ ">" ++ filePath ++ "</a>"
+            writeS $ "</td><td>"
+            writeS $ formatTime' modificationTime
+            writeS $ "</td></tr>"
         writeS "</table>"
 
-    let dotFile f = null f || head f == '.'
-    let keepDir d = d /= "cache" && d /= "build" && not (dotFile d)
-    let dirs' = sort $ filter keepDir dirs
+    let dotFile filePath =
+            null filePath || head filePath == '.'
+
+    let keepDir directory =
+            directory /= "cache"
+            && directory /= "build"
+            && not (dotFile directory)
+
+    let dirs' = sort (filter keepDir dirs)
+
     unless (null dirs') $ do
         writeS "<table><tr><th>Directory Name</th></tr>"
-        forM_ dirs' $ \d -> do
-            writeS "<tr><td><a href='"
-            writeS d
-            writeS "/'>"
-            writeS d
-            writeS "</a></tr>"
+        forM_ dirs' $ \directory -> do
+            writeS $ "<tr><td>"
+            writeS $ "<a href=\"" ++ directory ++ "/\">" ++ directory ++ "</a>"
+            writeS $ "</td></tr>"
         writeS "</table>"
 
     let otherFiles' = sort $ filter (not . dotFile) otherFiles
     unless (null otherFiles') $ do
         writeS "<table><tr><th>File Name</th><th>MIME type</th><th>Last Modified</th></tr>"
-        forM_ otherFiles' $ \f -> do
-            tm <- liftIO . getModificationTime $ d </> f
-            writeS "<tr><td><a href='"
-            writeS f
-            writeS "'>"
-            writeS f
-            writeS "</a></td><td>"
-            writeBS $ fileType defaultMimeTypes f
-            writeS "</td><td>"
-            writeS $ formatTime' tm
-            writeS "</tr>"
+        forM_ otherFiles' $ \filePath -> do
+            modificationTime <- liftIO . getModificationTime $ directory </> filePath
+            writeS $ "<tr>"
+            writeS $ "<td><a href=\"" ++ filePath ++ "\">" ++ filePath ++ "</a></td>"
+            writeS $ "<td>"
+            writeBS $ fileType defaultMimeTypes filePath
+            writeS $ "</td><td>"
+            writeS $ formatTime' modificationTime
+            writeS "</td></tr>"
         writeS "</table></div>"
 
