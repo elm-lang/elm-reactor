@@ -1,1 +1,10 @@
 dist
+assets/_reactor/debuggerInterface.js
+assets/debugger.js
+slider/build
+slider/cache
+assets
+cache
+build
+cabal.sandbox.config
+.cabal-sandbox
