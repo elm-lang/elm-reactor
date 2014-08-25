@@ -4,6 +4,7 @@ module Socket where
 import Control.Monad.Trans (MonadIO(liftIO))
 import Control.Monad (forever)
 import Control.Concurrent (threadDelay, forkIO)
+import Control.Exception (catch, SomeException)
 import qualified Data.ByteString.Char8 as BSC
 import qualified Filesystem.Path.CurrentOS as FP
 import qualified Network.WebSockets as WS
@@ -25,9 +26,14 @@ fileChangeApp watchedFile pendingConnection =
 
 keepAlive :: WS.Connection -> IO ()
 keepAlive connection =
-  do WS.sendPing connection $ BSC.pack "ping"
-     threadDelay $ 10 * (1000000) -- 10 seconds
-     keepAlive connection
+  catch alive handler
+  where
+    alive =
+      do WS.sendPing connection $ BSC.pack "ping"
+         threadDelay $ 10 * (1000000) -- 10 seconds
+         keepAlive connection
+    handler :: SomeException -> IO ()
+    handler e = return ()
 
 updateOnChange ::  FilePath -> WS.Connection -> Notify.WatchManager -> IO ()
 updateOnChange watchedFile connection manager =

@@ -168,6 +168,9 @@ ElmRuntime.debugFullscreenWithOptions = function(options) {
                     hotSwap(event.data);
                 }
             };
+            window.addEventListener("unload", function() {
+                serverConnection.close();
+            });
         }
 
         function hotSwap(raw) {
