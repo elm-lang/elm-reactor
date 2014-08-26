@@ -18,6 +18,7 @@ import System.IO (hGetContents)
 import Paths_elm_reactor (version)
 import qualified Elm.Internal.Paths as Elm
 import Snap.Core
+import Snap.Core as SC
 import Snap.Http.Server
 import Snap.Util.FileServe
 
@@ -113,7 +114,7 @@ serveHtml html =
 
 serveElm :: Snap ()
 serveElm =
-  do mfile <- urlDecode . rqPathInfo <$> getRequest
+  do mfile <- SC.urlDecode . rqPathInfo <$> getRequest
      let file = BSC.unpack $ maybe "" id mfile
      debugParam <- getParam "debug"
      let doDebug = maybe False (const True) debugParam

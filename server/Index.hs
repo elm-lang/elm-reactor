@@ -12,6 +12,7 @@ import System.FilePath
 import System.Locale (defaultTimeLocale)
 
 import Snap.Core
+import Snap.Core as SC
 import Snap.Util.FileServe
 
 indexStyle :: String
@@ -36,7 +37,7 @@ elmIndexGenerator directory = do
     let formatTime' = formatTime defaultTimeLocale "%d %b 20%y, %r"
     modifyResponse $ setContentType (S.pack "text/html")
 
-    muri <- fmap (urlDecode . rqURI) getRequest
+    muri <- fmap (SC.urlDecode . rqURI) getRequest
     let uri = maybe "" S.unpack muri
 
     writeS $ "<style type='text/css'>" ++ indexStyle ++ "</style>"
@@ -61,7 +62,7 @@ elmIndexGenerator directory = do
     unless (null elmFiles) $ do
         writeS "<table><tr><th>Elm File</th><th>Last Modified</th></tr>"
         forM_ (sort elmFiles) $ \filePath -> do
-            let urlEncodeString = S.unpack . urlEncode . S.pack
+            let urlEncodeString = S.unpack . SC.urlEncode . S.pack
             let safeDirs = map urlEncodeString $ splitDirectories . normalise $ directory
             let path = foldr (\x y -> y ++ "/" ++ x) "" safeDirs ++ "/" ++ urlEncodeString filePath
             modificationTime <- liftIO . getModificationTime $ directory </> filePath
