@@ -37,19 +37,18 @@ elmIndexGenerator directory = do
     let formatTime' = formatTime defaultTimeLocale "%d %b 20%y, %r"
     modifyResponse $ setContentType (S.pack "text/html")
 
-    muri <- fmap (SC.urlDecode . rqURI) getRequest
-    let uri = maybe "" S.unpack muri
+    let uri = normalise directory
 
     writeS $ "<style type='text/css'>" ++ indexStyle ++ "</style>"
     writeS $ "<div class=\"topbar\"></div>"
 
     writeS "<div class=\"header\">"
     writeS "<a href=\"/\">~</a> / "
-    when (uri /= "/") $ do
+    when (uri /= ".") $ do
         let path = splitOn "/" uri
-        let pathScan = scanl1 (\a b -> a ++ '/' : b) path
+        let pathScan = scanl1 (\a b -> a ++ "/" ++ b) path
         forM_ (zip path pathScan) $ \(p,ps) ->
-            unless (null p) $ writeS $ "<a href=\""++ps++"\">"++p++"</a> / "
+            unless (null p) $ writeS $ "<a href=\"/"++ps++"\">"++p++"</a> / "
     writeS "</div><div class=\"content\">"
 
     entries <- liftIO $ getDirectoryContents directory
