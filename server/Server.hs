@@ -113,7 +113,8 @@ serveHtml html =
 
 serveElm :: Snap ()
 serveElm =
-  do file <- BSC.unpack . rqPathInfo <$> getRequest
+  do mfile <- urlDecode . rqPathInfo <$> getRequest
+     let file = BSC.unpack $ maybe "" id mfile
      debugParam <- getParam "debug"
      let doDebug = maybe False (const True) debugParam
      exists <- liftIO $ doesFileExist file
