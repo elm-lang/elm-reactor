@@ -64,8 +64,7 @@ main = do
   httpServe (config (port cargs)) $
       serveRuntime (maybe Elm.runtime id (runtime cargs))
       <|> serveElm
-      <|> route [ ("socket", socket)
-                ]
+      <|> route [ ("socket", socket) ]
       <|> serveDirectoryWith directoryConfig "."
       <|> serveAssets
       <|> error404
@@ -113,7 +112,8 @@ serveHtml html =
 
 serveElm :: Snap ()
 serveElm =
-  do file <- BSC.unpack . rqPathInfo <$> getRequest
+  let despace = map (\c -> if c == '+' then ' ' else c) in
+  do file <- despace . BSC.unpack . rqPathInfo <$> getRequest
      debugParam <- getParam "debug"
      let doDebug = maybe False (const True) debugParam
      exists <- liftIO $ doesFileExist file
