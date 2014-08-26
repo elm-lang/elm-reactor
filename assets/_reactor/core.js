@@ -208,8 +208,13 @@ ElmRuntime.debugFullscreenWithOptions = function(options) {
                 errorNode.innerHTML = errorMessage;
                 errorNode.style.zindex = 1;
                 errorNode.style.position = "absolute";
-                errorNode.style.top = "0px";
-                errorNode.style.background = ELM_LIGHT_GREY;
+                errorNode.style.top = "0";
+                errorNode.style.left = "0";
+                errorNode.style.color = ELM_DARK_GREY;
+                errorNode.style.backgroundColor = ELM_LIGHT_GREY;
+                errorNode.style.padding = "1em";
+                errorNode.style.margin = "1em";
+                errorNode.style.borderRadius = "10px";
 
                 document.body.appendChild(errorNode);
             }
