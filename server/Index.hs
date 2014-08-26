@@ -63,7 +63,7 @@ elmIndexGenerator directory = do
         forM_ (sort elmFiles) $ \filePath -> do
             let urlEncodeString = S.unpack . urlEncode . S.pack
             let safeDirs = map urlEncodeString $ splitDirectories . normalise $ directory
-            let path = (foldr (\x y -> y ++ "/" ++ x) "" safeDirs) ++ "/" ++ (urlEncodeString filePath)
+            let path = foldr (\x y -> y ++ "/" ++ x) "" safeDirs ++ "/" ++ urlEncodeString filePath
             modificationTime <- liftIO . getModificationTime $ directory </> filePath
             writeS $ "<tr><td>"
             writeS $ "<a href=" ++ path ++ "?debug>"
