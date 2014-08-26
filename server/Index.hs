@@ -12,6 +12,7 @@ import System.FilePath
 import System.Locale (defaultTimeLocale)
 
 import Snap.Core
+import Snap.Core as SC
 import Snap.Util.FileServe
 
 indexStyle :: String
@@ -36,18 +37,18 @@ elmIndexGenerator directory = do
     let formatTime' = formatTime defaultTimeLocale "%d %b 20%y, %r"
     modifyResponse $ setContentType (S.pack "text/html")
 
-    uri <- fmap (S.unpack . rqURI) getRequest
+    let uri = normalise directory
 
     writeS $ "<style type='text/css'>" ++ indexStyle ++ "</style>"
     writeS $ "<div class=\"topbar\"></div>"
 
     writeS "<div class=\"header\">"
     writeS "<a href=\"/\">~</a> / "
-    when (uri /= "/") $ do
+    when (uri /= ".") $ do
         let path = splitOn "/" uri
-        let pathScan = scanl1 (\a b -> a ++ '/' : b) path
+        let pathScan = scanl1 (\a b -> a ++ "/" ++ b) path
         forM_ (zip path pathScan) $ \(p,ps) ->
-            unless (null p) $ writeS $ "<a href=\""++ps++"\">"++p++"</a> / "
+            unless (null p) $ writeS $ "<a href=\"/"++ps++"\">"++p++"</a> / "
     writeS "</div><div class=\"content\">"
 
     entries <- liftIO $ getDirectoryContents directory
@@ -62,9 +63,9 @@ elmIndexGenerator directory = do
         forM_ (sort elmFiles) $ \filePath -> do
             modificationTime <- liftIO . getModificationTime $ directory </> filePath
             writeS $ "<tr><td>"
-            writeS $ "<a href=/" ++ (directory </> filePath) ++ "?debug>"
+            writeS $ "<a href=\"/" ++ directory ++ "/" ++ filePath ++ "?debug\">"
             writeS $ "<img title=\"Debug mode\" src=/_reactor/wrench.png height=\"12\">"
-            writeS $ "</a>&#8195;<a href=" ++ filePath ++ ">" ++ filePath ++ "</a>"
+            writeS $ "</a>&#8195;<a href=\"/" ++ directory ++ "/" ++ filePath ++ "\">" ++ filePath ++ "</a>"
             writeS $ "</td><td>"
             writeS $ formatTime' modificationTime
             writeS $ "</td></tr>"
