@@ -183,10 +183,6 @@ ElmRuntime.debugFullscreenWithOptions = function(options) {
                 error.parentNode.removeChild(error);
             }
             if (js) {
-                var error = document.getElementById('ErrorMessage');
-                if (error) {
-                    error.parentNode.removeChild(error);
-                }
                 window.eval(js);
                 var moduleStr = js.match(/(Elm\..+)\ =\ \1/)[1];
                 var module = window.eval(moduleStr);
