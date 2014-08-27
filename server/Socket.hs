@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wall #-}
 {-# LANGUAGE OverloadedStrings #-}
 module Socket where
 
@@ -8,11 +9,8 @@ import Control.Exception (catch, SomeException)
 import qualified Data.ByteString.Char8 as BSC
 import qualified Filesystem.Path.CurrentOS as FP
 import qualified Network.WebSockets as WS
-import qualified Network.WebSockets.Snap as WSS
 import qualified System.FSNotify.Devel as NDevel
 import qualified System.FSNotify as Notify
-import System.FilePath
-import System.Process
 
 import qualified Generate
 
@@ -30,10 +28,10 @@ keepAlive connection =
   where
     alive =
       do WS.sendPing connection $ BSC.pack "ping"
-         threadDelay $ 10 * (1000000) -- 10 seconds
+         threadDelay (10 * 1000000) -- 10 seconds
          keepAlive connection
     handler :: SomeException -> IO ()
-    handler e = return ()
+    handler _ = return ()
 
 updateOnChange ::  FilePath -> WS.Connection -> Notify.WatchManager -> IO ()
 updateOnChange watchedFile connection manager =

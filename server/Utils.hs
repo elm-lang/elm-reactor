@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wall #-}
 module Utils where
 
 import System.Directory (doesFileExist)
