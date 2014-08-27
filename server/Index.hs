@@ -150,15 +150,21 @@ elmIndexGenerator directory =
     unless (null elmFiles) $ do
         writeBS "<table><tr><th>Elm Files</th></tr>"
         forM_ (sort elmFiles) $ \filePath -> do
-            writeBS "<tr><td>"
+            writeBS "<tr>"
+
+            writeBS "<td>"
             writeLink
                 ("/" ++ directory ++ "/" ++ filePath ++ "?debug")
                 "<img title=\"Debug mode\" src=/_reactor/wrench.png width=\"12\" height=\"12\">"
             writeBS "&#8195;"
             writeLink filePath filePath
-            writeBS "</td><td>"
+            writeBS "</td>"
+
+            writeBS "<td style=\"text-align:right;\">"
             writeS =<< timeSince (directory </> filePath)
-            writeBS "</td></tr>"
+            writeBS "</td>"
+
+            writeBS "</tr>"
         writeBS "</table>"
 
     unless (null nonElmFiles) $ do
@@ -171,7 +177,7 @@ elmIndexGenerator directory =
             writeLink filePath filePath 
             writeBS "</td>"
 
-            writeBS "<td>"
+            writeBS "<td style=\"text-align:right;\">"
             writeS =<< timeSince (directory </> filePath)
             writeBS "</td>"
 
