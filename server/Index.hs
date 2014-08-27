@@ -35,14 +35,13 @@ indexStyle =
     , "    float: left"
     , "}"
     , "a { text-decoration: none; color:rgb(96,181,204) }"
-    , "td { padding: 6px 10px; color:rgb(180,180,180) }"
+    , "td { padding: 6px 10px; color:rgb(136,136,136) }"
     , "tr { border-bottom: solid rgb(245,245,245) 1px }"
     , "th {"
-    , "    background: rgb(216,221,225);"
     , "    text-align: left;"
     , "    padding: 6px 10px;"
     , "    font-weight: normal;"
-    , "    font-size: 18px;"
+    , "    font-size: 24px;"
     , "}"
     ]
 
@@ -141,7 +140,7 @@ elmIndexGenerator directory =
     let nonElmFiles = sort $ filter (not . dotFile) otherFiles
 
     unless (null dirs) $ do
-        writeBS "<table><tr><th>Directory Name</th></tr>"
+        writeBS "<table><tr><th>Directories</th></tr>"
         forM_ dirs $ \dir -> do
             writeBS "<tr><td>"
             writeLink (dir ++ "/") dir
@@ -149,7 +148,7 @@ elmIndexGenerator directory =
         writeBS "</table>"
 
     unless (null elmFiles) $ do
-        writeBS "<table><tr><th>Elm File</th><th>Last Modified</th></tr>"
+        writeBS "<table><tr><th>Elm Files</th></tr>"
         forM_ (sort elmFiles) $ \filePath -> do
             writeBS "<tr><td>"
             writeLink
@@ -164,7 +163,7 @@ elmIndexGenerator directory =
 
     unless (null nonElmFiles) $ do
         writeBS "<table>"
-        writeBS "<tr><th>File Name</th><th>Last Modified</th></tr>"
+        writeBS "<tr><th>Other Files</th></tr>"
         forM_ nonElmFiles $ \filePath -> do
             writeBS "<tr>"
 
