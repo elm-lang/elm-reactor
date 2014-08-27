@@ -16,7 +16,8 @@ indexStyle :: S.ByteString
 indexStyle =
     S.intercalate "\n"
     [ "body {"
-    , "    margin:0; background:rgb(253,253,253);"
+    , "    margin: 0;"
+    , "    background: rgb(253,253,253);"
     , "    font-family: 'Lucida Grande','Trebuchet MS','Bitstream Vera Sans',Verdana,Helvetica,sans-serif;"
     , "}"
     , "div.topbar {"
@@ -35,7 +36,7 @@ indexStyle =
     , "    float: left"
     , "}"
     , "a { text-decoration: none; color:rgb(96,181,204) }"
-    , "td { padding: 6px 10px; color:rgb(136,136,136) }"
+    , "td { padding: 8px 10px; color:rgb(136,136,136) }"
     , "tr { border-bottom: solid rgb(245,245,245) 1px }"
     , "th {"
     , "    text-align: left;"
