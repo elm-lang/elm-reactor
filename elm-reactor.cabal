@@ -49,7 +49,7 @@ Executable elm-reactor
                        bytestring,
                        cmdargs,
                        containers >= 0.3,
-                       directory,
+                       directory >= 1.2,
                        Elm >= 0.12.3,
                        filepath,
                        fsnotify >= 0.1.0.2,
