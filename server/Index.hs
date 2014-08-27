@@ -122,11 +122,31 @@ elmIndexGenerator directory =
     writeBS "<div class=\"content\">"
 
     entries <- liftIO $ getDirectoryContents directory
-    dirs    <- liftIO $ filterM (doesDirectoryExist . (directory </>)) entries
+    allDirs <- liftIO $ filterM (doesDirectoryExist . (directory </>)) entries
     files   <- liftIO $ filterM (doesFileExist . (directory </>)) entries
 
     let (elmFiles, otherFiles) =
             partition (\file -> takeExtension file == ".elm") files
+
+    let dotFile filePath =
+            null filePath || head filePath == '.'
+
+    let keepDir dir =
+            dir /= "cache" &&
+            dir /= "build" &&
+            not (dotFile dir)
+
+    let dirs = sort (filter keepDir allDirs)
+
+    let nonElmFiles = sort $ filter (not . dotFile) otherFiles
+
+    unless (null dirs) $ do
+        writeBS "<table><tr><th>Directory Name</th></tr>"
+        forM_ dirs $ \dir -> do
+            writeBS "<tr><td>"
+            writeLink (dir ++ "/") dir
+            writeBS "</td></tr>"
+        writeBS "</table>"
 
     unless (null elmFiles) $ do
         writeBS "<table><tr><th>Elm File</th><th>Last Modified</th></tr>"
@@ -142,29 +162,10 @@ elmIndexGenerator directory =
             writeBS "</td></tr>"
         writeBS "</table>"
 
-    let dotFile filePath =
-            null filePath || head filePath == '.'
-
-    let keepDir dir =
-            dir /= "cache" &&
-            dir /= "build" &&
-            not (dotFile dir)
-
-    let dirs' = sort (filter keepDir dirs)
-
-    unless (null dirs') $ do
-        writeBS "<table><tr><th>Directory Name</th></tr>"
-        forM_ dirs' $ \dir -> do
-            writeBS "<tr><td>"
-            writeLink (dir ++ "/") dir
-            writeBS "</td></tr>"
-        writeBS "</table>"
-
-    let otherFiles' = sort $ filter (not . dotFile) otherFiles
-    unless (null otherFiles') $ do
+    unless (null nonElmFiles) $ do
         writeBS "<table>"
         writeBS "<tr><th>File Name</th><th>Last Modified</th></tr>"
-        forM_ otherFiles' $ \filePath -> do
+        forM_ nonElmFiles $ \filePath -> do
             writeBS "<tr>"
 
             writeBS "<td>"
