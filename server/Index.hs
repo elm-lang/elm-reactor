@@ -1,18 +1,16 @@
-{-# OPTIONS_GHC -W #-}
+{-# OPTIONS_GHC -Wall #-}
 {-# LANGUAGE OverloadedStrings #-}
 module Index (elmIndexGenerator) where
 
 import Control.Monad
 import Control.Monad.IO.Class
 import qualified Data.ByteString.Char8 as S
-import Data.List
+import Data.List (sort, partition)
 import Data.List.Split (splitOn)
-import Data.Time.Format (formatTime)
-import System.Directory as Dir
-import System.FilePath as FP
-import System.Locale (defaultTimeLocale)
-
-import Snap.Core as Snap
+import Data.Time.Clock (diffUTCTime, getCurrentTime)
+import System.Directory (doesDirectoryExist, doesFileExist, getDirectoryContents, getModificationTime)
+import System.FilePath ((</>), takeExtension)
+import Snap.Core (MonadSnap, modifyResponse, setContentType, writeBS)
 
 indexStyle :: S.ByteString
 indexStyle =
@@ -53,8 +51,8 @@ writeS = writeBS . S.pack
 
 
 makeSafe :: String -> String
-makeSafe path =
-    map (\c -> if c == ' ' then '+' else c) path
+makeSafe filePath =
+    map (\c -> if c == ' ' then '+' else c) filePath
 
 
 writeLink :: MonadSnap m => String -> String -> m ()
@@ -64,6 +62,34 @@ writeLink href name =
     writeBS "\">"
     writeS name
     writeBS "</a>"
+
+
+timeSince :: MonadSnap m => FilePath -> m String
+timeSince filePath =
+ do modificationTime <- liftIO $ getModificationTime filePath
+    currentTime <- liftIO getCurrentTime
+    return (showDiff currentTime modificationTime)
+ where
+    showDiff currentTime modificationTime =
+        case diffUTCTime currentTime modificationTime of
+          diff
+            | diff < minute -> format diff second "second"
+            | diff < hour   -> format diff minute "minute"
+            | diff < day    -> format diff hour "hour"
+            | diff < year   -> format diff day "day"
+            | otherwise     -> format diff year "year"
+
+    format diff scale name =
+        let t :: Integer
+            t = round (diff / scale)
+        in
+            show t ++ " " ++ name ++ (if t == 1 then "" else "s") ++ " ago"
+
+    second = 1
+    minute = 60 * second
+    hour = 60 * minute
+    day = 24 * hour
+    year = 365 * day
 
 
 elmIndexGenerator :: MonadSnap m => FilePath -> m ()
@@ -77,8 +103,6 @@ elmIndexGenerator directory =
     writeBS "<style type='text/css'>"
     writeBS indexStyle
     writeBS "</style></head><body>"
-
-    let formatTime' = formatTime defaultTimeLocale "%d %b 20%y, %r"
 
     writeBS "<div class=\"topbar\"></div>"
 
@@ -107,7 +131,6 @@ elmIndexGenerator directory =
     unless (null elmFiles) $ do
         writeBS "<table><tr><th>Elm File</th><th>Last Modified</th></tr>"
         forM_ (sort elmFiles) $ \filePath -> do
-            modificationTime <- liftIO . getModificationTime $ directory </> filePath
             writeBS "<tr><td>"
             writeLink
                 ("/" ++ directory ++ "/" ++ filePath ++ "?debug")
@@ -115,25 +138,25 @@ elmIndexGenerator directory =
             writeBS "&#8195;"
             writeLink filePath filePath
             writeBS "</td><td>"
-            writeS $ formatTime' modificationTime
+            writeS =<< timeSince (directory </> filePath)
             writeBS "</td></tr>"
         writeBS "</table>"
 
     let dotFile filePath =
             null filePath || head filePath == '.'
 
-    let keepDir directory =
-            directory /= "cache"
-            && directory /= "build"
-            && not (dotFile directory)
+    let keepDir dir =
+            dir /= "cache" &&
+            dir /= "build" &&
+            not (dotFile dir)
 
     let dirs' = sort (filter keepDir dirs)
 
     unless (null dirs') $ do
         writeBS "<table><tr><th>Directory Name</th></tr>"
-        forM_ dirs' $ \directory -> do
+        forM_ dirs' $ \dir -> do
             writeBS "<tr><td>"
-            writeLink (directory ++ "/") directory
+            writeLink (dir ++ "/") dir
             writeBS "</td></tr>"
         writeBS "</table>"
 
@@ -142,7 +165,6 @@ elmIndexGenerator directory =
         writeBS "<table>"
         writeBS "<tr><th>File Name</th><th>Last Modified</th></tr>"
         forM_ otherFiles' $ \filePath -> do
-            modificationTime <- liftIO . getModificationTime $ directory </> filePath
             writeBS "<tr>"
 
             writeBS "<td>"
@@ -150,7 +172,7 @@ elmIndexGenerator directory =
             writeBS "</td>"
 
             writeBS "<td>"
-            writeS $ formatTime' modificationTime
+            writeS =<< timeSince (directory </> filePath)
             writeBS "</td>"
 
             writeBS "</tr>"

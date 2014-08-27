@@ -56,7 +56,6 @@ Executable elm-reactor
                        HTTP,
                        mtl,
                        process,
-                       old-locale,
                        snap-core,
                        snap-server,
                        split,
