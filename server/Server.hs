@@ -75,7 +75,11 @@ startupMessage elmVer =
   filter (/= '\n') elmVer ++ " of the compiler."
 
 directoryConfig :: MonadSnap m => DirectoryConfig m
-directoryConfig = fancyDirectoryConfig {indexGenerator = elmIndexGenerator}
+directoryConfig =
+    fancyDirectoryConfig
+    { indexFiles = []
+    , indexGenerator = elmIndexGenerator
+    }
 
 runtimeName :: String
 runtimeName = "elm-runtime.js"
