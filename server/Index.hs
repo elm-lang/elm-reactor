@@ -96,9 +96,15 @@ elmIndexGenerator :: MonadSnap m => FilePath -> m ()
 elmIndexGenerator directory =
  do modifyResponse $ setContentType "text/html; charset=utf-8"
 
+    let title =
+          case directory of
+            "." -> "~/"
+            '.' : rest -> '~' : rest
+            _ -> directory
+
     writeBS "<!DOCTYPE html>\n<html>\n<head>"
     writeBS "<title>"
-    writeS directory
+    writeS title   
     writeBS "</title>"
     writeBS "<style type='text/css'>"
     writeBS indexStyle
