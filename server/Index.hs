@@ -149,7 +149,7 @@ elmIndexGenerator directory =
         writeBS "</table>"
 
     unless (null elmFiles) $ do
-        writeBS "<table><tr><th>Elm Files</th></tr>"
+        writeBS "<table><tr><th>Elm Files</th><th></th></tr>"
         forM_ (sort elmFiles) $ \filePath -> do
             writeBS "<tr>"
 
@@ -170,7 +170,7 @@ elmIndexGenerator directory =
 
     unless (null nonElmFiles) $ do
         writeBS "<table>"
-        writeBS "<tr><th>Other Files</th></tr>"
+        writeBS "<tr><th>Other Files</th><th></th></tr>"
         forM_ nonElmFiles $ \filePath -> do
             writeBS "<tr>"
 
