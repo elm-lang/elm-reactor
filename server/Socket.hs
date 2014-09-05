@@ -35,10 +35,10 @@ keepAlive connection =
 
 updateOnChange ::  FilePath -> WS.Connection -> Notify.WatchManager -> IO ()
 updateOnChange watchedFile connection manager =
-  do _ <- NDevel.treeExtExists manager "." "elm" (sendHotSwap watchedFile connection)
+  do _ <- NDevel.treeExtExists manager "." "elm" (sendSwap watchedFile connection)
      forever $ threadDelay 10000000 -- related to https://ghc.haskell.org/trac/ghc/ticket/5544
 
-sendHotSwap :: FilePath -> WS.Connection -> FP.FilePath -> IO ()
-sendHotSwap watchedFile connection _ =
+sendSwap :: FilePath -> WS.Connection -> FP.FilePath -> IO ()
+sendSwap watchedFile connection _ =
     do result <- liftIO $ Generate.js watchedFile
        WS.sendTextData connection $ BSC.pack result
