@@ -187,7 +187,7 @@ ElmRuntime.debugFullscreenWithOptions = function(options) {
                 var moduleStr = js.match(/(Elm\..+)\ =\ \1/)[1];
                 var module = window.eval(moduleStr);
                 if (mainHandle.debugger) {
-                    var debuggerState = mainHandle.debugger.getHotSwapState();
+                    var debuggerState = mainHandle.debugger.getSwapState();
                     mainHandle.debugger.dispose();
                     mainHandle.dispose();
 
