@@ -31,9 +31,11 @@ Elm.Native.Slider.make = function(elm) {
         node.style.pointerEvents = 'auto';
         node.elm_signal = model.signal;
         node.elm_handler = model.handler;
-        node.addEventListener('input', function() {
+        node.addEventListener('input', notifySlider);
+        node.addEventListener('change', notifySlider);
+        function notifySlider() {
             elm.notify(node.elm_signal.id, node.elm_handler(node.value));
-        });
+        }
         return node;
     }
 
