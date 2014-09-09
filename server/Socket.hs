@@ -3,9 +3,8 @@
 module Socket where
 
 import Control.Monad.Trans (MonadIO(liftIO))
-import Control.Monad (forever)
-import Control.Concurrent (threadDelay, forkIO)
-import Control.Exception as E
+import Control.Concurrent (threadDelay, forkIO, killThread, ThreadId)
+import Control.Exception (catch, SomeException)
 import qualified Data.ByteString.Char8 as BSC
 import qualified Filesystem.Path.CurrentOS as FP
 import qualified Network.WebSockets as WS
@@ -16,29 +15,43 @@ import qualified Generate
 
 fileChangeApp :: FilePath -> WS.ServerApp
 fileChangeApp watchedFile pendingConnection =
-  do connection <- WS.acceptRequest pendingConnection
-     _ <- forkIO $ keepAlive connection
-     notifyManager <- liftIO $ Notify.startManager
-     updateOnChange watchedFile connection notifyManager
-     Notify.stopManager notifyManager
+ do connection <- WS.acceptRequest pendingConnection
+    Notify.withManager $ \notifyManager -> do
+        _ <- NDevel.treeExtExists notifyManager "." "elm" (sendHotSwap watchedFile connection)
+        keepAlive connection
 
-keepAlive :: WS.Connection -> IO ()
-keepAlive connection =
-  E.catch alive handler
-  where
-    alive =
-      do WS.sendPing connection $ BSC.pack "ping"
-         threadDelay (10 * 1000000) -- 10 seconds
-         keepAlive connection
-    handler :: E.SomeException -> IO ()
-    handler _ = return ()
-
-updateOnChange ::  FilePath -> WS.Connection -> Notify.WatchManager -> IO ()
-updateOnChange watchedFile connection manager =
-  do _ <- NDevel.treeExtExists manager "." "elm" (sendHotSwap watchedFile connection)
-     forever $ threadDelay 10000000 -- related to https://ghc.haskell.org/trac/ghc/ticket/5544
 
 sendHotSwap :: FilePath -> WS.Connection -> FP.FilePath -> IO ()
 sendHotSwap watchedFile connection _ =
-    do result <- liftIO $ Generate.js watchedFile
-       WS.sendTextData connection $ BSC.pack result
+ do result <- liftIO (Generate.js watchedFile)
+    WS.sendTextData connection (BSC.pack result)
+
+
+keepAlive :: WS.Connection -> IO ()
+keepAlive connection =
+    loop
+  where
+    loop :: IO ()
+    loop = do
+      pingThread <- forkIO ping
+      listen pingThread
+
+    ping :: IO ()
+    ping = do
+      threadDelay (10 * 1000000) -- 10 seconds
+      WS.sendPing connection ("ping" :: BSC.ByteString) `catch` connectionClosed
+
+    connectionClosed :: SomeException -> IO ()
+    connectionClosed _ = return ()
+
+    listen :: ThreadId -> IO ()
+    listen pingThread = do
+      pong <- WS.receive connection
+      case pong of
+        WS.DataMessage _ -> listen pingThread
+        WS.ControlMessage controlMessage ->
+            case controlMessage of
+              WS.Ping _ -> listen pingThread
+              WS.Pong _ -> loop
+              WS.Close _ ->
+                  killThread pingThread >> return ()
