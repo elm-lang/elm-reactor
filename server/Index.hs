@@ -5,11 +5,10 @@ module Index (elmIndexGenerator) where
 import Control.Monad
 import Control.Monad.IO.Class
 import qualified Data.ByteString.Char8 as S
-import Data.List (sort, partition)
-import Data.List.Split (splitOn)
+import Data.List (sort, partition, intercalate)
 import Data.Time.Clock (diffUTCTime, getCurrentTime)
 import System.Directory (doesDirectoryExist, doesFileExist, getDirectoryContents, getModificationTime)
-import System.FilePath ((</>), takeExtension)
+import System.FilePath ((</>), takeExtension, splitDirectories)
 import Snap.Core (MonadSnap, modifyResponse, setContentType, writeBS)
 
 indexStyle :: S.ByteString
@@ -50,9 +49,14 @@ writeS :: MonadSnap m => FilePath -> m ()
 writeS = writeBS . S.pack
 
 
+replaceChar :: Char -> Char -> String -> String
+replaceChar old new string =
+    map (\c -> if c == old then new else c) string
+
+
 makeSafe :: String -> String
 makeSafe filePath =
-    map (\c -> if c == ' ' then '+' else c) filePath
+    replaceChar ' ' '+' filePath
 
 
 writeLink :: MonadSnap m => String -> String -> m ()
@@ -97,14 +101,14 @@ elmIndexGenerator directory =
  do modifyResponse $ setContentType "text/html; charset=utf-8"
 
     let title =
-          case directory of
-            "." -> "~/"
-            '.' : rest -> '~' : rest
-            _ -> directory
+          intercalate "/" $
+          case splitDirectories directory of
+            "." : rest -> "~" : rest
+            path -> path
 
     writeBS "<!DOCTYPE html>\n<html>\n<head>"
     writeBS "<title>"
-    writeS title   
+    writeS title
     writeBS "</title>"
     writeBS "<style type='text/css'>"
     writeBS indexStyle
@@ -115,7 +119,7 @@ elmIndexGenerator directory =
     writeBS "<div class=\"header\">"
     writeLink "/" "~"
     writeBS " / "
-    case splitOn "/" directory of
+    case splitDirectories directory of
       _ : pathParts@(_:_) -> do
         let fullPaths = scanl1 (\a b -> a ++ "/" ++ b) pathParts
         forM_ (zip pathParts fullPaths) $ \(part, fullPath) -> do
@@ -161,7 +165,7 @@ elmIndexGenerator directory =
 
             writeBS "<td>"
             writeLink
-                ("/" ++ directory ++ "/" ++ filePath ++ "?debug")
+                ("/" ++ intercalate "/" (splitDirectories directory) ++ "/" ++ filePath ++ "?debug")
                 "<img title=\"Debug mode\" src=/_reactor/wrench.png width=\"12\" height=\"12\">"
             writeBS "&#8195;"
             writeLink filePath filePath

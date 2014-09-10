@@ -59,7 +59,6 @@ Executable elm-reactor
                        process,
                        snap-core,
                        snap-server,
-                       split,
                        system-filepath,
                        time,
                        transformers,
