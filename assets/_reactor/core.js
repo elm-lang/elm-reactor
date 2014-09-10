@@ -5,22 +5,22 @@
 
 // Options:
 
-// Expose internal hotswap function, disable hotswap button, no socket
-// options.externalHotswap = boolean
+// Expose internal swap function, disable swap button, no socket
+// options.externalSwap = boolean
 
 ElmRuntime.debugFullscreenWithOptions = function(options) {
 
-    return function(module, moduleFile, hotSwapState /* =undefined */) {
+    return function(module, moduleFile, swapState /* =undefined */) {
         var createdSocket = false;
-        var elmPermitHotswaps = true;
+        var elmPermitSwaps = true;
 
         var ELM_DEBUGGER_ID = "elmToolPanel";
         var ELM_DARK_GREY = "#4A4A4A";
         var ELM_LIGHT_GREY = "#E4E4E4";
 
-        var mainHandle = Elm.fullscreenDebugHooks(module, hotSwapState);
+        var mainHandle = Elm.fullscreenDebugHooks(module, swapState);
         var debuggerHandle = initDebugger();
-        if (!options.externalHotswap) {
+        if (!options.externalSwap) {
             initSocket();
         }
 
@@ -121,8 +121,8 @@ ElmRuntime.debugFullscreenWithOptions = function(options) {
                 sendWatches(0);
             }
 
-            function elmHotswap(permitHotswaps) {
-                elmPermitHotswaps = permitHotswaps;
+            function elmSwap(permitSwaps) {
+                elmPermitSwaps = permitSwaps;
             }
 
             var debugTools = createDebuggingElement();
@@ -132,12 +132,12 @@ ElmRuntime.debugFullscreenWithOptions = function(options) {
             var handle = Elm.embed(Elm.DebuggerInterface, debuggerDiv,
                 { eventCounter: 0,
                   watches: [],
-                  showHotswap: !options.externalHotswap
+                  showSwap: !options.externalSwap
                 });
             handle.ports.scrubTo.subscribe(scrubber);
             handle.ports.pause.subscribe(elmPauser);
             handle.ports.restart.subscribe(elmRestart);
-            handle.ports.permitHotswap.subscribe(elmHotswap);
+            handle.ports.permitSwap.subscribe(elmSwap);
             return handle;
         }
 
@@ -164,8 +164,8 @@ ElmRuntime.debugFullscreenWithOptions = function(options) {
             var socketLocation = "ws://" + window.location.host + "/socket?file=" + moduleFile;
             var serverConnection = new WebSocket(socketLocation);
             serverConnection.onmessage = function(event) {
-                if (elmPermitHotswaps && debuggerHandle.ports) {
-                    hotSwap(event.data);
+                if (elmPermitSwaps && debuggerHandle.ports) {
+                    swap(event.data);
                 }
             };
             window.addEventListener("unload", function() {
@@ -173,7 +173,7 @@ ElmRuntime.debugFullscreenWithOptions = function(options) {
             });
         }
 
-        function hotSwap(raw) {
+        function swap(raw) {
             var debuggerDiv = document.getElementById(ELM_DEBUGGER_ID);
             var result = JSON.parse(raw);
             var js = result.success;
@@ -187,7 +187,7 @@ ElmRuntime.debugFullscreenWithOptions = function(options) {
                 var moduleStr = js.match(/(Elm\..+)\ =\ \1/)[1];
                 var module = window.eval(moduleStr);
                 if (mainHandle.debugger) {
-                    var debuggerState = mainHandle.debugger.getHotSwapState();
+                    var debuggerState = mainHandle.debugger.getSwapState();
                     mainHandle.debugger.dispose();
                     mainHandle.dispose();
 
@@ -220,8 +220,8 @@ ElmRuntime.debugFullscreenWithOptions = function(options) {
             }
         }
 
-        if (!options.externalHotswap) {
-            mainHandle.debugger.hotSwap = hotSwap;
+        if (!options.externalSwap) {
+            mainHandle.debugger.swap = swap;
         }
         return mainHandle;
     };

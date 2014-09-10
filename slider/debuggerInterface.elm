@@ -77,8 +77,8 @@ restartButton : Element
 restartButton =
     myButton restartInput.handle () "restart"
 
-hotswapButton : Bool -> Element
-hotswapButton permitHotswap =
+swapButton : Bool -> Element
+swapButton permitSwap =
     let hsWidth = 25
         radius = 4
         bgButton = roundedSquare hsWidth radius (filled lightGrey)
@@ -97,17 +97,17 @@ hotswapButton permitHotswap =
             ]
         falseButtonClick = trueButton
         button =
-            if  | permitHotswap ->
-                    customButton permitHotswapInput.handle False
+            if  | permitSwap ->
+                    customButton permitSwapInput.handle False
                         (collage hsWidth hsWidth trueButton)
                         (collage hsWidth hsWidth trueButtonHover)
                         (collage hsWidth hsWidth trueButtonClick)
                 | otherwise ->
-                    customButton permitHotswapInput.handle True
+                    customButton permitSwapInput.handle True
                         (collage hsWidth hsWidth falseButton)
                         (collage hsWidth hsWidth falseButtonHover)
                         (collage hsWidth hsWidth falseButtonClick)
-        info = "hotswap" |> textStyle |> leftAligned
+        info = "swap" |> textStyle |> leftAligned
     in  flow right [ info, spacer 10 1, button ]
 
 scrubSlider : (Int, Int) -> State -> Element
@@ -156,18 +156,18 @@ sliderMinMaxText w state =
             ]
 
 view : (Int, Int) -> [(String, String)] -> Bool -> State -> Element
-view (w,h) watches permitHotswap state =
+view (w,h) watches permitSwap state =
     let midWidth = w - sideMargin
         topSpacerHeight = 15
         buttonSliderSpaceHeight = 10
-        fittedHotSwapButton =
-            if  | showHotswap ->
-                    hotswapButton permitHotswap
+        fittedSwapButton =
+            if  | showSwap ->
+                    swapButton permitSwap
                         |> container (w - 2 * buttonWidth - sideMargin) buttonHeight middle
                 | otherwise -> spacer (2 * buttonWidth) 1
         buttons = flow right
             [ restartButton
-            , fittedHotSwapButton
+            , fittedSwapButton
             , (if state.paused then playButton else pauseButton)
             ]
         centeredSliderContainer = flow down
@@ -217,7 +217,7 @@ view (w,h) watches permitHotswap state =
 main : Signal Element
 main = view <~ ((\(w, h) -> (panelWidth, h)) <~ Window.dimensions)
              ~ watches
-             ~ permitHotswapInput.signal
+             ~ permitSwapInput.signal
              ~ scene
 
 port scrubTo : Signal Int
@@ -229,14 +229,14 @@ port pause = .paused <~ scene
 port restart : Signal Int
 port restart = lift (\x -> 0) restartInput.signal
 
-port permitHotswap : Signal Bool
-port permitHotswap = permitHotswapInput.signal
+port permitSwap : Signal Bool
+port permitSwap = permitSwapInput.signal
 
 pausedInput : Input Bool
 pausedInput = input False
 
-permitHotswapInput : Input Bool
-permitHotswapInput = input True
+permitSwapInput : Input Bool
+permitSwapInput = input True
 
 restartInput : Input ()
 restartInput = input ()
@@ -248,7 +248,7 @@ port eventCounter : Signal Int
 
 port watches : Signal [(String, String)]
 
-port showHotswap : Bool
+port showSwap : Bool
 
 scene : Signal State
 scene = foldp step startState aggregateUpdates
