@@ -4,7 +4,7 @@ module Socket where
 
 import Control.Monad.Trans (MonadIO(liftIO))
 import Control.Concurrent (threadDelay, forkIO, killThread, ThreadId)
-import Control.Exception (catch, SomeException)
+import qualified Control.Exception as E
 import qualified Data.ByteString.Char8 as BSC
 import qualified Filesystem.Path.CurrentOS as FP
 import qualified Network.WebSockets as WS
@@ -39,9 +39,9 @@ keepAlive connection =
     ping :: IO ()
     ping = do
       threadDelay (10 * 1000000) -- 10 seconds
-      WS.sendPing connection ("ping" :: BSC.ByteString) `catch` connectionClosed
+      WS.sendPing connection ("ping" :: BSC.ByteString) `E.catch` connectionClosed
 
-    connectionClosed :: SomeException -> IO ()
+    connectionClosed :: E.SomeException -> IO ()
     connectionClosed _ = return ()
 
     listen :: ThreadId -> IO ()
