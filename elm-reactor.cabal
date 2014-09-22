@@ -51,7 +51,7 @@ Executable elm-reactor
                        cmdargs,
                        containers >= 0.3,
                        directory >= 1.2,
-                       Elm >= 0.12.3,
+                       Elm >= 0.13,
                        filepath,
                        fsnotify >= 0.1.0.2,
                        HTTP,
