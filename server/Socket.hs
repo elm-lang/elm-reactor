@@ -53,5 +53,5 @@ keepAlive connection =
             case controlMessage of
               WS.Ping _ -> listen pingThread
               WS.Pong _ -> loop
-              WS.Close _ ->
+              WS.Close _ _ ->
                   killThread pingThread >> return ()
