@@ -43,7 +43,10 @@ source-repository head
 Executable elm-reactor
   Main-is:             Server.hs
   ghc-options:         -threaded -O2
-  other-modules:       Index
+  other-modules:       Generate,
+                       Index,
+                       Socket,
+                       Utils
   Build-depends:       base >=4.2 && <5,
                        blaze-html,
                        blaze-markup,
