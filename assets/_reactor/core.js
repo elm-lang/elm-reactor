@@ -220,7 +220,7 @@ ElmRuntime.debugFullscreenWithOptions = function(options) {
             }
         }
 
-        if (!options.externalSwap) {
+        if (options.externalSwap) {
             mainHandle.debugger.swap = swap;
         }
         return mainHandle;
