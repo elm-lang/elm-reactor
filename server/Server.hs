@@ -48,7 +48,6 @@ flags = Flags
 
 config :: Int -> Config Snap a
 config portNumber =
-  setBind "localhost" $
   setPort portNumber $
   setAccessLog ConfigNoLog $
   setErrorLog ConfigNoLog $
