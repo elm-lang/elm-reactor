@@ -28,12 +28,14 @@ import qualified Utils
 
 data Flags = Flags
   { port :: Int
+  , host :: String
   , runtime :: Maybe FilePath
   } deriving (Data,Typeable,Show,Eq)
 
 flags :: Flags
 flags = Flags
   { port = 8000 &= help "set the port of the reactor"
+  , host = "localhost" &= help "set the host to listen for traffic. Default: localhost"&= typ "HOSTNAME"
   , runtime = Nothing &= typFile
               &= help "Specify a custom location for Elm's runtime system."
   } &= help "Interactive development tool that makes it easy to develop and debug Elm programs.\n\
@@ -46,12 +48,12 @@ flags = Flags
                 ", (c) Evan Czaplicki 2011-2014")
 
 
-config :: Int -> Config Snap a
-config portNumber =
+config :: BSC.ByteString -> Int -> Config Snap a
+config hostString portNumber =
   setPort portNumber $
   setAccessLog ConfigNoLog $
   setErrorLog ConfigNoLog $
-  defaultConfig
+  (setBind hostString defaultConfig)
 
 -- | Set up the reactor.
 main :: IO ()
@@ -60,7 +62,7 @@ main = do
   (_,Just h,_,_) <- createProcess $ (shell "elm --version") { std_out = CreatePipe }
   elmVer <- hGetContents h
   putStrLn (startupMessage elmVer)
-  httpServe (config (port cargs)) $
+  httpServe (config (BSC.pack (host cargs)) (port cargs)) $
       serveRuntime (maybe Elm.runtime id (runtime cargs))
       <|> serveElm
       <|> route [ ("socket", socket) ]
