@@ -19,7 +19,9 @@ ElmRuntime.debugFullscreenWithOptions = function(options) {
         var ELM_LIGHT_GREY = "#E4E4E4";
 
         var mainHandle = Elm.fullscreenDebugHooks(module, swapState);
-        var debuggerHandle = initDebugger();
+        var debuggerHandles = initDebugger();
+        var watchesHandle = debuggerHandles[0];
+        var sliderHandle = debuggerHandles[1];
         if (!options.externalSwap) {
             initSocket();
         }
@@ -27,8 +29,8 @@ ElmRuntime.debugFullscreenWithOptions = function(options) {
         parent.window.addEventListener("message", function(e) {
             if (e.data === "elmNotify") {
                 var currentPosition = mainHandle.debugger.getMaxSteps();
-                if (debuggerHandle.ports) {
-                    debuggerHandle.ports.eventCounter.send(currentPosition);
+                if (sliderHandle.ports) {
+                    sliderHandle.ports.eventCounter.send(currentPosition);
                     sendWatches(currentPosition);
                 }
             }
@@ -36,14 +38,26 @@ ElmRuntime.debugFullscreenWithOptions = function(options) {
 
         function createDebuggingElement() {
             var debuggingPanelExpanded = true;
-            var debuggerWidth = 275;
+            var debuggerWidth = 295;
 
             var debugTools = document.createElement("div");
             debugTools.id = ELM_DEBUGGER_ID;
 
+            var watchesDiv = document.createElement("div");
+            watchesDiv.id = "elmWatches";
+            watchesDiv.style.overflowY = "auto";
+            watchesDiv.style.overflowX = "hidden";
+            watchesDiv.style.height = "calc(100% - 150px)";
+
+            var sliderDiv = document.createElement("div");
+            sliderDiv.id = "elmSlider";
+
             var debuggerDiv = document.createElement("div");
             debuggerDiv.id = "elmDebugger";
             debuggerDiv.style.overflow = "hidden";
+            debuggerDiv.style.height = "100%";
+            debuggerDiv.appendChild(sliderDiv);
+            debuggerDiv.appendChild(watchesDiv);
 
             // Create and style the panel
             debugTools.style.background = ELM_DARK_GREY;
@@ -127,18 +141,23 @@ ElmRuntime.debugFullscreenWithOptions = function(options) {
 
             var debugTools = createDebuggingElement();
             document.body.appendChild(debugTools);
-            var debuggerDiv = document.getElementById("elmDebugger");
+            var elmWatches = document.getElementById("elmWatches");
+            var watchesHandle = Elm.embed(Elm.WatchesInterface, elmWatches,
+                { watches: []
+                });
 
-            var handle = Elm.embed(Elm.DebuggerInterface, debuggerDiv,
+            var elmSlider = document.getElementById("elmSlider");
+            var slideHandle = Elm.embed(Elm.SliderInterface, elmSlider,
                 { eventCounter: 0,
-                  watches: [],
                   showSwap: !options.externalSwap
                 });
-            handle.ports.scrubTo.subscribe(scrubber);
-            handle.ports.pause.subscribe(elmPauser);
-            handle.ports.restart.subscribe(elmRestart);
-            handle.ports.permitSwap.subscribe(elmSwap);
-            return handle;
+            slideHandle.ports.scrubTo.subscribe(scrubber);
+            slideHandle.ports.pause.subscribe(elmPauser);
+            slideHandle.ports.restart.subscribe(elmRestart);
+            slideHandle.ports.permitSwap.subscribe(elmSwap);
+
+
+            return [watchesHandle,slideHandle];
         }
 
         function sendWatches(position) {
@@ -154,7 +173,7 @@ ElmRuntime.debugFullscreenWithOptions = function(options) {
                 var stringified = prettyPrint(value, separator);
                 output.push([key, stringified]);
             }
-            debuggerHandle.ports.watches.send(output);
+            watchesHandle.ports.watches.send(output);
         }
 
         function initSocket() {
