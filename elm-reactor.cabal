@@ -1,37 +1,48 @@
-Name:                elm-reactor
-Version:             0.1
-Synopsis:            Interactive development tool for Elm programs
-Description:         Provides an interactive development tool that makes it easy
-                     to develop and debug Elm programs. It will automatically
-                     compile any Elm program—independent of editor. It permits
-                     hot-swapping and time-traveling debugging.
+Name: elm-reactor
+Version: 0.1
 
-Homepage:            http://elm-lang.org
+Synopsis:
+  Interactive development tool for Elm programs
 
-License:             BSD3
-License-file:        LICENSE
+Description:
+  Provides an interactive development tool that makes it easy
+  to develop and debug Elm programs. It will automatically
+  compile any Elm program—independent of editor. It permits
+  hot-swapping and time-traveling debugging.
 
-Author:              Evan Czaplicki
-Maintainer:          info@elm-lang.org
-Copyright:           Copyright: (c) 2011-2014 Evan Czaplicki
 
-Category:            Compiler, Language
+Homepage:
+  http://elm-lang.org
 
-Build-type:          Custom
+License: BSD3
+License-file: LICENSE
 
-Data-dir:            assets
-Data-files:          favicon.ico
-                     debugger.js
-                     _reactor/wrench.png
-                     _reactor/debugger/pause-button-up.png
-                     _reactor/debugger/pause-button-down.png
-                     _reactor/debugger/pause-button-hover.png
-                     _reactor/debugger/play-button-up.png
-                     _reactor/debugger/play-button-down.png
-                     _reactor/debugger/play-button-hover.png
-                     _reactor/debugger/restart-button-up.png
-                     _reactor/debugger/restart-button-down.png
-                     _reactor/debugger/restart-button-hover.png
+Author:     Evan Czaplicki
+Maintainer: info@elm-lang.org
+Copyright:  Copyright: (c) 2011-2014 Evan Czaplicki
+
+Category:
+  Compiler, Language
+
+Build-type:
+  Custom
+
+Data-dir:
+  assets
+
+Data-files:
+  favicon.ico
+  debugger.js
+  _reactor/wrench.png
+  _reactor/debugger/pause-button-up.png
+  _reactor/debugger/pause-button-down.png
+  _reactor/debugger/pause-button-hover.png
+  _reactor/debugger/play-button-up.png
+  _reactor/debugger/play-button-down.png
+  _reactor/debugger/play-button-hover.png
+  _reactor/debugger/restart-button-up.png
+  _reactor/debugger/restart-button-down.png
+  _reactor/debugger/restart-button-hover.png
 
 Extra-source-files:  README.md
 Cabal-version:       >=1.8
@@ -41,32 +52,41 @@ source-repository head
   location: git://github.com/elm-lang/elm-reactor.git
 
 Executable elm-reactor
-  Main-is:             Server.hs
-  ghc-options:         -threaded -O2
-  other-modules:       Generate,
-                       Index,
-                       Socket,
-                       Utils
-  Build-depends:       base >=4.2 && <5,
-                       blaze-html,
-                       blaze-markup,
-                       bytestring,
-                       cmdargs,
-                       containers >= 0.3,
-                       directory >= 1.2,
-                       Elm >= 0.13,
-                       filepath,
-                       fsnotify >= 0.1.0.2,
-                       HTTP,
-                       mtl,
-                       process,
-                       snap-core,
-                       snap-server,
-                       system-filepath,
-                       time,
-                       transformers,
-                       unordered-containers,
-                       websockets >= 0.9 && < 0.10,
-                       websockets-snap >= 0.8.2.1
+  ghc-options:
+    -threaded -O2
+
+  hs-source-dirs:
+    server
+
+  Main-is:
+    Server.hs
+
+  other-modules:
+    Generate,
+    Index,
+    Socket,
+    Utils
+
+  Build-depends:
+    base >=4.2 && <5,
+    blaze-html,
+    blaze-markup,
+    bytestring,
+    cmdargs,
+    containers >= 0.3,
+    directory >= 1.2,
+    Elm >= 0.13,
+    filepath,
+    fsnotify >= 0.1.0.2,
+    HTTP,
+    mtl,
+    process,
+    snap-core,
+    snap-server,
+    system-filepath,
+    time,
+    transformers,
+    unordered-containers,
+    websockets >= 0.9 && < 0.10,
+    websockets-snap >= 0.8.2.1
   
-  hs-source-dirs:      server
