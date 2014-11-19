@@ -18,7 +18,7 @@ import qualified Elm.Utils as Utils
 
 compile :: FilePath -> IO (Either String String)
 compile filePath =
-  do  result <- Utils.unwrappedRun "elm-make" [filePath]
+  do  result <- Utils.unwrappedRun "elm-make" [ "--yes", filePath ]
       case result of
         Left (Utils.MissingExe msg) ->
           return (Left msg)
