@@ -9,7 +9,7 @@ import qualified Data.ByteString.Char8 as BSC
 import qualified Data.Version as Version
 import qualified Network.WebSockets.Snap as WSS
 import qualified Text.Blaze.Html5 as H
-import qualified Text.Blaze.Html.Renderer.Utf8 as BlazeBS
+import qualified Text.Blaze.Html.Renderer.Utf8 as Blaze
 import System.Console.CmdArgs
 import System.Directory
 import System.FilePath
@@ -24,6 +24,7 @@ import qualified Compile
 import qualified Socket
 import qualified Utils
 import Paths_elm_reactor (version)
+import qualified Elm.Compiler as Compiler
 import Elm.Utils ((|>))
 
 
@@ -93,14 +94,6 @@ socket = maybe error400 socketSnap =<< getParam "file"
          WSS.runWebSocketsSnap $ Socket.fileChangeApp $ BSC.unpack fileParam
 
 
-withFile :: (FilePath -> H.Html) -> Snap ()
-withFile handler =
-  do filePath <- BSC.unpack . rqPathInfo <$> getRequest
-     exists <- liftIO (doesFileExist filePath)
-     if not exists then error404 else
-         serveHtml $ handler filePath
-
-
 error400 :: Snap ()
 error400 =
     modifyResponse $ setResponseStatus 400 "Bad Request"
@@ -111,11 +104,7 @@ error404 =
     modifyResponse $ setResponseStatus 404 "Not Found"
 
 
-serveHtml :: MonadSnap m => H.Html -> m ()
-serveHtml html =
-  do  _ <- setContentType "text/html" <$> getResponse
-      writeLBS (BlazeBS.renderHtml html)
-
+-- SERVE ELM CODE
 
 serveElm :: Snap ()
 serveElm =
@@ -129,10 +118,25 @@ serveElm =
       serveHtml result
 
 
-serveAsset :: FilePath -> Snap ()
-serveAsset assetPath =
-  do  dataPath <- liftIO $ Utils.getDataFile assetPath
-      serveFile dataPath
+serveHtml :: MonadSnap m => H.Html -> m ()
+serveHtml html =
+  do  _ <- setContentType "text/html" <$> getResponse
+      writeBuilder (Blaze.renderHtmlBuilder html)
+
+
+-- SERVE STATIC ASSETS
+
+serveAssets :: Snap ()
+serveAssets =
+  do  file <- BSC.unpack . rqPathInfo <$> getRequest
+      case () of
+        _ | file == "debugging-runtime.js" ->
+              serveFile =<< liftIO Compiler.runtimeDebugPath
+
+          | file `elem` staticAssets ->
+              serveFile =<< liftIO (Utils.getDataFile file)
+
+          | otherwise -> pass
 
 
 staticAssets :: [FilePath]
@@ -151,9 +155,3 @@ staticAssets =
     , "_reactor/debugger/restart-button-hover.png"
     ]
 
-
-serveAssets :: Snap ()
-serveAssets =
-  do  file <- BSC.unpack . rqPathInfo <$> getRequest
-      guard (file `elem` staticAssets)
-      serveAsset file

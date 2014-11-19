@@ -3,6 +3,7 @@
 module Compile (toHtml, toJson) where
 
 import Control.Applicative ((<$>),(<*>))
+import Control.Monad (when)
 import qualified Data.Text as Text
 import qualified Text.Blaze as Blaze
 import Text.Blaze.Html5 ((!))
@@ -53,12 +54,18 @@ jsonReply field value =
 
 toHtml :: Bool -> FilePath -> IO H.Html
 toHtml debug filePath =
-  do  src <- readFile filePath
+  do  sourceCode <- readFile filePath
       result <- compile filePath
-      case (,) <$> Compiler.parseDependencies src <*> result of
+      case (,) <$> Compiler.parseDependencies sourceCode <*> result of
         Right ((name, _deps), code) ->
             return $ htmlDocument (Module.nameToString name) $
-                H.script $ Blaze.preEscapedToMarkup (code ++ initialize debug name filePath)
+                do  H.script $ Blaze.preEscapedToMarkup code
+
+                    when debug $ do
+                        script "/debugger.js"
+                        script "/debugging-runtime.js"
+
+                    H.script $ Blaze.preEscapedToMarkup (initialize debug name filePath)
 
         Left errMsg ->
             return $ htmlDocument "Oops!" $
@@ -73,9 +80,13 @@ htmlDocument title content =
       H.meta ! A.charset "UTF-8"
       H.title (H.toHtml title)
       H.style $ Blaze.preEscapedToMarkup myStyle
---      H.script ! A.src (H.toValue ("/debugger.js" :: String)) $ ""
     H.body $ do
       content
+
+
+script :: FilePath -> H.Html
+script path =
+    H.script ! A.src (H.toValue path) $ ""
 
 
 myStyle :: Text.Text
