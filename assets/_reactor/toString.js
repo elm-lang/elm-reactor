@@ -5,12 +5,10 @@
 
 var prettyPrint = function(){
 
-    var independentElm = {};
-    var NList = Elm.Native.List.make(independentElm);
-    var List = Elm.List.make(independentElm);
-    var ElmArray = Elm.Array.make(independentElm);
-    var Dict = Elm.Dict.make(independentElm);
-    var Tuple2 = Elm.Native.Utils.make(independentElm).Tuple2;
+    var independentRuntime = {};
+    var List;
+    var ElmArray;
+    var Dict;
 
     var toString = function(v, separator) {
         var type = typeof v;
@@ -48,6 +46,9 @@ var prettyPrint = function(){
                 }
                 return "(" + output.join(", ") + ")";
             } else if (v.ctor === "_Array") {
+                if (!ElmArray) {
+                    ElmArray = Elm.Array.make(independentRuntime);
+                }
                 var list = ElmArray.toList(v);
                 return "Array.fromList " + toString(list, separator);
             } else if (v.ctor === "::") {
@@ -61,8 +62,11 @@ var prettyPrint = function(){
             } else if (v.ctor === "[]") {
                 return "[]";
             } else if (v.ctor === "RBNode" || v.ctor === "RBEmpty") {
-                var cons = F3(function(k,v,acc){return NList.Cons(Tuple2(k,v),acc)});
-                var list = A3(Dict.foldr, cons, NList.Nil, v);
+                if (!Dict || !List) {
+                    Dict = Elm.Dict.make(independentRuntime);
+                    List = Elm.List.make(independentRuntime);
+                }
+                var list = Dict.toList(v);
                 var name = "Dict";
                 if (list.ctor === "::" && list._0._1.ctor === "_Tuple0") {
                     name = "Set";
