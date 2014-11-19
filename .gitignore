@@ -1,9 +1,5 @@
 dist
 assets/_reactor/debuggerInterface.js
 assets/debugger.js
-slider/build
-slider/cache
-assets
 elm-stuff
 cabal.sandbox.config
-.cabal-sandbox
