@@ -8,7 +8,7 @@
 // Expose internal swap function, disable swap button, no socket
 // options.externalSwap = boolean
 
-ElmRuntime.debugFullscreenWithOptions = function(options) {
+function debugFullscreenWithOptions(options) {
 
     return function(module, moduleFile, swapState /* =undefined */) {
         var createdSocket = false;
