@@ -13,10 +13,13 @@ import Text.Blaze.Html5 ((!))
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
 
-import qualified Elm.Internal.Utils as Elm
+import qualified Elm.Compiler as Compiler
+import qualified Elm.Utils as Utils
 
--- | Using a page title and the full source of an Elm program, compile down to
---   a valid HTML document.
+
+{-| Using a page title and the full source of an Elm program, compile down to
+a valid HTML document.
+-}
 html :: FilePath -> Bool -> IO H.Html
 html filePath doDebug =
   do src <- readFile filePath
@@ -65,8 +68,10 @@ html filePath doDebug =
           insertDebuggerScript
           content
 
--- | Creates the javascript for the elm program and returns it as a 
---   JSONified string with either success:<code> or error:<message>
+
+{-| Creates the javascript for the elm program and returns it as a 
+JSONified string with either success:<code> or error:<message>
+-}
 js :: FilePath -> IO String
 js filePath =
   do output <- compile filePath
@@ -75,12 +80,14 @@ js filePath =
     wrap :: String -> String -> String
     wrap typ msg = "{ " ++ show typ ++ " : " ++ show msg ++ " }"
 
+
 addSpaces :: String -> String
 addSpaces str =
   case str of
     ' ' : ' ' : rest -> " &nbsp;" ++ addSpaces rest
     c : rest -> c : addSpaces rest
     [] -> []
+
 
 compile :: FilePath -> IO (Either String String)
 compile filePath =
