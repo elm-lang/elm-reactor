@@ -8,4 +8,4 @@ import qualified Paths_elm_reactor as Reactor
 {-| The absolute path to a data file -}
 getDataFile :: FilePath -> IO FilePath
 getDataFile name =
-    Utils.getAssets "reactor" Reactor.getDataFileName name
+    Utils.getAsset "reactor" Reactor.getDataFileName name
