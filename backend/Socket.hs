@@ -11,7 +11,8 @@ import qualified Network.WebSockets as WS
 import qualified System.FSNotify.Devel as NDevel
 import qualified System.FSNotify as Notify
 
-import qualified Generate
+import qualified Compile
+
 
 fileChangeApp :: FilePath -> WS.ServerApp
 fileChangeApp watchedFile pendingConnection =
@@ -23,7 +24,7 @@ fileChangeApp watchedFile pendingConnection =
 
 sendHotSwap :: FilePath -> WS.Connection -> FP.FilePath -> IO ()
 sendHotSwap watchedFile connection _ =
- do result <- liftIO (Generate.js watchedFile)
+ do result <- liftIO (Compile.toJson watchedFile)
     WS.sendTextData connection (BSC.pack result)
 
 

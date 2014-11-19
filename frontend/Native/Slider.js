@@ -29,12 +29,11 @@ Elm.Native.Slider.make = function(elm) {
 
         node.style.display = 'block';
         node.style.pointerEvents = 'auto';
-        node.elm_signal = model.signal;
         node.elm_handler = model.handler;
         node.addEventListener('input', notifySlider);
         node.addEventListener('change', notifySlider);
         function notifySlider() {
-            elm.notify(node.elm_signal.id, node.elm_handler(node.value));
+            node.elm_handler(node.value)();
         }
         return node;
     }
@@ -45,7 +44,6 @@ Elm.Native.Slider.make = function(elm) {
         } else {
             node.disabled = false;
         }
-        node.elm_signal = newModel.signal;
         node.elm_handler = newModel.handler;
         node.min = newModel.styling.min;
         node.max = newModel.styling.max;
@@ -53,7 +51,7 @@ Elm.Native.Slider.make = function(elm) {
         node.value = newModel.styling.value;
     }
 
-    function slider(signal, handler, styling) {
+    function slider(handler, styling) {
         var width = styling.length;
         var height = 24;
         if (!styling.horizontal) {
@@ -66,7 +64,7 @@ Elm.Native.Slider.make = function(elm) {
             type: 'Slider',
             render: renderSlider,
             update: updateSlider,
-            model: { signal:signal, handler:handler, styling:styling }
+            model: { handler:handler, styling:styling }
         });
     }
 

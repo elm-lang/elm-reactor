@@ -4,7 +4,6 @@ assets/debugger.js
 slider/build
 slider/cache
 assets
-cache
-build
+elm-stuff
 cabal.sandbox.config
 .cabal-sandbox
