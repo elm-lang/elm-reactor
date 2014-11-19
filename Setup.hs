@@ -18,8 +18,9 @@ main =
 
 myPostBuild :: Args -> BuildFlags -> PackageDescription -> LocalBuildInfo -> IO ()
 myPostBuild args flags pd lbi =
-  do  putStrLn "Custom build step: compiling debuggerInterface.elm"
-      buildInterface
+  do  putStrLn "Custom build step: compiling debuggerInterface.elm and watches.elm"
+      buildInterface "debuggerInterface"
+      buildInterface "watches"
       concatJS lbi
       postBuild simpleUserHooks args flags pd lbi
 
@@ -35,20 +36,21 @@ jsFiles :: [FilePath]
 jsFiles =
   map (\name -> "assets" </> "_reactor" </> name)
     [ "debuggerInterface.js"
+    , "watches.js"
     , "toString.js"
     , "core.js"
     , "reactor.js"
     ]
 
 
-buildInterface :: IO ()
-buildInterface =
+buildInterface :: String -> IO ()
+buildInterface src =
   do  (exitCode, out, err) <-
-        readProcessWithExitCode "elm-make" [ "--yes", "frontend" </> "debuggerInterface.elm" ] ""
+        readProcessWithExitCode "elm-make" [ "--yes", "frontend" </> (src ++ ".elm") ] ""
       case exitCode of
         ExitSuccess ->
-          renameFile "elm.js" ("assets" </> "_reactor" </> "debuggerInterface.js")
+          renameFile "elm.js" ("assets" </> "_reactor" </> (src ++ ".js"))
 
         ExitFailure _ ->
-          do  hPutStrLn stderr ("Failed to build debuggerInterface.elm\n\n" ++ out ++ err)
+          do  hPutStrLn stderr ("Failed to build " ++ src ++ ".elm\n\n" ++ out ++ err)
               exitFailure

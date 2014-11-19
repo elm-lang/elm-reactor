@@ -58,12 +58,6 @@ dataStyle typefaces height string =
 textStyle : String -> Text
 textStyle = dataStyle ["Gotham", "Futura", "Lucida Grande", "sans-serif"] 12
 
-watchStyle : String -> Text
-watchStyle = dataStyle ["Gotham", "Futura", "Lucida Grande", "sans-serif"] 14
-
-codeStyle : String -> Text
-codeStyle = dataStyle ["Menlo for Powerline", "monospace"] 12
-
 --
 -- View
 --
@@ -170,9 +164,8 @@ sliderMinMaxText w state =
             , sliderTotalEvents
             ]
 
-
-view : (Int, Int) -> List (String, String) -> Bool -> State -> Element
-view (w,h) watches permitSwap state =
+view : (Int, Int) -> Bool -> State -> Element
+view (w, h) permitSwap state =
     let midWidth = w - sideMargin
         topSpacerHeight = 15
         buttonSliderSpaceHeight = 10
@@ -208,23 +201,7 @@ view (w,h) watches permitSwap state =
             [ spacer w 1 |> GE.color lightGrey |> opacity 0.3
             , spacer w 12
             ]
-        showWatch (k,v) = flow down
-            [ k |> watchStyle |> bold |> leftAligned |> width w
-            , v |> codeStyle |> leftAligned |> width w
-            , spacer 1 12
-            ]
-        watchView = flow right
-            [ spacer 20 1
-            , case watches of
-                [] -> noWatches
-                ws -> List.map showWatch ws |> flow down
-            ]
-    in  flow down
-            [ controls
-            , bar
-            , watchView
-            ]
-        
+    in flow down [ controls, bar ]
 
 --
 -- The wiring
@@ -232,7 +209,6 @@ view (w,h) watches permitSwap state =
 
 main : Signal Element
 main = view <~ ((\(w, h) -> (panelWidth, h)) <~ Window.dimensions)
-             ~ watches
              ~ (Signal.subscribe permitSwapChannel)
              ~ scene
 
@@ -267,8 +243,6 @@ scrupChannel =
     Signal.channel 0
 
 port eventCounter : Signal Int
-
-port watches : Signal (List (String, String))
 
 port showSwap : Bool
 
@@ -335,25 +309,5 @@ roundedSquare side radius toForm =
     in
         group [xRect, yRect, tl, tr, bl, br]
 
-
---
--- Copy
---
-
-noWatches : Element
-noWatches = [markdown|
-
-### <span style="font-family: Gotham, Futura, 'Lucida Grande', sans-serif; font-size: 12pt; color: rgb(170,170,170)"> You don't have any watches! </span>
-
-<span style="color: rgb(170,170,170)">
-<span style="font-family: Gotham, Futura, 'Lucida Grande', sans-serif; font-size: 10pt; color: rgb(170,170,170)">
-Use [<span style="text-decoration:underline; color: rgb(170,170,170)">Debug.watch</span>](http://library.elm-lang.org/catalog/elm-lang-Elm/latest/Debug#watch)
-to show any value. <br>
-`watch : String -> a -> a`</span>
-
-<span style="font-family: Gotham, Futura, 'Lucida Grande', sans-serif; font-size: 10pt; color: rgb(170,170,170)">
-Use [<span style="text-decoration:underline; color: rgb(170,170,170)">Debug.watchSummary</span>](http://library.elm-lang.org/catalog/elm-lang-Elm/latest/Debug#watchSummary) to show a <br>
-summary or subvalue of any value. </span><br>
-|]
 
 

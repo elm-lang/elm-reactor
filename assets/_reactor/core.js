@@ -19,7 +19,9 @@ function debugFullscreenWithOptions(options) {
         var ELM_LIGHT_GREY = "#E4E4E4";
 
         var mainHandle = Elm.fullscreenDebugHooks(module, swapState);
-        var debuggerHandle = initDebugger();
+        var debuggerHandles = initDebugger();
+        var watchesHandle = debuggerHandles[0];
+        var sliderHandle = debuggerHandles[1];
         if (!options.externalSwap) {
             initSocket();
         }
@@ -27,8 +29,8 @@ function debugFullscreenWithOptions(options) {
         parent.window.addEventListener("message", function(e) {
             if (e.data === "elmNotify") {
                 var currentPosition = mainHandle.debugger.getMaxSteps();
-                if (debuggerHandle.ports) {
-                    debuggerHandle.ports.eventCounter.send(currentPosition);
+                if (sliderHandle.ports && watchesHandle.ports) {
+                    sliderHandle.ports.eventCounter.send(currentPosition);
                     sendWatches(currentPosition);
                 }
             }
@@ -41,9 +43,25 @@ function debugFullscreenWithOptions(options) {
             var debugTools = document.createElement("div");
             debugTools.id = ELM_DEBUGGER_ID;
 
+            // Create space for watches that scrolls
+            var watchesDiv = document.createElement("div");
+            watchesDiv.id = "elmWatches";
+            watchesDiv.style.overflowY = "auto";
+            watchesDiv.style.overflowX = "hidden";
+            watchesDiv.style.height = "calc(100% - 150px)";
+
+            // Create space for slider
+            var sliderDiv = document.createElement("div");
+            sliderDiv.id = "elmSlider";
+
+            // Group slider and watches
             var debuggerDiv = document.createElement("div");
             debuggerDiv.id = "elmDebugger";
             debuggerDiv.style.overflow = "hidden";
+            debuggerDiv.style.height = "100%";
+
+            debuggerDiv.appendChild(sliderDiv);
+            debuggerDiv.appendChild(watchesDiv);
 
             // Create and style the panel
             debugTools.style.background = ELM_DARK_GREY;
@@ -127,18 +145,24 @@ function debugFullscreenWithOptions(options) {
 
             var debugTools = createDebuggingElement();
             document.body.appendChild(debugTools);
-            var debuggerDiv = document.getElementById("elmDebugger");
+            var sliderDiv = document.getElementById("elmSlider");
 
-            var handle = Elm.embed(Elm.DebuggerInterface, debuggerDiv,
+            // Wire up watches
+            var elmWatches = document.getElementById("elmWatches");
+            var watchesHandle = Elm.embed(Elm.Watches, elmWatches,
+                { watches: [] });
+
+            // Wire up Slider
+            var slideHandle = Elm.embed(Elm.DebuggerInterface, sliderDiv,
                 { eventCounter: 0,
-                  watches: [],
                   showSwap: !options.externalSwap
                 });
-            handle.ports.scrubTo.subscribe(scrubber);
-            handle.ports.pause.subscribe(elmPauser);
-            handle.ports.restart.subscribe(elmRestart);
-            handle.ports.permitSwap.subscribe(elmSwap);
-            return handle;
+            slideHandle.ports.scrubTo.subscribe(scrubber);
+            slideHandle.ports.pause.subscribe(elmPauser);
+            slideHandle.ports.restart.subscribe(elmRestart);
+            slideHandle.ports.permitSwap.subscribe(elmSwap);
+
+            return [watchesHandle, slideHandle];
         }
 
         function sendWatches(position) {
@@ -154,7 +178,7 @@ function debugFullscreenWithOptions(options) {
                 var stringified = prettyPrint(value, separator);
                 output.push([key, stringified]);
             }
-            debuggerHandle.ports.watches.send(output);
+            watchesHandle.ports.watches.send(output);
         }
 
         function initSocket() {
@@ -164,7 +188,7 @@ function debugFullscreenWithOptions(options) {
             var socketLocation = "ws://" + window.location.host + "/socket?file=" + moduleFile;
             var serverConnection = new WebSocket(socketLocation);
             serverConnection.onmessage = function(event) {
-                if (elmPermitSwaps && debuggerHandle.ports) {
+                if (elmPermitSwaps && sliderHandle.ports && watchesHandle.ports) {
                     swap(event.data);
                 }
             };
