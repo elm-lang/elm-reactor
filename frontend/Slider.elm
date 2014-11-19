@@ -8,13 +8,15 @@ module Slider where
 @docs defaultSlider, SliderStyle
 -}
 
+import Debug
 import Native.Slider
-import Graphics.Input (Handle)
+import Graphics.Element (Element)
+import Signal
 
 {-| The attributes of a slider. This lets you customize a slider to fit however
 you want. You may also modify the default slider style with record updates.
 -}
-type SliderStyle =
+type alias SliderStyle =
     { horizontal : Bool
     , disabled : Bool
     , length : Int
@@ -66,5 +68,5 @@ meters with centimeter accuracy (0.01).
                   }
           in  slider age.handle id ageStyle
 -}
-slider : Handle a -> (Float -> a) -> SliderStyle -> Element
+slider : (Float -> Signal.Message) -> SliderStyle -> Element
 slider = Native.Slider.slider

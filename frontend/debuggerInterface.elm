@@ -1,22 +1,30 @@
 module DebuggerInterface where
 
-import Window
-import Graphics.Input (..)
+import Color
+import Graphics.Collage (..)
+import Graphics.Element (..)
 import Graphics.Element as GE
-import Text (..)
+import Graphics.Input (..)
+import List
+import Signal
+import Signal (Signal, (<~), (~))
 import Slider (..)
+import Text
+import Text (..)
+import Window
+
 
 --
 -- Model
 --
 
-data Update
+type Update
     = Restart
     | Pause Bool
     | TotalEvents Int
     | ScrubPosition Int
 
-type State =
+type alias State =
     { paused : Bool
     , totalEvents : Int
     , scrubPosition : Int
@@ -32,11 +40,11 @@ sideMargin = 2 * 20
 textHeight = 20
 panelWidth = 275
 
-blue = rgb 28 129 218
-lightGrey = rgb 228 228 228
-darkGrey = rgb 74 74 74
+blue = Color.rgb 28 129 218
+lightGrey = Color.rgb 228 228 228
+darkGrey = Color.rgb 74 74 74
 
-dataStyle : [String] -> Float -> String -> Text
+dataStyle : List String -> Float -> String -> Text
 dataStyle typefaces height string =
     let myStyle =
              { defaultStyle
@@ -45,7 +53,7 @@ dataStyle typefaces height string =
              , height <- Just height
              }
     in
-        style myStyle (toText string)
+        style myStyle (Text.fromString string)
 
 textStyle : String -> Text
 textStyle = dataStyle ["Gotham", "Futura", "Lucida Grande", "sans-serif"] 12
@@ -60,22 +68,23 @@ codeStyle = dataStyle ["Menlo for Powerline", "monospace"] 12
 -- View
 --
 
-myButton : Handle a -> a -> String -> Element
-myButton handle value name =
+myButton : Signal.Message -> String -> Element
+myButton message name =
     let img state = image 40 40 ("/_reactor/debugger/" ++ name ++ "-button-" ++ state ++ ".png")
-    in  customButton handle value (img "up") (img "hover") (img "down")
+    in  customButton message (img "up") (img "hover") (img "down")
 
 playButton : Element
 playButton =
-    myButton pausedInput.handle False "play"
+    myButton (Signal.send pausedInput False) "play"
 
 pauseButton : Element
 pauseButton =
-    myButton pausedInput.handle True "pause"
+    myButton (Signal.send pausedInput True) "pause"
 
 restartButton : Element
 restartButton =
-    myButton restartInput.handle () "restart"
+    myButton (Signal.send restartChannel ()) "restart"
+
 
 swapButton : Bool -> Element
 swapButton permitSwap =
@@ -98,17 +107,19 @@ swapButton permitSwap =
         falseButtonClick = trueButton
         button =
             if  | permitSwap ->
-                    customButton permitSwapInput.handle False
+                    customButton (Signal.send permitSwapChannel False)
                         (collage hsWidth hsWidth trueButton)
                         (collage hsWidth hsWidth trueButtonHover)
                         (collage hsWidth hsWidth trueButtonClick)
                 | otherwise ->
-                    customButton permitSwapInput.handle True
+                    customButton (Signal.send permitSwapChannel True)
                         (collage hsWidth hsWidth falseButton)
                         (collage hsWidth hsWidth falseButtonHover)
                         (collage hsWidth hsWidth falseButtonClick)
         info = "swap" |> textStyle |> leftAligned
-    in  flow right [ info, spacer 10 1, button ]
+    in
+        flow right [ info, spacer 10 1, button ]
+
 
 scrubSlider : (Int, Int) -> State -> Element
 scrubSlider (w,_) state =
@@ -119,8 +130,10 @@ scrubSlider (w,_) state =
             , max <- toFloat state.totalEvents
             , value <- toFloat state.scrubPosition
             }
-    in  slider scrubInput.handle round sliderStyle
+    in
+        slider (\n -> Signal.send scrupChannel (round n)) sliderStyle
             |> container sliderLength 20 middle
+
 
 sliderEventText : Int -> State -> Element
 sliderEventText w state =
@@ -135,9 +148,10 @@ sliderEventText w state =
         xPos = absolute (round leftDistance)
         yPos = absolute (round (textHeight / 2))
         textPosition = middleAt xPos yPos
-        text' = show state.scrubPosition |> textStyle |> centered
+        text' = toString state.scrubPosition |> textStyle |> centered
     in
         container w textHeight textPosition text'
+
 
 sliderMinMaxText : Int -> State -> Element
 sliderMinMaxText w state =
@@ -146,16 +160,18 @@ sliderMinMaxText w state =
                 |> leftAligned
                 |> container w textHeight topLeft
         sliderTotalEvents =
-            show state.totalEvents
+            toString state.totalEvents
                 |> textStyle
                 |> rightAligned
                 |> container w textHeight topRight
-    in  flow outward
+    in
+        flow outward
             [ sliderStartText
             , sliderTotalEvents
             ]
 
-view : (Int, Int) -> [(String, String)] -> Bool -> State -> Element
+
+view : (Int, Int) -> List (String, String) -> Bool -> State -> Element
 view (w,h) watches permitSwap state =
     let midWidth = w - sideMargin
         topSpacerHeight = 15
@@ -201,7 +217,7 @@ view (w,h) watches permitSwap state =
             [ spacer 20 1
             , case watches of
                 [] -> noWatches
-                ws -> map showWatch ws |> flow down
+                ws -> List.map showWatch ws |> flow down
             ]
     in  flow down
             [ controls
@@ -217,7 +233,7 @@ view (w,h) watches permitSwap state =
 main : Signal Element
 main = view <~ ((\(w, h) -> (panelWidth, h)) <~ Window.dimensions)
              ~ watches
-             ~ permitSwapInput.signal
+             ~ (Signal.subscribe permitSwapChannel)
              ~ scene
 
 port scrubTo : Signal Int
@@ -227,31 +243,38 @@ port pause : Signal Bool
 port pause = .paused <~ scene
 
 port restart : Signal Int
-port restart = lift (\x -> 0) restartInput.signal
+port restart =
+    Signal.map (always 0) (Signal.subscribe restartChannel)
 
 port permitSwap : Signal Bool
-port permitSwap = permitSwapInput.signal
+port permitSwap =
+    Signal.subscribe permitSwapChannel
 
-pausedInput : Input Bool
-pausedInput = input False
+pausedInput : Signal.Channel Bool
+pausedInput =
+    Signal.channel False
 
-permitSwapInput : Input Bool
-permitSwapInput = input True
+permitSwapChannel : Signal.Channel Bool
+permitSwapChannel =
+    Signal.channel True
 
-restartInput : Input ()
-restartInput = input ()
+restartChannel : Signal.Channel ()
+restartChannel =
+    Signal.channel ()
 
-scrubInput : Input Int
-scrubInput = input 0
+scrupChannel : Signal.Channel Int
+scrupChannel =
+    Signal.channel 0
 
 port eventCounter : Signal Int
 
-port watches : Signal [(String, String)]
+port watches : Signal (List (String, String))
 
 port showSwap : Bool
 
 scene : Signal State
-scene = foldp step startState aggregateUpdates
+scene =
+  Signal.foldp step startState aggregateUpdates
 
 startState : State
 startState =
@@ -286,11 +309,12 @@ step update state =
             }
 
 aggregateUpdates : Signal Update
-aggregateUpdates = merges
-    [ always Restart <~ restartInput.signal
-    , Pause <~ pausedInput.signal
+aggregateUpdates =
+  Signal.mergeMany
+    [ always Restart <~ Signal.subscribe restartChannel
+    , Pause <~ Signal.subscribe pausedInput
     , TotalEvents <~ eventCounter
-    , ScrubPosition <~ scrubInput.signal
+    , ScrubPosition <~ Signal.subscribe scrupChannel
     ]
 
 --
