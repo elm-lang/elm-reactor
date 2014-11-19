@@ -1,15 +1,17 @@
 Elm.Native.Slider = {};
-Elm.Native.Slider.make = function(elm) {
+Elm.Native.Slider.make = function(localRuntime) {
 
-    elm.Native = elm.Native || {};
-    elm.Native.Slider = elm.Native.Slider || {};
-    if (elm.Native.Slider.values) return elm.Native.Slider.values;
+    localRuntime.Native = localRuntime.Native || {};
+    localRuntime.Native.Slider = localRuntime.Native.Slider || {};
+    if (localRuntime.Native.Slider.values) {
+        return localRuntime.Native.Slider.values;
+    }
 
-    var newNode = ElmRuntime.use(ElmRuntime.Render.Utils).newElement;
-    var newElement = Elm.Graphics.Element.make(elm).newElement;
+    var Element = Elm.Graphics.Element.make(localRuntime);
+    var NativeElement = Elm.Native.Graphics.Element.make(localRuntime);
 
     function renderSlider(model) {
-        var node = newNode('input');
+        var node = NativeElement.createNode('input');
         node.type = 'range';
 
         node.min = model.styling.min;
@@ -59,7 +61,7 @@ Elm.Native.Slider.make = function(elm) {
             width = height;
             height = temp;
         }
-        return A3(newElement, width, height, {
+        return A3(Element.newElement, width, height, {
             ctor: 'Custom',
             type: 'Slider',
             render: renderSlider,
@@ -68,7 +70,7 @@ Elm.Native.Slider.make = function(elm) {
         });
     }
 
-    return elm.Native.Slider.values = {
-        slider:F3(slider)
+    return localRuntime.Native.Slider.values = {
+        slider: F2(slider)
     };
 }
