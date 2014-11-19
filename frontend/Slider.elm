@@ -8,6 +8,7 @@ module Slider where
 @docs defaultSlider, SliderStyle
 -}
 
+import Debug
 import Native.Slider
 import Graphics.Element (Element)
 import Signal
