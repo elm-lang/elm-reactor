@@ -12,6 +12,7 @@ import Debug
 import Native.Slider
 import Graphics.Element (Element)
 import Signal
+import Html
 
 {-| The attributes of a slider. This lets you customize a slider to fit however
 you want. You may also modify the default slider style with record updates.
