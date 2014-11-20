@@ -3,3 +3,7 @@ assets/_reactor/debuggerInterface.js
 assets/debugger.js
 elm-stuff
 cabal.sandbox.config
+elm_dependencies
+
+# Emacs Files
+*~
