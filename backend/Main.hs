@@ -13,8 +13,6 @@ import qualified Text.Blaze.Html.Renderer.Utf8 as Blaze
 import System.Console.CmdArgs
 import System.Directory
 import System.FilePath
-import System.Process
-import System.IO (hGetContents)
 import Snap.Core
 import Snap.Http.Server
 import Snap.Util.FileServe
@@ -62,9 +60,7 @@ config portNumber =
 main :: IO ()
 main =
   do  cargs <- cmdArgs flags
-      (_,Just h,_,_) <- createProcess $ (shell "elm --version") { std_out = CreatePipe }
-      elmVer <- hGetContents h
-      putStrLn (startupMessage elmVer)
+      putStrLn startupMessage
       httpServe (config (port cargs)) $
           serveElm
           <|> route [ ("socket", socket) ]
@@ -73,10 +69,9 @@ main =
           <|> error404
 
 
-startupMessage :: String -> String
-startupMessage elmVer =
-  "Elm Reactor " ++ Version.showVersion version ++ ", backed by version " ++
-  filter (/= '\n') elmVer ++ " of the compiler."
+startupMessage :: String
+startupMessage =
+  "Elm Reactor " ++ Version.showVersion version
 
 
 directoryConfig :: MonadSnap m => DirectoryConfig m
