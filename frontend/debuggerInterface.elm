@@ -6,6 +6,7 @@ import Graphics.Element (..)
 import Graphics.Element as GE
 import Graphics.Input (..)
 import List
+import Markdown
 import Signal
 import Signal (Signal, (<~), (~))
 import Slider (..)
@@ -341,7 +342,7 @@ roundedSquare side radius toForm =
 --
 
 noWatches : Element
-noWatches = [markdown|
+noWatches = Markdown.toElement """
 
 ### <span style="font-family: Gotham, Futura, 'Lucida Grande', sans-serif; font-size: 12pt; color: rgb(170,170,170)"> You don't have any watches! </span>
 
@@ -354,6 +355,7 @@ to show any value. <br>
 <span style="font-family: Gotham, Futura, 'Lucida Grande', sans-serif; font-size: 10pt; color: rgb(170,170,170)">
 Use [<span style="text-decoration:underline; color: rgb(170,170,170)">Debug.watchSummary</span>](http://library.elm-lang.org/catalog/elm-lang-Elm/latest/Debug#watchSummary) to show a <br>
 summary or subvalue of any value. </span><br>
-|]
+
+"""
 
 
