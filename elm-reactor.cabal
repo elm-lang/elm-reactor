@@ -1,5 +1,5 @@
 Name: elm-reactor
-Version: 0.1
+Version: 0.2
 
 Synopsis:
   Interactive development tool for Elm programs
@@ -75,7 +75,7 @@ Executable elm-reactor
     cmdargs,
     containers >= 0.3,
     directory >= 1.2,
-    elm-compiler,
+    elm-compiler >= 0.14 && < 0.15,
     filepath,
     fsnotify >= 0.1.0.2,
     HTTP,
