@@ -51,6 +51,8 @@ Elm.Native.Slider.make = function(localRuntime) {
         node.max = newModel.styling.max;
         node.step = newModel.styling.step;
         node.value = newModel.styling.value;
+
+        return node;
     }
 
     function slider(handler, styling) {
