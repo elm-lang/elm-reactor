@@ -48,14 +48,13 @@ function debugFullscreenWithOptions(options) {
             // Create and style the panel
             debugTools.style.background = ELM_DARK_GREY;
             debugTools.style.width = debuggerWidth + "px";
-            debugTools.style.height = "100%";
+            debugTools.style.minHeight = "100%";
             debugTools.style.position = "absolute";
             debugTools.style.top = "0px";
             debugTools.style.right = "0px";
             debugTools.style.transitionDuration = "0.3s";
             debugTools.style.opacity = 0.90;
             debugTools.style.zIndex = 1000;
-            debugToolw.style.overflow = 'auto';
 
             // Prevent clicks from reaching the main elm instance under the panel
             function stopEvents(e) {
