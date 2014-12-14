@@ -1,5 +1,5 @@
 Name: elm-reactor
-Version: 0.2
+Version: 0.2.0.1
 
 Synopsis:
   Interactive development tool for Elm programs
@@ -90,4 +90,3 @@ Executable elm-reactor
     unordered-containers,
     websockets >= 0.9 && < 0.10,
     websockets-snap >= 0.8.2.1
-  
