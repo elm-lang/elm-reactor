@@ -27,7 +27,7 @@ Navigate to the Elm project you want to work on. A great project to get started
 with is [elm-examples][] which contains a simple Mario game and todo list app,
 both setup to be fun to debug.
 
-[elm-examples]: https://github.com/michaelbjames/elm-examples
+[elm-examples]: https://github.com/evancz/elm-examples
 
 In the root of your Elm project start the reactor with:
 
@@ -59,11 +59,9 @@ start your Elm program with a control panel that lets you:
 To use the debugger with more complex HTML or CSS, you may want to start the
 debugger from within an HTML file.
 
-In your custom HTML file load the `/debugger.js` script right after you load
-elm-runtime:
+In your custom HTML file load the `/debugger.js` script:
 
 ```html
-<script type="text/javascript" src="/elm-runtime.js"></script>
 <script type="text/javascript" src="/debugger.js"></script>
 ```
 
