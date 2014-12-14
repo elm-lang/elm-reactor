@@ -5,6 +5,7 @@ module Main where
 import Control.Applicative ((<$>),(<|>))
 import Control.Monad (guard)
 import Control.Monad.Trans (MonadIO(liftIO))
+import Data.Maybe (isJust)
 import qualified Data.ByteString.Char8 as BSC
 import qualified Data.Version as Version
 import qualified Network.WebSockets.Snap as WSS
@@ -27,7 +28,8 @@ import Elm.Utils ((|>))
 
 
 data Flags = Flags
-    { port :: Int
+    { bind :: String
+    , port :: Int
     , runtime :: Maybe FilePath
     }
     deriving (Data,Typeable,Show,Eq)
@@ -35,7 +37,8 @@ data Flags = Flags
 
 flags :: Flags
 flags = Flags
-  { port = 8000 &= help "set the port of the reactor"
+  { bind = "0.0.0.0" &= help "set the host to bind to (default: 0.0.0.0)" &= typ "SPEC"
+  , port = 8000 &= help "set the port of the reactor (default: 8000)"
   , runtime = Nothing &= typFile
               &= help "Specify a custom location for Elm's runtime system."
   } &= help "Interactive development tool that makes it easy to develop and debug Elm programs.\n\
@@ -48,9 +51,10 @@ flags = Flags
                 ", (c) Evan Czaplicki 2011-2014")
 
 
-config :: Int -> Config Snap a
-config portNumber =
+config :: BSC.ByteString -> Int -> Config Snap a
+config bindSpec portNumber =
     defaultConfig
+      |> setBind bindSpec
       |> setPort portNumber
       |> setAccessLog ConfigNoLog
       |> setErrorLog ConfigNoLog
@@ -61,7 +65,7 @@ main :: IO ()
 main =
   do  cargs <- cmdArgs flags
       putStrLn startupMessage
-      httpServe (config (port cargs)) $
+      httpServe (config (BSC.pack (bind cargs)) (port cargs)) $
           serveElm
           <|> route [ ("socket", socket) ]
           <|> serveDirectoryWith directoryConfig "."
@@ -106,7 +110,7 @@ serveElm =
   let despace = map (\c -> if c == '+' then ' ' else c) in
   do  file <- despace . BSC.unpack . rqPathInfo <$> getRequest
       debugParam <- getParam "debug"
-      let debug = maybe False (const True) debugParam
+      let debug = isJust debugParam
       exists <- liftIO $ doesFileExist file
       guard (exists && takeExtension file == ".elm")
       result <- liftIO $ Compile.toHtml debug file
