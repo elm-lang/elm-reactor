@@ -9,7 +9,7 @@
 
 function debugFullscreenWithOptions(options) {
 
-    return function(module, moduleFile, swapState /* =undefined */) {
+    return function(elmModule, elmModuleFile, swapState /* =undefined */) {
         var createdSocket = false;
         var elmPermitSwaps = true;
 
@@ -17,7 +17,7 @@ function debugFullscreenWithOptions(options) {
         var ELM_DARK_GREY = "#4A4A4A";
         var ELM_LIGHT_GREY = "#E4E4E4";
 
-        var mainHandle = Elm.fullscreenDebugHooks(module, swapState);
+        var mainHandle = Elm.fullscreenDebugHooks(elmModule, swapState);
         var debuggerHandle = initDebugger();
         if (!options.externalSwap) {
             initSocket();
@@ -159,8 +159,8 @@ function debugFullscreenWithOptions(options) {
         function initSocket() {
             createdSocket = true;
             // "/todo.html" => "todo.elm"
-            moduleFile = moduleFile || window.location.pathname.substr(1).split(".")[0] + ".elm";
-            var socketLocation = "ws://" + window.location.host + "/socket?file=" + moduleFile;
+            elmModuleFile = elmModuleFile || window.location.pathname.substr(1).split(".")[0] + ".elm";
+            var socketLocation = "ws://" + window.location.host + "/socket?file=" + elmModuleFile;
             var serverConnection = new WebSocket(socketLocation);
             serverConnection.onmessage = function(event) {
                 if (elmPermitSwaps && debuggerHandle.ports) {
@@ -173,24 +173,24 @@ function debugFullscreenWithOptions(options) {
         }
 
         function swap(raw) {
-            var debuggerDiv = document.getElementById(ELM_DEBUGGER_ID);
-            var result = JSON.parse(raw);
-            var js = result.success;
-            var errorMessage = result.error;
             var error = document.getElementById('ErrorMessage');
             if (error) {
                 error.parentNode.removeChild(error);
             }
-            if (js) {
-                window.eval(js);
-                var moduleStr = js.match(/(Elm\..+)\ =\ \1/)[1];
-                var module = window.eval(moduleStr);
+
+            var result = JSON.parse(raw);
+            var code = result.code;
+            var errorMessage = result.error;
+
+            if (code) {
+                window.eval(code);
+                var elmModule = window.eval('Elm.' + result.name);
                 if (mainHandle.debugger) {
                     var debuggerState = mainHandle.debugger.getSwapState();
                     mainHandle.debugger.dispose();
                     mainHandle.dispose();
 
-                    mainHandle = Elm.fullscreenDebugHooks(module, debuggerState);
+                    mainHandle = Elm.fullscreenDebugHooks(elmModule, debuggerState);
 
                     // The div that rejects events must be after Elm
                     var ignoringDiv = document.getElementById("elmEventIgnorer");
@@ -199,7 +199,7 @@ function debugFullscreenWithOptions(options) {
                     }
                 }
                 else {
-                    mainHandle = mainHandle.swap(module);
+                    mainHandle = mainHandle.swap(elmModule);
                 }
             } else if (errorMessage) {
                 var errorNode = document.createElement("pre");

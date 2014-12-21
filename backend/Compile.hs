@@ -36,18 +36,17 @@ compile filePath =
 
 toJson :: FilePath -> IO String
 toJson filePath =
-  do  result <- compile filePath
-      case result of
-        Right code ->
-          return (jsonReply "success" code)
+  do  sourceCode <- readFile filePath
+      result <- compile filePath
+      case (,) <$> Compiler.parseDependencies sourceCode <*> result of
+        Right ((name, _deps), code) ->
+          return $
+            "{ \"name\": " ++ show (Module.nameToString name) ++
+            ", \"code\": " ++ show code ++ " }"
 
         Left err ->
-          return (jsonReply "error" err)
-
-
-jsonReply :: String -> String -> String
-jsonReply field value =
-    concat [ "{ ", show field, " : ", show value, " }" ]
+          return $
+            "{ \"error\": " ++ show err ++ " }"
 
 
 -- TO HTML
