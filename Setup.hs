@@ -18,37 +18,33 @@ main =
 
 myPostBuild :: Args -> BuildFlags -> PackageDescription -> LocalBuildInfo -> IO ()
 myPostBuild args flags pd lbi =
-  do  putStrLn "Custom build step: compiling debuggerInterface.elm"
-      buildInterface
-      concatJS lbi
+  do  putStrLn "Custom build step: creating and collecting all static resources"
+      buildSideBar
+      append "debug.js"
+      append "toString.js"
+      append "core.js"
+      append "reactor.js"
       postBuild simpleUserHooks args flags pd lbi
 
 
-concatJS :: LocalBuildInfo -> IO ()
-concatJS lbi =
-  do  megaJS <- concat `fmap` mapM readFile jsFiles
-      _ <- putStrLn "Writing composite debugger.js"
-      writeFile ("assets" </> "debugger.js") megaJS
+append :: FilePath -> IO ()
+append fileName =
+  do  src <- readFile ("frontend" </> fileName)
+      appendFile output src
 
 
-jsFiles :: [FilePath]
-jsFiles =
-  map (\name -> "assets" </> "_reactor" </> name)
-    [ "debuggerInterface.js"
-    , "toString.js"
-    , "core.js"
-    , "reactor.js"
-    ]
+output :: FilePath
+output = "assets" </> "_reactor" </> "debug.js"
 
 
-buildInterface :: IO ()
-buildInterface =
+buildSideBar :: IO ()
+buildSideBar =
   do  (exitCode, out, err) <-
-        readProcessWithExitCode "elm-make" [ "--yes", "frontend" </> "debuggerInterface.elm" ] ""
+        readProcessWithExitCode "elm-make" [ "--yes", "frontend" </> "SideBar.elm", "--output=" ++ output ] ""
       case exitCode of
         ExitSuccess ->
-          renameFile "elm.js" ("assets" </> "_reactor" </> "debuggerInterface.js")
+          return ()
 
         ExitFailure _ ->
-          do  hPutStrLn stderr ("Failed to build debuggerInterface.elm\n\n" ++ out ++ err)
+          do  hPutStrLn stderr ("Failed to build SideBar.elm\n\n" ++ out ++ err)
               exitFailure

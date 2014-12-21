@@ -23,14 +23,12 @@ import qualified Compile
 import qualified Socket
 import qualified Utils
 import Paths_elm_reactor (version)
-import qualified Elm.Compiler as Compiler
 import Elm.Utils ((|>))
 
 
 data Flags = Flags
     { bind :: String
     , port :: Int
-    , runtime :: Maybe FilePath
     }
     deriving (Data,Typeable,Show,Eq)
 
@@ -39,8 +37,6 @@ flags :: Flags
 flags = Flags
   { bind = "0.0.0.0" &= help "set the host to bind to (default: 0.0.0.0)" &= typ "SPEC"
   , port = 8000 &= help "set the port of the reactor (default: 8000)"
-  , runtime = Nothing &= typFile
-              &= help "Specify a custom location for Elm's runtime system."
   } &= help "Interactive development tool that makes it easy to develop and debug Elm programs.\n\
             \    Read more about it at <https://github.com/elm-lang/elm-reactor>."
     &= helpArg [explicit, name "help", name "h"]
@@ -87,7 +83,8 @@ directoryConfig =
 
 
 socket :: Snap ()
-socket = maybe error400 socketSnap =<< getParam "file"
+socket =
+    maybe error400 socketSnap =<< getParam "file"
   where
     socketSnap fileParam =
          WSS.runWebSocketsSnap $ Socket.fileChangeApp $ BSC.unpack fileParam
@@ -119,7 +116,7 @@ serveElm =
 
 serveHtml :: MonadSnap m => H.Html -> m ()
 serveHtml html =
-  do  _ <- setContentType "text/html" <$> getResponse
+  do  modifyResponse (setContentType "text/html")
       writeBuilder (Blaze.renderHtmlBuilder html)
 
 
@@ -128,20 +125,18 @@ serveHtml html =
 serveAssets :: Snap ()
 serveAssets =
   do  file <- BSC.unpack . rqPathInfo <$> getRequest
-      case () of
-        _ | file == "debugging-runtime.js" ->
-              serveFile =<< liftIO Compiler.runtimeDebugPath
+      case file `elem` staticAssets of
+        True ->
+          serveFile =<< liftIO (Utils.getDataFile file)
 
-          | file `elem` staticAssets ->
-              serveFile =<< liftIO (Utils.getDataFile file)
-
-          | otherwise -> pass
+        False ->
+          pass
 
 
 staticAssets :: [FilePath]
 staticAssets =
     [ "favicon.ico"
-    , "debugger.js"
+    , "_reactor/debug.js"
     , "_reactor/wrench.png"
     , "_reactor/debugger/pause-button-up.png"
     , "_reactor/debugger/pause-button-down.png"

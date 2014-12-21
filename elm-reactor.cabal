@@ -32,7 +32,7 @@ Data-dir:
 
 Data-files:
   favicon.ico
-  debugger.js
+  _reactor/debug.js
   _reactor/wrench.png
   _reactor/debugger/pause-button-up.png
   _reactor/debugger/pause-button-down.png
@@ -53,7 +53,7 @@ source-repository head
 
 Executable elm-reactor
   ghc-options:
-    -threaded -O2
+    -threaded -O2 -W
 
   hs-source-dirs:
     backend

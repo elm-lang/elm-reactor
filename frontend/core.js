@@ -1,7 +1,6 @@
 // A note to the reader:
-// This file is concatenated with debuggerInterface.elm's compiled
-// javascript, toString.js, and reactor.js.
-// This is done at build time in Setup.hs.
+// This file is concatenated with all the other static resources at build time
+// in Setup.hs.
 
 // Options:
 
@@ -129,11 +128,11 @@ function debugFullscreenWithOptions(options) {
             document.body.appendChild(debugTools);
             var debuggerDiv = document.getElementById("elmDebugger");
 
-            var handle = Elm.embed(Elm.DebuggerInterface, debuggerDiv,
-                { eventCounter: 0,
-                  watches: [],
-                  showSwap: !options.externalSwap
-                });
+            var handle = Elm.embed(Elm.SideBar, debuggerDiv, {
+                eventCounter: 0,
+                watches: [],
+                showSwap: !options.externalSwap
+            });
             handle.ports.scrubTo.subscribe(scrubber);
             handle.ports.pause.subscribe(elmPauser);
             handle.ports.restart.subscribe(elmRestart);

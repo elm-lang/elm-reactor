@@ -1,4 +1,4 @@
-module DebuggerInterface where
+module SideBar where
 
 import Color
 import Graphics.Collage (..)

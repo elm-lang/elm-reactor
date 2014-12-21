@@ -1,5 +1,4 @@
 dist
-assets/_reactor/debuggerInterface.js
-assets/debugger.js
+assets/_reactor/debug.js
 elm-stuff
 cabal.sandbox.config
