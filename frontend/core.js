@@ -9,7 +9,7 @@
 
 function debugFullscreenWithOptions(options) {
 
-    return function(elmModule, elmModuleFile, swapState /* =undefined */) {
+    return function(elmModule, ports, elmModuleFile, swapState /* =undefined */) {
         var createdSocket = false;
         var elmPermitSwaps = true;
 
@@ -17,7 +17,7 @@ function debugFullscreenWithOptions(options) {
         var ELM_DARK_GREY = "#4A4A4A";
         var ELM_LIGHT_GREY = "#E4E4E4";
 
-        var mainHandle = Elm.fullscreenDebugHooks(elmModule, swapState);
+        var mainHandle = Elm.fullscreenDebugHooks(elmModule, ports, swapState);
         var debuggerHandle = initDebugger();
         if (!options.externalSwap) {
             initSocket();
@@ -190,7 +190,7 @@ function debugFullscreenWithOptions(options) {
                     mainHandle.debugger.dispose();
                     mainHandle.dispose();
 
-                    mainHandle = Elm.fullscreenDebugHooks(elmModule, debuggerState);
+                    mainHandle = Elm.fullscreenDebugHooks(elmModule, ports, debuggerState);
 
                     // The div that rejects events must be after Elm
                     var ignoringDiv = document.getElementById("elmEventIgnorer");
