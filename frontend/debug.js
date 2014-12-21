@@ -26,7 +26,7 @@ Elm.fullscreenDebugHooks = function(elmModule, debuggerHistory /* =undefined */)
 
 var EVENTS_PER_SAVE = 100;
 
-function debugModule(module, runtime) {
+function debugModule(elmModule, runtime) {
   var programPaused = false;
   var recordedEvents = [];
   var asyncCallbacks = [];
@@ -45,7 +45,7 @@ function debugModule(module, runtime) {
 
   // make a copy of the wrappedRuntime
   var assignedPropTracker = Object.create(wrappedRuntime);
-  var debuggedModule = module.make(assignedPropTracker);
+  var debuggedModule = elmModule.make(assignedPropTracker);
 
   // make sure the signal graph is actually a signal & extract the visual model
   if ( !('recv' in debuggedModule.main) ) {
@@ -263,34 +263,34 @@ function debugModule(module, runtime) {
 // the a state of the debugger for it to assume during init. It contains
 // the paused state of the debugger, the recorded events, and the current
 // event being processed.
-function debuggerInit(debugModule, runtime, debuggerHistory /* =undefined */) {
+function debuggerInit(elmModule, runtime, debuggerHistory /* =undefined */) {
   var currentEventIndex = 0;
 
   function resetProgram(position) {
-    var closestSnapshot = debugModule.getSnapshotAt(position);
-    debugModule.clearAsyncCallbacks();
-    restoreSnapshot(debugModule.signalGraphNodes, closestSnapshot);
+    var closestSnapshot = elmModule.getSnapshotAt(position);
+    elmModule.clearAsyncCallbacks();
+    restoreSnapshot(elmModule.signalGraphNodes, closestSnapshot);
     redrawGraphics();
   }
 
   function restartProgram() {
     pauseProgram();
     resetProgram(0);
-    debugModule.watchTracker.clear();
-    debugModule.tracePath.clearTraces();
-    debugModule.setContinue(0);
-    debugModule.clearRecordedEvents();
-    debugModule.clearSnapshots();
-    executeCallbacks(debugModule.initialAsyncCallbacks);
+    elmModule.watchTracker.clear();
+    elmModule.tracePath.clearTraces();
+    elmModule.setContinue(0);
+    elmModule.clearRecordedEvents();
+    elmModule.clearSnapshots();
+    executeCallbacks(elmModule.initialAsyncCallbacks);
   }
 
   function pauseProgram() {
-    debugModule.setPaused();
-    currentEventIndex = debugModule.getRecordedEventsLength();
+    elmModule.setPaused();
+    currentEventIndex = elmModule.getRecordedEventsLength();
   }
 
   function continueProgram() {
-    if (debugModule.getPaused())
+    if (elmModule.getPaused())
     {
       var closestSnapshotIndex =
           Math.floor(currentEventIndex / EVENTS_PER_SAVE) * EVENTS_PER_SAVE;
@@ -298,13 +298,13 @@ function debuggerInit(debugModule, runtime, debuggerHistory /* =undefined */) {
       var continueIndex = currentEventIndex;
       currentEventIndex = closestSnapshotIndex;
       stepTo(continueIndex);
-      debugModule.setContinue(currentEventIndex);
+      elmModule.setContinue(currentEventIndex);
     }
   }
 
   function stepTo(index) {
-    if (!debugModule.getPaused()) {
-      debugModule.setPaused();
+    if (!elmModule.getPaused()) {
+      elmModule.setPaused();
       resetProgram();
     }
 
@@ -319,7 +319,7 @@ function debuggerInit(debugModule, runtime, debuggerHistory /* =undefined */) {
     }
 
     while (currentEventIndex < index) {
-      var nextEvent = debugModule.getRecordedEventAt(currentEventIndex);
+      var nextEvent = elmModule.getRecordedEventAt(currentEventIndex);
       runtime.notify(nextEvent.id, nextEvent.value, nextEvent.timestep);
 
       currentEventIndex += 1;
@@ -327,11 +327,11 @@ function debuggerInit(debugModule, runtime, debuggerHistory /* =undefined */) {
   }
 
   function getMaxSteps() {
-    return debugModule.getRecordedEventsLength();
+    return elmModule.getRecordedEventsLength();
   }
 
   function redrawGraphics() {
-    var main = debugModule.debuggedModule.main
+    var main = elmModule.debuggedModule.main
     for (var i = main.kids.length ; i-- ; ) {
       main.kids[i].recv(runtime.timer.now(), true, main.id);
     }
@@ -339,19 +339,19 @@ function debuggerInit(debugModule, runtime, debuggerHistory /* =undefined */) {
 
   function getSwapState() {
     var continueIndex = currentEventIndex;
-    if (!debugModule.getPaused()) {
+    if (!elmModule.getPaused()) {
       continueIndex = getMaxSteps();
     }
     return {
-      paused: debugModule.getPaused(),
-      recordedEvents: debugModule.copyRecordedEvents(),
+      paused: elmModule.getPaused(),
+      recordedEvents: elmModule.copyRecordedEvents(),
       currentEventIndex: continueIndex
     };
   }
 
   function dispose() {
     var parentNode = runtime.node.parentNode;
-    parentNode.removeChild(debugModule.tracePath.canvas);
+    parentNode.removeChild(elmModule.tracePath.canvas);
     parentNode.removeChild(runtime.node);
   }
 
@@ -362,30 +362,30 @@ function debuggerInit(debugModule, runtime, debuggerHistory /* =undefined */) {
     // debugging console what it thinks the pause state is and go
     // from there.
     var paused = debuggerHistory.paused;
-    debugModule.setPaused();
-    debugModule.loadRecordedEvents(debuggerHistory.recordedEvents);
+    elmModule.setPaused();
+    elmModule.loadRecordedEvents(debuggerHistory.recordedEvents);
     var index = getMaxSteps();
     runtime.debuggerStatus.eventCounter = 0;
-    debugModule.tracePath.clearTraces();
+    elmModule.tracePath.clearTraces();
 
     // draw new trace path
-    debugModule.tracePath.startRecording();
+    elmModule.tracePath.startRecording();
     while(currentEventIndex < index) {
-      var nextEvent = debugModule.getRecordedEventAt(currentEventIndex);
+      var nextEvent = elmModule.getRecordedEventAt(currentEventIndex);
       runtime.debuggerStatus.eventCounter += 1;
       runtime.notify(nextEvent.id, nextEvent.value, nextEvent.timestep);
-      debugModule.snapshotOnCheckpoint();
+      elmModule.snapshotOnCheckpoint();
       currentEventIndex += 1;
     }
-    debugModule.tracePath.stopRecording();
+    elmModule.tracePath.stopRecording();
 
     stepTo(debuggerHistory.currentEventIndex);
     if (!paused) {
-      debugModule.setContinue(debuggerHistory.currentEventIndex);
+      elmModule.setContinue(debuggerHistory.currentEventIndex);
     }
   }
 
-  runtime.node.parentNode.appendChild(debugModule.tracePath.canvas);
+  runtime.node.parentNode.appendChild(elmModule.tracePath.canvas);
 
   var elmDebugger = {
       restart: restartProgram,
@@ -393,11 +393,11 @@ function debuggerInit(debugModule, runtime, debuggerHistory /* =undefined */) {
       kontinue: continueProgram,
       getMaxSteps: getMaxSteps,
       stepTo: stepTo,
-      getPaused: debugModule.getPaused,
+      getPaused: elmModule.getPaused,
       getSwapState: getSwapState,
       dispose: dispose,
-      allNodes: debugModule.signalGraphNodes,
-      watchTracker: debugModule.watchTracker
+      allNodes: elmModule.signalGraphNodes,
+      watchTracker: elmModule.watchTracker
   };
 
   return elmDebugger;
