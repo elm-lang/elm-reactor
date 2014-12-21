@@ -69,7 +69,7 @@ That creates the `Elm.debugFullscreen` function so you can initiate your Elm
 program with the debugger:
 
 ```javascript
-var runningElmModule = Elm.debugFullscreen(Elm.Todo, "todo.elm");
+var runningElmModule = Elm.debugFullscreen(Elm.Todo, {}, "todo.elm");
 ```
 
 The argument `"todo.elm"` is the file path to the root module of your project,

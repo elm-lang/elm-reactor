@@ -8,7 +8,7 @@ if (typeof window != 'undefined' && !window.location.origin) {
       (window.location.port ? (':' + window.location.port) : '');
 }
 
-Elm.fullscreenDebugHooks = function(elmModule, debuggerHistory /* =undefined */) {
+Elm.fullscreenDebugHooks = function(elmModule, ports, debuggerHistory /* =undefined */) {
   var exposedDebugger = {};
   function debuggerAttach(elmModule, debuggerHistory) {
     return {
@@ -19,7 +19,7 @@ Elm.fullscreenDebugHooks = function(elmModule, debuggerHistory /* =undefined */)
       }
     }
   }
-  var mainHandle = Elm.fullscreen(debuggerAttach(elmModule, debuggerHistory));
+  var mainHandle = Elm.fullscreen(debuggerAttach(elmModule, debuggerHistory), ports);
   mainHandle.debugger = exposedDebugger;
   return mainHandle;
 };
