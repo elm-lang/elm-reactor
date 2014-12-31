@@ -20,21 +20,14 @@ myPostBuild :: Args -> BuildFlags -> PackageDescription -> LocalBuildInfo -> IO 
 myPostBuild args flags pd lbi =
   do  putStrLn "Custom build step: creating and collecting all static resources"
       buildSideBar
-      append "debug.js"
-      append "toString.js"
-      append "core.js"
-      append "reactor.js"
+      src <- readFile ("frontend" </> "debugger-implementation.js")
+      appendFile output src
       postBuild simpleUserHooks args flags pd lbi
 
 
-append :: FilePath -> IO ()
-append fileName =
-  do  src <- readFile ("frontend" </> fileName)
-      appendFile output src
-
-
 output :: FilePath
-output = "assets" </> "_reactor" </> "debug.js"
+output =
+  "assets" </> "_reactor" </> "debug.js"
 
 
 buildSideBar :: IO ()
