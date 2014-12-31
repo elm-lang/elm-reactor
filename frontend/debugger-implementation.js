@@ -1,6 +1,12 @@
 (function() {
 'use strict';
 
+function assert(bool, msg) {
+    if (!bool) {
+        throw new Error("Assertion error: " + msg);
+    }
+}
+
 if (typeof window != 'undefined' && !window.location.origin) {
   window.location.origin =
       window.location.protocol + "//" +
@@ -311,8 +317,7 @@ function initModuleWithDebugState(elmModule, debugState /* =undefined */) {
 }
 
 
-var EVENTS_PER_SAVE = 100;
-
+// DEBUG STATE
 
 function emptyDebugState() {
     return {
@@ -330,6 +335,62 @@ function emptyDebugState() {
     };
 }
 
+
+// SNAPSHOTS
+
+var EVENTS_PER_SAVE = 100;
+
+function getNearestSnapshot(i, snapshots) {
+    var snapshotEvent = Math.floor(i / EVENTS_PER_SAVE);
+    assert(
+        snapshotEvent < snapshots.length && snapshotEvent >= 0,
+        "Out of bounds index: " + snapshotEvent);
+    return snapshots[snapshotEvent];
+}
+
+function createSnapshot(signalGraphNodes) {
+    var nodeValues = [];
+
+    signalGraphNodes.forEach(function(node) {
+        nodeValues.push({ value: node.value, id: node.id });
+    });
+
+    return nodeValues;
+}
+
+function restoreSnapshot(signalGraphNodes, snapshot) {
+    assert(
+        signalGraphNodes.length == snapshot.length,
+        "saved program state has wrong length");
+
+    for (var i=0; i < signalGraphNodes.length; i++) {
+        var node = signalGraphNodes[i];
+        var state = snapshot[i];
+
+        // TODO: give better message when snapshot swap fails
+        assert(node.id == state.id, "the nodes moved position");
+
+        node.value = state.value;
+    }
+}
+
+function flattenSignalGraph(nodes) {
+    var nodesById = {};
+
+    function addAllToDict(node) {
+        nodesById[node.id] = node;
+        node.kids.forEach(addAllToDict);
+    }
+    nodes.forEach(addAllToDict);
+
+    var allNodes = Object.keys(nodesById).sort().map(function(key) {
+        return nodesById[key];
+    });
+    return allNodes;
+}
+
+
+// WRAP THE RUNTIME
 
 function initModule(elmModule, runtime) {
     var debugState = emptyDebugState();
@@ -362,9 +423,10 @@ function initModule(elmModule, runtime) {
     });
 
     var signalGraphNodes = flattenSignalGraph(wrappedRuntime.inputs);
+    var initialSnapshot = createSnapshot(signalGraphNodes);
+    debugState.snapshots = [initialSnapshot];
     var tracePath = tracePathInit(runtime, debuggedModule.main);
 
-    debugState.snapshots.push(snapshotSignalGraph(signalGraphNodes));
 
     function notifyWrapper(id, v) {
         var timestep = runtime.timer.now();
@@ -425,21 +487,9 @@ function initModule(elmModule, runtime) {
         debugState.events = events.slice();
     }
 
-    function clearSnapshots() {
-        debugState.snapshots = [snapshotSignalGraph(signalGraphNodes)];
-    }
-
-    function getSnapshotAt(i) {
-        var snapshotEvent = Math.floor(i / EVENTS_PER_SAVE);
-        assert(
-            snapshotEvent < debugState.snapshots.length && snapshotEvent >= 0,
-            "Out of bounds index: " + snapshotEvent);
-        return debugState.snapshots[snapshotEvent];
-    }
-
     function snapshotOnCheckpoint() {
         if (eventsUntilSnapshot === 1) {
-            debugState.snapshots.push(snapshotSignalGraph(signalGraphNodes));
+            debugState.snapshots.push(createSnapshot(signalGraphNodes));
             eventsUntilSnapshot = EVENTS_PER_SAVE;
         } else {
             eventsUntilSnapshot -= 1;
@@ -486,15 +536,15 @@ function initModule(elmModule, runtime) {
     return {
         debuggedModule: debuggedModule,
         signalGraphNodes: signalGraphNodes,
-        initialSnapshot: snapshotSignalGraph(signalGraphNodes),
+        initialSnapshot: initialSnapshot,
         initialAsyncCallbacks: debugState.asyncCallbacks.slice(),
+
         // API functions
+        debugState: debugState,
         clearAsyncCallbacks: clearAsyncCallbacks,
         clearRecordedEvents: clearRecordedEvents,
         recordedEvents: debugState.events,
         loadRecordedEvents: loadRecordedEvents,
-        clearSnapshots: clearSnapshots,
-        getSnapshotAt: getSnapshotAt,
         snapshotOnCheckpoint: snapshotOnCheckpoint,
         isPaused: isPaused,
         pause: pause,
@@ -504,6 +554,7 @@ function initModule(elmModule, runtime) {
     };
 }
 
+
 // The debugState variable is passed in on swap. It represents
 // the a state of the debugger for it to assume during init. It contains
 // the paused state of the debugger, the recorded events, and the current
@@ -512,9 +563,9 @@ function debuggerInit(elmModule, runtime, debugState /* =undefined */) {
     var currentEventIndex = 0;
 
     function resetProgram(position) {
-        var closestSnapshot = elmModule.getSnapshotAt(position);
+        var nearestSnapshot = getNearestSnapshot(position, elmModule.debugState.snapshots);
         elmModule.clearAsyncCallbacks();
-        restoreSnapshot(elmModule.signalGraphNodes, closestSnapshot);
+        restoreSnapshot(elmModule.signalGraphNodes, nearestSnapshot);
         redrawGraphics();
     }
 
@@ -525,7 +576,7 @@ function debuggerInit(elmModule, runtime, debugState /* =undefined */) {
         elmModule.tracePath.clearTraces();
         elmModule.continueFrom(0);
         elmModule.clearRecordedEvents();
-        elmModule.clearSnapshots();
+        elmModule.debugState = [elmModule.initialSnapshot];
         executeCallbacks(elmModule.initialAsyncCallbacks);
     }
 
@@ -796,51 +847,6 @@ function createCanvas() {
     canvas.style.left = "0";
     canvas.style.pointerEvents = "none";
     return canvas;
-}
-
-function assert(bool, msg) {
-    if (!bool) {
-        throw new Error("Assertion error: " + msg);
-    }
-}
-
-function snapshotSignalGraph(signalGraphNodes) {
-    var nodeValues = [];
-
-    signalGraphNodes.forEach(function(node) {
-        nodeValues.push({ value: node.value, id: node.id });
-    });
-
-    return nodeValues;
-}
-
-function restoreSnapshot(signalGraphNodes, snapshot) {
-    assert(
-        signalGraphNodes.length == snapshot.length,
-        "saved program state has wrong length");
-
-    for (var i=0; i < signalGraphNodes.length; i++) {
-        var node = signalGraphNodes[i];
-        var state = snapshot[i];
-        assert(node.id == state.id, "the nodes moved position");
-
-        node.value = state.value;
-    }
-}
-
-function flattenSignalGraph(nodes) {
-    var nodesById = {};
-
-    function addAllToDict(node) {
-        nodesById[node.id] = node;
-        node.kids.forEach(addAllToDict);
-    }
-    nodes.forEach(addAllToDict);
-
-    var allNodes = Object.keys(nodesById).sort().map(function(key) {
-        return nodesById[key];
-    });
-    return allNodes;
 }
 
 
