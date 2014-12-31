@@ -9,13 +9,6 @@ if (typeof window != 'undefined' && !window.location.origin) {
 }
 
 
-Elm.fullscreenDebug =
-  fullscreenDebugWithOptions({ externalSwap: false });
-
-Elm.fullscreenDebugWithOptions =
-  fullscreenDebugWithOptions;
-
-
 // SIDE BAR
 
 var SIDE_BAR_ID = "elm-reactor-side-bar";
@@ -90,14 +83,98 @@ function createSideBar() {
 }
 
 
+// ERROR MESSAGE
+
+var ERROR_MESSAGE_ID = 'elm-reactor-error-message';
+
+function initErrorMessage(message) {
+    var node = document.createElement("pre");
+    node.id = ERROR_MESSAGE_ID;
+    node.innerHTML = message;
+    node.style.zindex = 1;
+    node.style.position = "absolute";
+    node.style.top = "0";
+    node.style.left = "0";
+    node.style.color = DARK_GREY;
+    node.style.backgroundColor = LIGHT_GREY;
+    node.style.padding = "1em";
+    node.style.margin = "1em";
+    node.style.borderRadius = "10px";
+    return node;
+}
+
+
+// EVENT BLOCKER
+
+var EVENT_BLOCKER_ID = 'elm-reactor-event-blocker'
+
+var eventsToIgnore = [
+    "click", "mousemove", "mouseup", "mousedown", "mouseclick", "keydown",
+    "keypress", "keyup", "touchstart", "touchend", "touchcancel", "touchleave",
+    "touchmove", "pointermove", "pointerdown", "pointerup", "pointerover",
+    "pointerout", "pointerenter", "pointerleave", "pointercancel"
+];
+
+function ignore(e) {
+    var event = e || window.event;
+    if (event.stopPropagation) {
+        event.stopPropagation();
+    }
+    if (event.cancelBubble !== null) {
+        event.cancelBubble = true;
+    }
+    if (event.preventDefault) {
+        event.preventDefault();
+    }
+    return false;
+}
+
+function initEventBlocker() {
+    node = document.createElement("div");
+    node.id = EVENT_BLOCKER_ID;
+    node.style.position = "absolute";
+    node.style.top = "0px";
+    node.style.left = "0px";
+    node.style.width = "100%";
+    node.style.height = "100%";
+
+    for (var i = eventsToIgnore.length; i-- ;) {
+        node.addEventListener(eventsToIgnore[i], ignore, true);
+    }
+
+    return node;
+}
+
+function addEventBlocker(node) {
+    if (!document.getElementById(EVENT_BLOCKER_ID)) {
+        node.appendChild(initEventBlocker());
+    }
+}
+
+function removeEventBlocker() {
+    var blocker = document.getElementById(EVENT_BLOCKER_ID);
+    blocker.parentNode.removeChild(blocker);
+}
+
+
+
+// CODE TO SET UP A MODULE FOR DEBUGGING
+
+Elm.fullscreenDebug =
+  fullscreenDebugWithOptions({ externalSwap: false });
+
+Elm.fullscreenDebugWithOptions =
+  fullscreenDebugWithOptions;
+
+
 function fullscreenDebugWithOptions(options) {
 
-    return function(elmModule, elmModuleFile, swapState /* =undefined */) {
+    return function(elmModule, elmModuleFile) {
         var createdSocket = false;
         var elmPermitSwaps = true;
 
-        var mainHandle = fullscreenDebugHooks(elmModule, swapState);
-        var debuggerHandle = initDebugger();
+        var mainHandle = initModuleWithDebugState(elmModule); // TODO: emptyDebugState());
+        var sideBar = initSideBar();
         if (!options.externalSwap) {
             initSocket();
         }
@@ -105,52 +182,47 @@ function fullscreenDebugWithOptions(options) {
         parent.window.addEventListener("message", function(e) {
             if (e.data === "elmNotify") {
                 var currentPosition = mainHandle.debugger.getMaxSteps();
-                if (debuggerHandle.ports) {
-                    debuggerHandle.ports.eventCounter.send(currentPosition);
+                if (sideBar.ports) {
+                    sideBar.ports.eventCounter.send(currentPosition);
                     sendWatches(currentPosition);
                 }
             }
         }, false);
 
-        function initDebugger() {
-            function scrubber(position) {
-                if (mainHandle.debugger.getPaused()) {
-                    mainHandle.debugger.stepTo(position);
-                    sendWatches(position);
-                }
-            }
+        function initSideBar() {
+            document.body.appendChild(createSideBar());
 
-            function elmPauser(doPause) {
-                if (doPause) {
-                  mainHandle.debugger.pause();
-                } else {
-                    mainHandle.debugger.kontinue();
-                }
-            }
-
-            function elmRestart() {
-                mainHandle.debugger.restart();
-                sendWatches(0);
-            }
-
-            function elmSwap(permitSwaps) {
-                elmPermitSwaps = permitSwaps;
-            }
-
-            var sideBar = createSideBar();
-            document.body.appendChild(sideBar);
-            var sideBarBody = document.getElementById(SIDE_BAR_BODY_ID);
-
-            var handle = Elm.embed(Elm.SideBar, sideBarBody, {
+            var sideBar = Elm.embed(Elm.SideBar, document.getElementById(SIDE_BAR_BODY_ID), {
                 eventCounter: 0,
                 watches: [],
                 showSwap: !options.externalSwap
             });
-            handle.ports.scrubTo.subscribe(scrubber);
-            handle.ports.pause.subscribe(elmPauser);
-            handle.ports.restart.subscribe(elmRestart);
-            handle.ports.permitSwap.subscribe(elmSwap);
-            return handle;
+
+            sideBar.ports.scrubTo.subscribe(function(position) {
+                if (mainHandle.debugger.isPaused()) {
+                    mainHandle.debugger.stepTo(position);
+                    sendWatches(position);
+                }
+            });
+
+            sideBar.ports.pause.subscribe(function(pause) {
+                if (pause) {
+                    mainHandle.debugger.pause();
+                } else {
+                    mainHandle.debugger.kontinue();
+                }
+            });
+
+            sideBar.ports.restart.subscribe(function() {
+                mainHandle.debugger.restart();
+                sendWatches(0);
+            });
+
+            sideBar.ports.permitSwap.subscribe(function(permitSwaps) {
+                elmPermitSwaps = permitSwaps;
+            });
+
+            return sideBar;
         }
 
         function sendWatches(position) {
@@ -166,7 +238,7 @@ function fullscreenDebugWithOptions(options) {
                 var stringified = prettyPrint(value, separator);
                 output.push([key, stringified]);
             }
-            debuggerHandle.ports.watches.send(output);
+            sideBar.ports.watches.send(output);
         }
 
         function initSocket() {
@@ -176,7 +248,7 @@ function fullscreenDebugWithOptions(options) {
             var socketLocation = "ws://" + window.location.host + "/socket?file=" + elmModuleFile;
             var serverConnection = new WebSocket(socketLocation);
             serverConnection.onmessage = function(event) {
-                if (elmPermitSwaps && debuggerHandle.ports) {
+                if (elmPermitSwaps && sideBar.ports) {
                     swap(event.data);
                 }
             };
@@ -185,50 +257,31 @@ function fullscreenDebugWithOptions(options) {
             });
         }
 
-        function swap(raw) {
-            var error = document.getElementById('ErrorMessage');
+        function swap(rawJsonResponse) {
+            var error = document.getElementById(ERROR_MESSAGE_ID);
             if (error) {
                 error.parentNode.removeChild(error);
             }
 
-            var result = JSON.parse(raw);
-            var code = result.code;
-            var errorMessage = result.error;
+            var result = JSON.parse(rawJsonResponse);
 
-            if (code) {
-                window.eval(code);
+            if (result.code) {
+                window.eval(result.code);
                 var elmModule = window.eval('Elm.' + result.name);
                 if (mainHandle.debugger) {
-                    var debuggerState = mainHandle.debugger.getSwapState();
+                    var debugState = mainHandle.debugger.getDebugState();
                     mainHandle.debugger.dispose();
                     mainHandle.dispose();
 
-                    mainHandle = fullscreenDebugHooks(elmModule, debuggerState);
+                    mainHandle = initModuleWithDebugState(elmModule, debugState);
 
-                    // The div that rejects events must be after Elm
-                    var ignoringDiv = document.getElementById("elmEventIgnorer");
-                    if (ignoringDiv) {
-                        ignoringDiv.parentNode.appendChild(ignoringDiv);
-                    }
+                    removeEventBlocker();
                 }
                 else {
                     mainHandle = mainHandle.swap(elmModule);
                 }
-            } else if (errorMessage) {
-                var errorNode = document.createElement("pre");
-                errorNode.id = "ErrorMessage";
-                errorNode.innerHTML = errorMessage;
-                errorNode.style.zindex = 1;
-                errorNode.style.position = "absolute";
-                errorNode.style.top = "0";
-                errorNode.style.left = "0";
-                errorNode.style.color = DARK_GREY;
-                errorNode.style.backgroundColor = LIGHT_GREY;
-                errorNode.style.padding = "1em";
-                errorNode.style.margin = "1em";
-                errorNode.style.borderRadius = "10px";
-
-                document.body.appendChild(errorNode);
+            } else if (result.error) {
+                document.body.appendChild(initErrorMessage(result.error));
             }
         }
 
@@ -240,19 +293,19 @@ function fullscreenDebugWithOptions(options) {
 };
 
 
-function fullscreenDebugHooks(elmModule, debuggerHistory /* =undefined */) {
+function initModuleWithDebugState(elmModule, debugState /* =undefined */) {
     var exposedDebugger = {};
 
-    function debuggerAttach(elmModule, debuggerHistory) {
+    function debuggerAttach(elmModule, debugState) {
         function make(runtime) {
-            var wrappedModule = debugModule(elmModule, runtime);
-            exposedDebugger = debuggerInit(wrappedModule, runtime, debuggerHistory);
+            var wrappedModule = initModule(elmModule, runtime);
+            exposedDebugger = debuggerInit(wrappedModule, runtime, debugState);
             return wrappedModule.debuggedModule;
         }
         return { make: make };
     }
 
-    var mainHandle = Elm.fullscreen(debuggerAttach(elmModule, debuggerHistory));
+    var mainHandle = Elm.fullscreen(debuggerAttach(elmModule, debugState));
     mainHandle.debugger = exposedDebugger;
     return mainHandle;
 }
@@ -261,7 +314,22 @@ function fullscreenDebugHooks(elmModule, debuggerHistory /* =undefined */) {
 var EVENTS_PER_SAVE = 100;
 
 
-function debugModule(elmModule, runtime) {
+function emptyDebugState() {
+    return {
+        paused: false,
+
+        index: 0,
+        recordedEvents: [],
+
+        asyncCallbacks: [],
+        snapshots: [],
+
+        performSwaps: true
+    };
+}
+
+
+function initModule(elmModule, runtime) {
     var programPaused = false;
     var recordedEvents = [];
     var asyncCallbacks = [];
@@ -403,7 +471,7 @@ function debugModule(elmModule, runtime) {
         clearAsyncCallbacks();
         pauseTime = Date.now();
         tracePath.stopRecording();
-        preventInputEvents();
+        addEventBlocker(runtime.node);
     }
 
     function setContinue(position) {
@@ -426,58 +494,13 @@ function debugModule(elmModule, runtime) {
         tracePath.clearTracesAfter(position);
         runtime.debuggerStatus.eventCounter = position;
         executeCallbacks(asyncCallbacks);
-        permitInputEvents();
+        removeEventBlocker();
 
         tracePath.startRecording();
     }
 
-    function getPaused() {
+    function isPaused() {
         return programPaused;
-    }
-
-    function preventInputEvents(){
-      var events =
-          [ "click", "mousemove", "mouseup", "mousedown", "mouseclick"
-          , "keydown", "keypress", "keyup", "touchstart", "touchend"
-          , "touchcancel", "touchleave", "touchmove", "pointermove"
-          , "pointerdown", "pointerup", "pointerover", "pointerout"
-          , "pointerenter", "pointerleave", "pointercancel"
-          ];
-
-      function ignore(e) {
-          var event = e || window.event;
-          if (event.stopPropagation) {
-              event.stopPropagation();
-          }
-          if (event.cancelBubble !== null) {
-              event.cancelBubble = true;
-          }
-          if (event.preventDefault) {
-              event.preventDefault();
-          }
-          return false;
-      }
-
-      var ignoringDiv = document.getElementById("elmEventIgnorer");
-      if (!ignoringDiv) {
-          ignoringDiv = document.createElement("div");
-          ignoringDiv.id = "elmEventIgnorer";
-          ignoringDiv.style.position = "absolute";
-          ignoringDiv.style.top = "0px";
-          ignoringDiv.style.left = "0px";
-          ignoringDiv.style.width = "100%";
-          ignoringDiv.style.height = "100%";
-
-          for (var i = events.length; i-- ;) {
-              ignoringDiv.addEventListener(events[i], ignore, true);
-          }
-          runtime.node.appendChild(ignoringDiv);
-      }
-    }
-
-    function permitInputEvents() {
-        var ignoringDiv = document.getElementById("elmEventIgnorer");
-        ignoringDiv.parentNode.removeChild(ignoringDiv);
     }
 
     return {
@@ -495,7 +518,7 @@ function debugModule(elmModule, runtime) {
         clearSnapshots: clearSnapshots,
         getSnapshotAt: getSnapshotAt,
         snapshotOnCheckpoint: snapshotOnCheckpoint,
-        getPaused: getPaused,
+        isPaused: isPaused,
         setPaused: setPaused,
         setContinue: setContinue,
         tracePath: tracePath,
@@ -503,11 +526,11 @@ function debugModule(elmModule, runtime) {
     };
 }
 
-// The debuggerHistory variable is passed in on swap. It represents
+// The debugState variable is passed in on swap. It represents
 // the a state of the debugger for it to assume during init. It contains
 // the paused state of the debugger, the recorded events, and the current
 // event being processed.
-function debuggerInit(elmModule, runtime, debuggerHistory /* =undefined */) {
+function debuggerInit(elmModule, runtime, debugState /* =undefined */) {
     var currentEventIndex = 0;
 
     function resetProgram(position) {
@@ -534,7 +557,7 @@ function debuggerInit(elmModule, runtime, debuggerHistory /* =undefined */) {
     }
 
     function continueProgram() {
-        if (elmModule.getPaused()) {
+        if (elmModule.isPaused()) {
             var closestSnapshotIndex =
                 Math.floor(currentEventIndex / EVENTS_PER_SAVE) * EVENTS_PER_SAVE;
             resetProgram(currentEventIndex);
@@ -546,7 +569,7 @@ function debuggerInit(elmModule, runtime, debuggerHistory /* =undefined */) {
     }
 
     function stepTo(index) {
-        if (!elmModule.getPaused()) {
+        if (!elmModule.isPaused()) {
             elmModule.setPaused();
             resetProgram();
         }
@@ -580,13 +603,13 @@ function debuggerInit(elmModule, runtime, debuggerHistory /* =undefined */) {
         }
     }
 
-    function getSwapState() {
+    function getDebugState() {
         var continueIndex = currentEventIndex;
-        if (!elmModule.getPaused()) {
+        if (!elmModule.isPaused()) {
             continueIndex = getMaxSteps();
         }
         return {
-            paused: elmModule.getPaused(),
+            paused: elmModule.isPaused(),
             recordedEvents: elmModule.copyRecordedEvents(),
             currentEventIndex: continueIndex
         };
@@ -598,15 +621,15 @@ function debuggerInit(elmModule, runtime, debuggerHistory /* =undefined */) {
         parentNode.removeChild(runtime.node);
     }
 
-    if (debuggerHistory) {
+    if (debugState) {
         // The problem is that we want to previous paused state. But
         // by the time JS reaches here, the old code has been swapped out
         // and the new modules are being generated. So we can ask the
         // debugging console what it thinks the pause state is and go
         // from there.
-        var paused = debuggerHistory.paused;
+        var paused = debugState.paused;
         elmModule.setPaused();
-        elmModule.loadRecordedEvents(debuggerHistory.recordedEvents);
+        elmModule.loadRecordedEvents(debugState.recordedEvents);
         var index = getMaxSteps();
         runtime.debuggerStatus.eventCounter = 0;
         elmModule.tracePath.clearTraces();
@@ -622,9 +645,9 @@ function debuggerInit(elmModule, runtime, debuggerHistory /* =undefined */) {
         }
         elmModule.tracePath.stopRecording();
 
-        stepTo(debuggerHistory.currentEventIndex);
+        stepTo(debugState.currentEventIndex);
         if (!paused) {
-            elmModule.setContinue(debuggerHistory.currentEventIndex);
+            elmModule.setContinue(debugState.currentEventIndex);
         }
     }
 
@@ -636,8 +659,8 @@ function debuggerInit(elmModule, runtime, debuggerHistory /* =undefined */) {
         kontinue: continueProgram,
         getMaxSteps: getMaxSteps,
         stepTo: stepTo,
-        getPaused: elmModule.getPaused,
-        getSwapState: getSwapState,
+        isPaused: elmModule.isPaused,
+        getDebugState: getDebugState,
         dispose: dispose,
         allNodes: elmModule.signalGraphNodes,
         watchTracker: elmModule.watchTracker
