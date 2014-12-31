@@ -369,20 +369,22 @@ function initModule(elmModule, runtime) {
     function notifyWrapper(id, v) {
         var timestep = runtime.timer.now();
 
+        // Ignore all events that occur while the program is paused.
         if (debugState.paused) {
-            // ignore async events generated while playing back
-            // or user events while program is paused
             return false;
         }
-        else {
-            recordEvent(id, v, timestep);
-            var changed = runtime.notify(id, v, timestep);
-            snapshotOnCheckpoint();
-            if (parent.window) {
-                parent.window.postMessage("elmNotify", window.location.origin);
-            }
-            return changed;
+
+        // Record the event
+        watchTracker.pushFrame();
+        debugState.events.push({ id:id, value:v, timestep:timestep });
+        runtime.debuggerStatus.eventCounter += 1;
+
+        var changed = runtime.notify(id, v, timestep);
+        snapshotOnCheckpoint();
+        if (parent.window) {
+            parent.window.postMessage("elmNotify", window.location.origin);
         }
+        return changed;
     }
 
     function setTimeoutWrapper(func, delayMs) {
@@ -406,12 +408,6 @@ function initModule(elmModule, runtime) {
         cbObj.timerId = timerId;
         debugState.asyncCallbacks.push(cbObj);
         return timerId;
-    }
-
-    function recordEvent(id, v, timestep) {
-        watchTracker.pushFrame();
-        debugState.events.push({ id:id, value:v, timestep:timestep });
-        runtime.debuggerStatus.eventCounter += 1;
     }
 
     function clearAsyncCallbacks() {
