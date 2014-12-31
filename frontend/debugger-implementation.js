@@ -847,6 +847,9 @@ function flattenSignalGraph(nodes) {
     return allNodes;
 }
 
+
+// PRETTY PRINT VALUES
+
 var prettyPrint = function(){
 
     var independentRuntime = {};
