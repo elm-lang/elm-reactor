@@ -446,7 +446,7 @@ function initModule(elmModule, runtime) {
         }
     }
 
-    function setPaused() {
+    function pause() {
         debugState.paused = true;
         clearAsyncCallbacks();
         debugState.pausedAtTime = Date.now();
@@ -454,7 +454,7 @@ function initModule(elmModule, runtime) {
         addEventBlocker(runtime.node);
     }
 
-    function setContinue(position) {
+    function continueFrom(position) {
         var pauseDelay = Date.now() - debugState.pausedAtTime;
         runtime.timer.addDelay(pauseDelay);
         debugState.paused = false;
@@ -497,8 +497,8 @@ function initModule(elmModule, runtime) {
         getSnapshotAt: getSnapshotAt,
         snapshotOnCheckpoint: snapshotOnCheckpoint,
         isPaused: isPaused,
-        setPaused: setPaused,
-        setContinue: setContinue,
+        pause: pause,
+        continueFrom: continueFrom,
         tracePath: tracePath,
         watchTracker: watchTracker
     };
@@ -523,14 +523,14 @@ function debuggerInit(elmModule, runtime, debugState /* =undefined */) {
         resetProgram(0);
         elmModule.watchTracker.clear();
         elmModule.tracePath.clearTraces();
-        elmModule.setContinue(0);
+        elmModule.continueFrom(0);
         elmModule.clearRecordedEvents();
         elmModule.clearSnapshots();
         executeCallbacks(elmModule.initialAsyncCallbacks);
     }
 
     function pauseProgram() {
-        elmModule.setPaused();
+        elmModule.pause();
         currentEventIndex = elmModule.recordedEvents.length;
     }
 
@@ -542,13 +542,13 @@ function debuggerInit(elmModule, runtime, debugState /* =undefined */) {
             var continueIndex = currentEventIndex;
             currentEventIndex = closestSnapshotIndex;
             stepTo(continueIndex);
-            elmModule.setContinue(currentEventIndex);
+            elmModule.continueFrom(currentEventIndex);
         }
     }
 
     function stepTo(index) {
         if (!elmModule.isPaused()) {
-            elmModule.setPaused();
+            elmModule.pause();
             resetProgram();
         }
 
@@ -606,7 +606,7 @@ function debuggerInit(elmModule, runtime, debugState /* =undefined */) {
         // debugging console what it thinks the pause state is and go
         // from there.
         var paused = debugState.paused;
-        elmModule.setPaused();
+        elmModule.pause();
         elmModule.loadRecordedEvents(debugState.recordedEvents);
         var index = getMaxSteps();
         runtime.debuggerStatus.eventCounter = 0;
@@ -625,7 +625,7 @@ function debuggerInit(elmModule, runtime, debugState /* =undefined */) {
 
         stepTo(debugState.currentEventIndex);
         if (!paused) {
-            elmModule.setContinue(debugState.currentEventIndex);
+            elmModule.continueFrom(debugState.currentEventIndex);
         }
     }
 
