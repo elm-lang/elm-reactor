@@ -200,7 +200,7 @@ function fullscreenDebugWithOptions(options) {
                     mainHandle.debugger.dispose();
                     mainHandle.dispose();
 
-                    mainHandle = Elm.fullscreenDebugHooks(elmModule, debuggerState);
+                    mainHandle = fullscreenDebugHooks(elmModule, debuggerState);
 
                     // The div that rejects events must be after Elm
                     var ignoringDiv = document.getElementById("elmEventIgnorer");
