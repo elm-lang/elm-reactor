@@ -43,6 +43,7 @@ function debugFullscreenWithOptions(options) {
             var debuggerDiv = document.createElement("div");
             debuggerDiv.id = "elmDebugger";
             debuggerDiv.style.overflow = "hidden";
+            debuggerDiv.style.height = "100%";
 
             // Create and style the panel
             debugTools.style.background = ELM_DARK_GREY;

@@ -10,6 +10,7 @@
     "native-modules": true,
     "dependencies": {
         "elm-lang/core": "1.0.0 <= v < 2.0.0",
+        "evancz/elm-html": "1.0.0 <= v < 2.0.0",
         "evancz/elm-markdown": "1.0.0 <= v < 2.0.0"
     }
 }
