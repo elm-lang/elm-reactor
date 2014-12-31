@@ -1,4 +1,4 @@
-module Watches where
+module SideBar.Watches where
 
 import Html
 import Html (..)

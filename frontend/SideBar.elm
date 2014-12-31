@@ -6,12 +6,12 @@ import List
 import Signal
 import Window
 
-import Controls
-import Model (..)
-import Watches
+import SideBar.Controls as Controls
+import SideBar.Model as Model
+import SideBar.Watches as Watches
 
 
-view : (Int, Int) -> List (String, String) -> Bool -> State -> Element
+view : (Int, Int) -> List (String, String) -> Bool -> Model.Model -> Element
 view (w,h) watches permitSwap state =
   let controls =
           Controls.view (w, h) showSwap permitSwap state
@@ -36,18 +36,18 @@ main =
     scene
 
 
-scene : Signal State
+scene : Signal Model.Model
 scene =
-  Signal.foldp step startState aggregateUpdates
+  Signal.foldp Model.update Model.startModel aggregateUpdates
 
 
-aggregateUpdates : Signal Update
+aggregateUpdates : Signal Model.Action
 aggregateUpdates =
   Signal.mergeMany
-    [ Signal.map (always Restart) (Signal.subscribe Controls.restartChannel)
-    , Signal.map Pause (Signal.subscribe Controls.pausedInput)
-    , Signal.map TotalEvents eventCounter
-    , Signal.map ScrubPosition (Signal.subscribe Controls.scrupChannel)
+    [ Signal.map (always Model.Restart) (Signal.subscribe Controls.restartChannel)
+    , Signal.map Model.Pause (Signal.subscribe Controls.pausedInput)
+    , Signal.map Model.TotalEvents eventCounter
+    , Signal.map Model.ScrubPosition (Signal.subscribe Controls.scrupChannel)
     ]
 
 

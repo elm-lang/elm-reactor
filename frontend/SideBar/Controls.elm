@@ -1,4 +1,4 @@
-module Controls where
+module SideBar.Controls where
 
 import Color
 import Graphics.Collage (..)
@@ -11,7 +11,7 @@ import Signal (Signal, (<~), (~))
 import Slider (..)
 import Text
 
-import Model (..)
+import SideBar.Model as Model
 
 
 -- STYLE
@@ -137,7 +137,7 @@ permitSwapChannel =
     Signal.channel True
 
 
-scrubSlider : (Int, Int) -> State -> Element
+scrubSlider : (Int, Int) -> Model.Model -> Element
 scrubSlider (w,_) state =
     let sliderLength = w
 
@@ -157,7 +157,7 @@ scrupChannel =
     Signal.channel 0
 
 
-sliderEventText : Int -> State -> Element
+sliderEventText : Int -> Model.Model -> Element
 sliderEventText w state =
     let textWidthOffset = 14
 
@@ -186,7 +186,7 @@ sliderEventText w state =
         container w textHeight textPosition text'
 
 
-sliderMinMaxText : Int -> State -> Element
+sliderMinMaxText : Int -> Model.Model -> Element
 sliderMinMaxText w state =
     let sliderStartText =
             textStyle "0"
@@ -205,7 +205,7 @@ sliderMinMaxText w state =
             ]
 
 
-view : (Int, Int) -> Bool -> Bool -> State -> Element
+view : (Int, Int) -> Bool -> Bool -> Model.Model -> Element
 view (w,h) showSwap permitSwap state =
     let midWidth = w - sideMargin
 

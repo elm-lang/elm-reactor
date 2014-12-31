@@ -1,33 +1,33 @@
-module Model where
+module SideBar.Model where
 
 
-type Update
+type Action
     = Restart
     | Pause Bool
     | TotalEvents Int
     | ScrubPosition Int
 
 
-type alias State =
+type alias Model =
     { paused : Bool
     , totalEvents : Int
     , scrubPosition : Int
     }
 
 
-startState : State
-startState =
+startModel : Model
+startModel =
     { paused = False
     , totalEvents = 0
     , scrubPosition = 0
     }
 
 
-step : Update -> State -> State
-step update state =
+update : Action -> Model -> Model
+update update state =
   case update of
     Restart ->
-        startState
+        startModel
 
     Pause doPause ->
         { state |
