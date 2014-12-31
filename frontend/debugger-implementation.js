@@ -815,14 +815,14 @@ function executeCallbacks(callbacks) {
 }
 
 function createCanvas() {
-    var c = document.createElement('canvas');
-    c.width = window.innerWidth;
-    c.height = window.innerHeight;
-    c.style.position = "absolute";
-    c.style.top = "0";
-    c.style.left = "0";
-    c.style.pointerEvents = "none";
-    return c;
+    var canvas = document.createElement('canvas');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    canvas.style.position = "absolute";
+    canvas.style.top = "0";
+    canvas.style.left = "0";
+    canvas.style.pointerEvents = "none";
+    return canvas;
 }
 
 function assert(bool, msg) {
