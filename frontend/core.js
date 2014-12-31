@@ -224,4 +224,4 @@ function debugFullscreenWithOptions(options) {
         }
         return mainHandle;
     };
-};
+}
