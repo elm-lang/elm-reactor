@@ -16,15 +16,85 @@ Elm.fullscreenDebugWithOptions =
   fullscreenDebugWithOptions;
 
 
+// SIDE BAR
+
+var SIDE_BAR_ID = "elm-reactor-side-bar";
+var SIDE_BAR_BODY_ID = "elm-reactor-side-bar-body";
+var SIDE_BAR_WIDTH = 275;
+
+var DARK_GREY = "#4A4A4A";
+var LIGHT_GREY = "#E4E4E4";
+
+function createSideBar() {
+    var debuggingPanelExpanded = true;
+
+    var sideBar = document.createElement("div");
+    sideBar.id = SIDE_BAR_ID;
+
+    var sideBarBody = document.createElement("div");
+    sideBarBody.id = SIDE_BAR_BODY_ID;
+    sideBarBody.style.overflow = "hidden";
+    sideBarBody.style.height = "100%";
+
+    // Create and style the panel
+    sideBar.style.background = DARK_GREY;
+    sideBar.style.width = SIDE_BAR_WIDTH + "px";
+    sideBar.style.height = "100%";
+    sideBar.style.position = "absolute";
+    sideBar.style.top = "0px";
+    sideBar.style.right = "0px";
+    sideBar.style.transitionDuration = "0.3s";
+    sideBar.style.opacity = 0.97;
+    sideBar.style.zIndex = 1;
+
+    // Prevent clicks from reaching the main elm instance under the panel
+    sideBar.addEventListener("click", blockClicks);
+    function blockClicks(e) {
+        var event = e || window.event;
+        event.cancelBubble = true;
+        if (event.stopPropagation) {
+            event.stopPropagation();
+        }
+    }
+
+    // Create and style the button
+    var tabWidth = 25;
+    var sideBarTab = document.createElement("div");
+    sideBarTab.id = "debugToggle";
+    sideBarTab.style.position = "absolute";
+    sideBarTab.style.width = tabWidth + "px";
+    sideBarTab.style.height = "60px";
+    sideBarTab.style.top = "50%";
+    sideBarTab.style.left = "-" + tabWidth + "px";
+    sideBarTab.style.borderTopLeftRadius = "3px";
+    sideBarTab.style.borderBottomLeftRadius = "3px";
+    sideBarTab.style.background = DARK_GREY;
+
+
+    // Wire the button
+    sideBarTab.onclick = function() {
+        var toolPanel = document.getElementById(SIDE_BAR_ID);
+        if (debuggingPanelExpanded){
+            toolPanel.style.width = "0px";
+            debuggingPanelExpanded = false;
+        } else {
+            toolPanel.style.right = "0px";
+            toolPanel.style.width = SIDE_BAR_WIDTH + "px";
+            debuggingPanelExpanded = true;
+        }
+    };
+
+    sideBar.appendChild(sideBarTab);
+    sideBar.appendChild(sideBarBody);
+    return sideBar;
+}
+
+
 function fullscreenDebugWithOptions(options) {
 
     return function(elmModule, elmModuleFile, swapState /* =undefined */) {
         var createdSocket = false;
         var elmPermitSwaps = true;
-
-        var ELM_DEBUGGER_ID = "elmToolPanel";
-        var ELM_DARK_GREY = "#4A4A4A";
-        var ELM_LIGHT_GREY = "#E4E4E4";
 
         var mainHandle = fullscreenDebugHooks(elmModule, swapState);
         var debuggerHandle = initDebugger();
@@ -41,73 +111,6 @@ function fullscreenDebugWithOptions(options) {
                 }
             }
         }, false);
-
-        function createDebuggingElement() {
-            var debuggingPanelExpanded = true;
-            var debuggerWidth = 275;
-
-            var debugTools = document.createElement("div");
-            debugTools.id = ELM_DEBUGGER_ID;
-
-            var debuggerDiv = document.createElement("div");
-            debuggerDiv.id = "elmDebugger";
-            debuggerDiv.style.overflow = "hidden";
-            debuggerDiv.style.height = "100%";
-
-            // Create and style the panel
-            debugTools.style.background = ELM_DARK_GREY;
-            debugTools.style.width = debuggerWidth + "px";
-            debugTools.style.height = "100%";
-            debugTools.style.position = "absolute";
-            debugTools.style.top = "0px";
-            debugTools.style.right = "0px";
-            debugTools.style.transitionDuration = "0.3s";
-            debugTools.style.opacity = 0.97;
-            debugTools.style.zIndex = 1;
-
-            // Prevent clicks from reaching the main elm instance under the panel
-            function stopEvents(e) {
-                if (!e) {
-                    var e = window.event;
-                }
-                e.cancelBubble = true;
-                if (e.stopPropagation) {
-                    e.stopPropagation();
-                }
-            }
-            debugTools.addEventListener("click", stopEvents);
-
-            // Create and style the button
-            var tabWidth = 25;
-            var debugTab = document.createElement("div");
-            debugTab.id = "debugToggle";
-            debugTab.style.position = "absolute";
-            debugTab.style.width = tabWidth + "px";
-            debugTab.style.height = "60px";
-            debugTab.style.top = window.innerHeight / 2 + "px";
-            debugTab.style.left = "-" + tabWidth + "px";
-            debugTab.style.borderTopLeftRadius = "3px";
-            debugTab.style.borderBottomLeftRadius = "3px";
-            debugTab.style.background = ELM_DARK_GREY;
-
-
-            // Wire the button
-            debugTab.onclick = function() {
-                var toolPanel = document.getElementById("elmToolPanel");
-                if (debuggingPanelExpanded){
-                    toolPanel.style.width = "0px";
-                    debuggingPanelExpanded = false;
-                } else {
-                    toolPanel.style.right = "0px";
-                    toolPanel.style.width = debuggerWidth + "px";
-                    debuggingPanelExpanded = true;
-                }
-            };
-
-            debugTools.appendChild(debugTab);
-            debugTools.appendChild(debuggerDiv);
-            return debugTools;
-        }
 
         function initDebugger() {
             function scrubber(position) {
@@ -134,11 +137,11 @@ function fullscreenDebugWithOptions(options) {
                 elmPermitSwaps = permitSwaps;
             }
 
-            var debugTools = createDebuggingElement();
-            document.body.appendChild(debugTools);
-            var debuggerDiv = document.getElementById("elmDebugger");
+            var sideBar = createSideBar();
+            document.body.appendChild(sideBar);
+            var sideBarBody = document.getElementById(SIDE_BAR_BODY_ID);
 
-            var handle = Elm.embed(Elm.SideBar, debuggerDiv, {
+            var handle = Elm.embed(Elm.SideBar, sideBarBody, {
                 eventCounter: 0,
                 watches: [],
                 showSwap: !options.externalSwap
@@ -219,8 +222,8 @@ function fullscreenDebugWithOptions(options) {
                 errorNode.style.position = "absolute";
                 errorNode.style.top = "0";
                 errorNode.style.left = "0";
-                errorNode.style.color = ELM_DARK_GREY;
-                errorNode.style.backgroundColor = ELM_LIGHT_GREY;
+                errorNode.style.color = DARK_GREY;
+                errorNode.style.backgroundColor = LIGHT_GREY;
                 errorNode.style.padding = "1em";
                 errorNode.style.margin = "1em";
                 errorNode.style.borderRadius = "10px";
@@ -442,15 +445,15 @@ function debugModule(elmModule, runtime) {
           ];
 
       function ignore(e) {
-          var evt = e ? e : window.event;
-          if (evt.stopPropagation) {
-              evt.stopPropagation();
+          var event = e || window.event;
+          if (event.stopPropagation) {
+              event.stopPropagation();
           }
-          if (evt.cancelBubble !== null) {
-              evt.cancelBubble = true;
+          if (event.cancelBubble !== null) {
+              event.cancelBubble = true;
           }
-          if (evt.preventDefault) {
-              evt.preventDefault();
+          if (event.preventDefault) {
+              event.preventDefault();
           }
           return false;
       }
