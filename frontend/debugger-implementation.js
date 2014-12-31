@@ -387,33 +387,31 @@ function initModule(elmModule, runtime) {
         return changed;
     }
 
-    function setTimeoutWrapper(func, delayMs) {
+    function setTimeoutWrapper(thunk, delay) {
         if (debugState.paused) {
             // Don't push timers and such to the callback stack while we're paused.
             // It causes too many callbacks to be fired during unpausing.
             return 0;
         }
-        var cbObj = {
-            func: func,
-            delayMs: delayMs,
-            timerId: 0,
+        var callback = {
+            thunk: thunk,
+            id: 0,
             executed: false
         };
 
-        var timerId = setTimeout(function() {
-            cbObj.executed = true;
-            func();
-        }, delayMs);
+        callback.id = setTimeout(function() {
+            callback.executed = true;
+            thunk();
+        }, delay);
 
-        cbObj.timerId = timerId;
-        debugState.asyncCallbacks.push(cbObj);
-        return timerId;
+        debugState.asyncCallbacks.push(callback);
+        return callback.id;
     }
 
     function clearAsyncCallbacks() {
-        debugState.asyncCallbacks.forEach(function(timer) {
-            if (!timer.executed) {
-              clearTimeout(timer.timerId);
+        debugState.asyncCallbacks.forEach(function(callback) {
+            if (!callback.executed) {
+              clearTimeout(callback.id);
             }
         });
     }
@@ -781,11 +779,10 @@ function tracePathInit(runtime, signalGraphMain) {
 }
 
 function executeCallbacks(callbacks) {
-    callbacks.forEach(function(timer) {
-        if (!timer.executed) {
-            var func = timer.func;
-            timer.executed = true;
-            func();
+    callbacks.forEach(function(callback) {
+        if (!callback.executed) {
+            callback.executed = true;
+            callback.thunk();
         }
     });
 }
