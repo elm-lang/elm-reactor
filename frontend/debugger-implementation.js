@@ -317,12 +317,14 @@ var EVENTS_PER_SAVE = 100;
 function emptyDebugState() {
     return {
         paused: false,
+        pausedAtTime: 0,
+        totalTimeLost: 0,
 
         index: 0,
-        recordedEvents: [],
-
-        asyncCallbacks: [],
+        events: [],
+        watches: {},
         snapshots: [],
+        asyncCallbacks: [],
 
         performSwaps: true
     };
@@ -330,12 +332,8 @@ function emptyDebugState() {
 
 
 function initModule(elmModule, runtime) {
-    var programPaused = false;
-    var recordedEvents = [];
-    var asyncCallbacks = [];
-    var snapshots = [];
+    var debugState = emptyDebugState();
     var watchTracker = Elm.Native.Debug.make(runtime).watchTracker;
-    var pauseTime = 0;
     var eventsUntilSnapshot = EVENTS_PER_SAVE;
     runtime.debuggerStatus = runtime.debuggerStatus || {};
     runtime.debuggerStatus.eventCounter = runtime.debuggerStatus.eventCounter || 0;
@@ -366,12 +364,12 @@ function initModule(elmModule, runtime) {
     var signalGraphNodes = flattenSignalGraph(wrappedRuntime.inputs);
     var tracePath = tracePathInit(runtime, debuggedModule.main);
 
-    snapshots.push(snapshotSignalGraph(signalGraphNodes));
+    debugState.snapshots.push(snapshotSignalGraph(signalGraphNodes));
 
     function notifyWrapper(id, v) {
         var timestep = runtime.timer.now();
 
-        if (programPaused) {
+        if (debugState.paused) {
             // ignore async events generated while playing back
             // or user events while program is paused
             return false;
@@ -388,7 +386,7 @@ function initModule(elmModule, runtime) {
     }
 
     function setTimeoutWrapper(func, delayMs) {
-        if (programPaused) {
+        if (debugState.paused) {
             // Don't push timers and such to the callback stack while we're paused.
             // It causes too many callbacks to be fired during unpausing.
             return 0;
@@ -406,18 +404,18 @@ function initModule(elmModule, runtime) {
         }, delayMs);
 
         cbObj.timerId = timerId;
-        asyncCallbacks.push(cbObj);
+        debugState.asyncCallbacks.push(cbObj);
         return timerId;
     }
 
     function recordEvent(id, v, timestep) {
         watchTracker.pushFrame();
-        recordedEvents.push({ id:id, value:v, timestep:timestep });
+        debugState.events.push({ id:id, value:v, timestep:timestep });
         runtime.debuggerStatus.eventCounter += 1;
     }
 
     function clearAsyncCallbacks() {
-        asyncCallbacks.forEach(function(timer) {
+        debugState.asyncCallbacks.forEach(function(timer) {
             if (!timer.executed) {
               clearTimeout(timer.timerId);
             }
@@ -425,29 +423,29 @@ function initModule(elmModule, runtime) {
     }
 
     function clearRecordedEvents() {
-        recordedEvents = [];
+        debugState.events = [];
         runtime.debuggerStatus.eventCounter = 0;
     }
 
     function loadRecordedEvents(events) {
-        recordedEvents = events.slice();
+        debugState.events = events.slice();
     }
 
     function clearSnapshots() {
-        snapshots = [snapshotSignalGraph(signalGraphNodes)];
+        debugState.snapshots = [snapshotSignalGraph(signalGraphNodes)];
     }
 
     function getSnapshotAt(i) {
         var snapshotEvent = Math.floor(i / EVENTS_PER_SAVE);
         assert(
-            snapshotEvent < snapshots.length && snapshotEvent >= 0,
+            snapshotEvent < debugState.snapshots.length && snapshotEvent >= 0,
             "Out of bounds index: " + snapshotEvent);
-        return snapshots[snapshotEvent];
+        return debugState.snapshots[snapshotEvent];
     }
 
     function snapshotOnCheckpoint() {
         if (eventsUntilSnapshot === 1) {
-            snapshots.push(snapshotSignalGraph(signalGraphNodes));
+            debugState.snapshots.push(snapshotSignalGraph(signalGraphNodes));
             eventsUntilSnapshot = EVENTS_PER_SAVE;
         } else {
             eventsUntilSnapshot -= 1;
@@ -455,51 +453,51 @@ function initModule(elmModule, runtime) {
     }
 
     function setPaused() {
-        programPaused = true;
+        debugState.paused = true;
         clearAsyncCallbacks();
-        pauseTime = Date.now();
+        debugState.pausedAtTime = Date.now();
         tracePath.stopRecording();
         addEventBlocker(runtime.node);
     }
 
     function setContinue(position) {
-        var pauseDelay = Date.now() - pauseTime;
+        var pauseDelay = Date.now() - debugState.pausedAtTime;
         runtime.timer.addDelay(pauseDelay);
-        programPaused = false;
+        debugState.paused = false;
 
         // we need to dump the events that are ahead of where we're continuing.
         var lastSnapshotPosition = Math.floor(position / EVENTS_PER_SAVE);
         eventsUntilSnapshot = EVENTS_PER_SAVE - (position % EVENTS_PER_SAVE);
-        snapshots = snapshots.slice(0, lastSnapshotPosition + 1);
+        debugState.snapshots = debugState.snapshots.slice(0, lastSnapshotPosition + 1);
 
-        if (position < recordedEvents.length) {
-            var lastEventTime = recordedEvents[position].timestep;
+        if (position < debugState.events.length) {
+            var lastEventTime = debugState.events[position].timestep;
             var scrubTime = runtime.timer.now() - lastEventTime;
             runtime.timer.addDelay(scrubTime);
         }
 
-        recordedEvents = recordedEvents.slice(0, position);
+        debugState.events = debugState.events.slice(0, position);
         tracePath.clearTracesAfter(position);
         runtime.debuggerStatus.eventCounter = position;
-        executeCallbacks(asyncCallbacks);
+        executeCallbacks(debugState.asyncCallbacks);
         removeEventBlocker();
 
         tracePath.startRecording();
     }
 
     function isPaused() {
-        return programPaused;
+        return debugState.paused;
     }
 
     return {
         debuggedModule: debuggedModule,
         signalGraphNodes: signalGraphNodes,
         initialSnapshot: snapshotSignalGraph(signalGraphNodes),
-        initialAsyncCallbacks: asyncCallbacks.slice(),
+        initialAsyncCallbacks: debugState.asyncCallbacks.slice(),
         // API functions
         clearAsyncCallbacks: clearAsyncCallbacks,
         clearRecordedEvents: clearRecordedEvents,
-        recordedEvents: recordedEvents,
+        recordedEvents: debugState.events,
         loadRecordedEvents: loadRecordedEvents,
         clearSnapshots: clearSnapshots,
         getSnapshotAt: getSnapshotAt,
