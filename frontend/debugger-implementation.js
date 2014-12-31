@@ -429,18 +429,6 @@ function initModule(elmModule, runtime) {
         runtime.debuggerStatus.eventCounter = 0;
     }
 
-    function getRecordedEventsLength() {
-        return recordedEvents.length;
-    }
-
-    function getRecordedEventAt(i) {
-        return recordedEvents[i];
-    }
-
-    function copyRecordedEvents() {
-        return recordedEvents.slice();
-    }
-
     function loadRecordedEvents(events) {
         recordedEvents = events.slice();
     }
@@ -484,7 +472,7 @@ function initModule(elmModule, runtime) {
         eventsUntilSnapshot = EVENTS_PER_SAVE - (position % EVENTS_PER_SAVE);
         snapshots = snapshots.slice(0, lastSnapshotPosition + 1);
 
-        if (position < getRecordedEventsLength()) {
+        if (position < recordedEvents.length) {
             var lastEventTime = recordedEvents[position].timestep;
             var scrubTime = runtime.timer.now() - lastEventTime;
             runtime.timer.addDelay(scrubTime);
@@ -511,9 +499,7 @@ function initModule(elmModule, runtime) {
         // API functions
         clearAsyncCallbacks: clearAsyncCallbacks,
         clearRecordedEvents: clearRecordedEvents,
-        getRecordedEventsLength: getRecordedEventsLength,
-        getRecordedEventAt: getRecordedEventAt,
-        copyRecordedEvents: copyRecordedEvents,
+        recordedEvents: recordedEvents,
         loadRecordedEvents: loadRecordedEvents,
         clearSnapshots: clearSnapshots,
         getSnapshotAt: getSnapshotAt,
@@ -553,7 +539,7 @@ function debuggerInit(elmModule, runtime, debugState /* =undefined */) {
 
     function pauseProgram() {
         elmModule.setPaused();
-        currentEventIndex = elmModule.getRecordedEventsLength();
+        currentEventIndex = elmModule.recordedEvents.length;
     }
 
     function continueProgram() {
@@ -585,7 +571,7 @@ function debuggerInit(elmModule, runtime, debugState /* =undefined */) {
         }
 
         while (currentEventIndex < index) {
-            var nextEvent = elmModule.getRecordedEventAt(currentEventIndex);
+            var nextEvent = elmModule.recordedEvents[currentEventIndex];
             runtime.notify(nextEvent.id, nextEvent.value, nextEvent.timestep);
 
             currentEventIndex += 1;
@@ -593,7 +579,7 @@ function debuggerInit(elmModule, runtime, debugState /* =undefined */) {
     }
 
     function getMaxSteps() {
-        return elmModule.getRecordedEventsLength();
+        return elmModule.recordedEvents.length;
     }
 
     function redrawGraphics() {
@@ -610,7 +596,7 @@ function debuggerInit(elmModule, runtime, debugState /* =undefined */) {
         }
         return {
             paused: elmModule.isPaused(),
-            recordedEvents: elmModule.copyRecordedEvents(),
+            recordedEvents: elmModule.recordedEvents.slice(),
             currentEventIndex: continueIndex
         };
     }
@@ -637,7 +623,7 @@ function debuggerInit(elmModule, runtime, debugState /* =undefined */) {
         // draw new trace path
         elmModule.tracePath.startRecording();
         while(currentEventIndex < index) {
-            var nextEvent = elmModule.getRecordedEventAt(currentEventIndex);
+            var nextEvent = elmModule.recordedEvents[currentEventIndex];
             runtime.debuggerStatus.eventCounter += 1;
             runtime.notify(nextEvent.id, nextEvent.value, nextEvent.timestep);
             elmModule.snapshotOnCheckpoint();
