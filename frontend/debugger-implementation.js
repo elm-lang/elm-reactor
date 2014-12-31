@@ -676,10 +676,6 @@ function Point(x, y) {
     this.translate = function(x, y) {
         return new Point(this.x + x, this.y + y);
     }
-
-    this.equals = function(p) {
-        return this.x == p.x && this.y == p.y;
-    }
 }
 
 function tracePathInit(runtime, signalGraphMain) {
