@@ -130,7 +130,7 @@ function ignore(e) {
 }
 
 function initEventBlocker() {
-    node = document.createElement("div");
+    var node = document.createElement("div");
     node.id = EVENT_BLOCKER_ID;
     node.style.position = "absolute";
     node.style.top = "0px";
