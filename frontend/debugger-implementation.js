@@ -331,8 +331,77 @@ function emptyDebugState() {
         snapshots: [],
         asyncCallbacks: [],
 
+        traces: {},
+        traceCanvas: createCanvas(),
+
         performSwaps: true
     };
+}
+
+
+// CALLBACKS
+
+function executeCallbacks(callbacks) {
+    callbacks.forEach(function(callback) {
+        if (!callback.executed) {
+            callback.executed = true;
+            callback.thunk();
+        }
+    });
+}
+
+
+// TRACES
+
+function clearTracesAfter(index, debugState) {
+    var newTraces = {};
+    for (var id in debugState.traces) {
+        newTraces[id] = debugState.traces[id].slice(0, index);
+    }
+    debugState.traces = newTraces;
+}
+
+function createCanvas() {
+    var canvas = document.createElement('canvas');
+    // TODO: make dimensions adjust based on screen size
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    canvas.style.position = "absolute";
+    canvas.style.top = "0";
+    canvas.style.left = "0";
+    canvas.style.pointerEvents = "none";
+    return canvas;
+}
+
+function renderTraces(debugState) {
+    var ctx = debugState.traceCanvas.getContext('2d');
+    // TODO: be more clever about the size of the canvas on resize
+    ctx.clearRect(0, 0, debugState.traceCanvas.width, debugState.traceCanvas.height);
+
+    ctx.save();
+    ctx.translate(ctx.canvas.width/2, ctx.canvas.height/2);
+    for (var id in debugState.traces)
+    {
+        var points = debugState.traces[id];
+        var i = points.length - 1;
+        if (i < 0)
+        {
+            continue;
+        }
+        ctx.beginPath();
+        var point = points[i];
+        ctx.moveTo(point.x, point.y);
+        while (i--)
+        {
+            point = points[i];
+            ctx.lineTo(point.x, point.y);
+        }
+        ctx.lineWidth = 1;
+        // TODO: do different stroke color before and after current index
+        ctx.strokeStyle = "rgba(50, 50, 50, 0.4)";
+        ctx.stroke();
+    }
+    ctx.restore();
 }
 
 
@@ -423,8 +492,6 @@ function initModule(elmModule, runtime) {
     var signalGraphNodes = flattenSignalGraph(wrappedRuntime.inputs);
     var initialSnapshot = createSnapshot(signalGraphNodes);
     debugState.snapshots = [initialSnapshot];
-    var tracePath = tracePathInit(runtime, debugState, debuggedModule.main);
-
 
     function notifyWrapper(id, v) {
         var timestep = runtime.timer.now();
@@ -498,7 +565,6 @@ function initModule(elmModule, runtime) {
         debugState.paused = true;
         clearAsyncCallbacks();
         debugState.pausedAtTime = Date.now();
-        tracePath.stopRecording();
         addEventBlocker(runtime.node);
     }
 
@@ -519,12 +585,10 @@ function initModule(elmModule, runtime) {
         }
 
         debugState.events = debugState.events.slice(0, position);
-        tracePath.clearTracesAfter(position);
+        clearTracesAfter(position, debugState);
         debugState.index = position;
         executeCallbacks(debugState.asyncCallbacks);
         removeEventBlocker();
-
-        tracePath.startRecording();
     }
 
     function isPaused() {
@@ -547,7 +611,6 @@ function initModule(elmModule, runtime) {
         isPaused: isPaused,
         pause: pause,
         continueFrom: continueFrom,
-        tracePath: tracePath,
         watchTracker: watchTracker
     };
 }
@@ -571,7 +634,7 @@ function debuggerInit(elmModule, runtime, debugState /* =undefined */) {
         pauseProgram();
         resetProgram(0);
         elmModule.watchTracker.clear();
-        elmModule.tracePath.clearTraces();
+        elmModule.debugState.traces = {};
         elmModule.continueFrom(0);
         elmModule.clearRecordedEvents();
         elmModule.debugState = [elmModule.initialSnapshot];
@@ -644,7 +707,6 @@ function debuggerInit(elmModule, runtime, debugState /* =undefined */) {
 
     function dispose() {
         var parentNode = runtime.node.parentNode;
-        parentNode.removeChild(elmModule.tracePath.canvas);
         parentNode.removeChild(runtime.node);
     }
 
@@ -658,11 +720,10 @@ function debuggerInit(elmModule, runtime, debugState /* =undefined */) {
         elmModule.pause();
         elmModule.loadRecordedEvents(debugState.recordedEvents);
         var index = getMaxSteps();
-        debugState.index = 0;
-        elmModule.tracePath.clearTraces();
+        debugState.index = 0; // TODO: this is wrong, maybe should be elmModule.debugState.index?
+        elmModule.debugState.traces = {};
 
         // draw new trace path
-        elmModule.tracePath.startRecording();
         while(currentEventIndex < index) {
             var nextEvent = elmModule.recordedEvents[currentEventIndex];
             debugState.index += 1;
@@ -670,15 +731,12 @@ function debuggerInit(elmModule, runtime, debugState /* =undefined */) {
             elmModule.snapshotOnCheckpoint();
             currentEventIndex += 1;
         }
-        elmModule.tracePath.stopRecording();
 
         stepTo(debugState.currentEventIndex);
         if (!paused) {
             elmModule.continueFrom(debugState.currentEventIndex);
         }
     }
-
-    runtime.node.parentNode.appendChild(elmModule.tracePath.canvas);
 
     var elmDebugger = {
         restart: restartProgram,
@@ -694,157 +752,6 @@ function debuggerInit(elmModule, runtime, debugState /* =undefined */) {
     };
 
     return elmDebugger;
-}
-
-function Point(x, y) {
-    this.x = x;
-    this.y = y;
-
-    this.translate = function(x, y) {
-        return new Point(this.x + x, this.y + y);
-    }
-}
-
-function tracePathInit(runtime, debugState, signalGraphMain) {
-    var List = Elm.List.make(runtime);
-    var Signal = Elm.Signal.make(runtime);
-    var tracePathNode = A2(Signal.map, graphicsUpdate, signalGraphMain);
-    var tracePathCanvas = createCanvas();
-    var tracePositions = {};
-    var recordingTraces = true;
-
-    function findPositions(currentScene) {
-        var positions = {};
-        function processElement(elem, offset) {
-            if (elem.element.ctor == "Custom" && elem.element.type == "Collage")
-            {
-                List.map(F2(processForm)(offset))(elem.element.model.forms);
-            }
-        }
-
-        function processForm(offset, form) {
-            if (form.form.ctor == "FElement")
-            {
-                processElement(form.form._0, offset.translate(form.x, -form.y));
-            }
-            if (form.form.ctor == "FGroup")
-            {
-                var newOffset = offset.translate(form.x, -form.y);
-                List.map(F2(processForm)(newOffset))(form.form._1);
-            }
-            if (form.debugTracePathId)
-            {
-                positions[form.debugTracePathId] = new Point(form.x + offset.x, -form.y + offset.y);
-            }
-        }
-
-        processElement(currentScene, new Point(0, 0));
-        return positions;
-    }
-
-    function appendPositions(positions) {
-        for (var id in positions) {
-            var pos = positions[id];
-            if (tracePositions.hasOwnProperty(id)) {
-               tracePositions[id].push(pos);
-            }
-            else {
-                tracePositions[id] = [pos];
-            }
-            if (tracePositions[id].length < debugState.index) {
-                var padCount = debugState.index - tracePositions[id].length;
-                var lastTracePosition = tracePositions[id][tracePositions[id].length - 1];
-                for (var i = padCount; i--;) {
-                    tracePositions[id].push(lastTracePosition)
-                }
-            }
-            assert(
-                tracePositions[id].length === debugState.index,
-                "We don't have a 1-1 mapping of trace positions to events");
-        }
-    }
-
-    function graphicsUpdate(currentScene) {
-        if (!recordingTraces) {
-            return;
-        }
-
-        var ctx = tracePathCanvas.getContext('2d');
-        ctx.clearRect(0, 0, tracePathCanvas.width, tracePathCanvas.height);
-
-        ctx.save();
-        ctx.translate(ctx.canvas.width/2, ctx.canvas.height/2);
-        appendPositions(findPositions(currentScene));
-        for (var id in tracePositions)
-        {
-            ctx.beginPath();
-            var points = tracePositions[id];
-            for (var i=0; i < points.length; i++)
-            {
-                var p = points[i];
-                if (i == 0) {
-                    ctx.moveTo(p.x, p.y);
-                }
-                else {
-                    ctx.lineTo(p.x, p.y);
-                }
-            }
-            ctx.lineWidth = 1;
-            ctx.strokeStyle = "rgba(50, 50, 50, 0.4)";
-            ctx.stroke();
-        }
-
-        ctx.restore();
-    }
-
-    function clearTraces() {
-        tracePositions = {};
-    }
-
-    function stopRecording() {
-        recordingTraces = false;
-    }
-
-    function startRecording() {
-        recordingTraces = true;
-    }
-
-    function clearTracesAfter(position) {
-        var newTraces = {};
-        for (var id in tracePositions) {
-            newTraces[id] = tracePositions[id].slice(0,position);
-        }
-        tracePositions = newTraces;
-    }
-
-    return {
-        graphicsUpdate: graphicsUpdate,
-        canvas: tracePathCanvas,
-        clearTraces: clearTraces,
-        clearTracesAfter: clearTracesAfter,
-        stopRecording: stopRecording,
-        startRecording: startRecording
-    };
-}
-
-function executeCallbacks(callbacks) {
-    callbacks.forEach(function(callback) {
-        if (!callback.executed) {
-            callback.executed = true;
-            callback.thunk();
-        }
-    });
-}
-
-function createCanvas() {
-    var canvas = document.createElement('canvas');
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-    canvas.style.position = "absolute";
-    canvas.style.top = "0";
-    canvas.style.left = "0";
-    canvas.style.pointerEvents = "none";
-    return canvas;
 }
 
 
