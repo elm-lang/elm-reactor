@@ -116,9 +116,9 @@ addSpaces str =
 
 initialize :: Bool -> Module.Name -> FilePath -> String
 initialize debug name filePath =
-  let moduleName = "Elm." ++ Module.nameToString name
+  let moduleName = Module.nameToString name
   in
       "var runningElmModule =\n    " ++
       case debug of
-        True -> "Elm.fullscreenDebug(" ++ moduleName ++ ", \"" ++ filePath ++ "\");"
-        False -> "Elm.fullscreen(" ++ moduleName ++ ");"
+        True -> "Elm.fullscreenDebug('" ++ moduleName ++ "', '" ++ filePath ++ "');"
+        False -> "Elm.fullscreen(Elm." ++ moduleName ++ ");"

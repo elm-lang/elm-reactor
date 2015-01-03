@@ -7,13 +7,6 @@ function assert(bool, msg) {
     }
 }
 
-if (typeof window != 'undefined' && !window.location.origin) {
-  window.location.origin =
-      window.location.protocol + "//" +
-      window.location.hostname +
-      (window.location.port ? (':' + window.location.port) : '');
-}
-
 
 // SIDE BAR
 
@@ -166,160 +159,99 @@ function removeEventBlocker() {
 
 // CODE TO SET UP A MODULE FOR DEBUGGING
 
-Elm.fullscreenDebug =
-  fullscreenDebugWithOptions({ externalSwap: false });
+Elm.fullscreenDebug = function(moduleName, fileName) {
+    var result = initModuleWithDebugState(moduleName); // TODO: emptyDebugState());
+    var debugState = result.debugState;
 
-Elm.fullscreenDebugWithOptions =
-  fullscreenDebugWithOptions;
+    document.body.appendChild(createSideBar());
+    document.body.appendChild(debugState.traceCanvas);
 
+    var sideBar = Elm.embed(Elm.SideBar, document.getElementById(SIDE_BAR_BODY_ID), {
+        eventCounter: 0,
+        watches: [],
+        showSwap: true
+    });
 
-function fullscreenDebugWithOptions(options) {
+    function updateWatches(index)
+    {
+        sideBar.ports.watches.send(watchesAt(index, debugState)); 
+    }
 
-    return function(elmModule, elmModuleFile) {
-        var createdSocket = false;
-        var elmPermitSwaps = true;
+    sideBar.ports.scrubTo.subscribe(function(index) {
+        jumpTo(index, debugState);
+        updateWatches(index);
+    });
 
-        var mainHandle = initModuleWithDebugState(elmModule); // TODO: emptyDebugState());
-        var sideBar = initSideBar();
-        if (!options.externalSwap) {
-            initSocket();
+    sideBar.ports.pause.subscribe(function(paused) {
+        if (paused) {
+            pause(debugState);
+        } else {
+            unpause(debugState);
         }
+    });
 
-        parent.window.addEventListener("message", function(e) {
-            if (e.data === "elmNotify") {
-                var currentPosition = mainHandle.debugger.getMaxSteps();
-                if (sideBar.ports) {
-                    sideBar.ports.eventCounter.send(currentPosition);
-                    sendWatches(currentPosition);
-                }
-            }
-        }, false);
+    sideBar.ports.restart.subscribe(function() {
+        restart(debugState);
+        updateWatches(0);
+    });
 
-        function initSideBar() {
-            document.body.appendChild(createSideBar());
+    sideBar.ports.permitSwap.subscribe(function(permitSwap) {
+        debugState.permitSwap = permitSwap;
+    });
 
-            var sideBar = Elm.embed(Elm.SideBar, document.getElementById(SIDE_BAR_BODY_ID), {
-                eventCounter: 0,
-                watches: [],
-                showSwap: !options.externalSwap
-            });
-
-            sideBar.ports.scrubTo.subscribe(function(position) {
-                if (mainHandle.debugger.isPaused()) {
-                    mainHandle.debugger.stepTo(position);
-                    sendWatches(position);
-                }
-            });
-
-            sideBar.ports.pause.subscribe(function(pause) {
-                if (pause) {
-                    mainHandle.debugger.pause();
-                } else {
-                    mainHandle.debugger.kontinue();
-                }
-            });
-
-            sideBar.ports.restart.subscribe(function() {
-                mainHandle.debugger.restart();
-                sendWatches(0);
-            });
-
-            sideBar.ports.permitSwap.subscribe(function(permitSwaps) {
-                elmPermitSwaps = permitSwaps;
-            });
-
-            return sideBar;
-        }
-
-        function sendWatches(position) {
-            var separator = "  ";
-            var output = [];
-
-            var watchAtPoint = mainHandle.debugger.watchTracker.frames[position];
-
-            for (var key in watchAtPoint) {
-                var value = watchAtPoint[key];
-                // The toString object is defined in toString.js
-                // and is prepended to this file at build time.
-                var stringified = prettyPrint(value, separator);
-                output.push([key, stringified]);
-            }
-            sideBar.ports.watches.send(output);
-        }
-
-        function initSocket() {
-            createdSocket = true;
-            // "/todo.html" => "todo.elm"
-            elmModuleFile = elmModuleFile || window.location.pathname.substr(1).split(".")[0] + ".elm";
-            var socketLocation = "ws://" + window.location.host + "/socket?file=" + elmModuleFile;
-            var serverConnection = new WebSocket(socketLocation);
-            serverConnection.onmessage = function(event) {
-                if (elmPermitSwaps && sideBar.ports) {
-                    swap(event.data);
-                }
-            };
-            window.addEventListener("unload", function() {
-                serverConnection.close();
-            });
-        }
-
-        function swap(rawJsonResponse) {
-            var error = document.getElementById(ERROR_MESSAGE_ID);
-            if (error) {
-                error.parentNode.removeChild(error);
-            }
-
-            var result = JSON.parse(rawJsonResponse);
-
-            if (result.code) {
-                window.eval(result.code);
-                var elmModule = window.eval('Elm.' + result.name);
-                if (mainHandle.debugger) {
-                    var debugState = mainHandle.debugger.getDebugState();
-                    mainHandle.debugger.dispose();
-                    mainHandle.dispose();
-
-                    mainHandle = initModuleWithDebugState(elmModule, debugState);
-
-                    removeEventBlocker();
-                }
-                else {
-                    mainHandle = mainHandle.swap(elmModule);
-                }
-            } else if (result.error) {
-                document.body.appendChild(initErrorMessage(result.error));
-            }
-        }
-
-        if (options.externalSwap) {
-            mainHandle.debugger.swap = swap;
-        }
-        return mainHandle;
+    debugState.onNotify = function() {
+        sideBar.ports.eventCounter.send(debugState.index);
+        updateWatches(debugState.index);
     };
+
+    // handle swaps
+    var updates = 'ws://' + window.location.host + '/socket?file=' + fileName
+    var connection = new WebSocket(updates);
+    connection.addEventListener('message', function(event) {
+        if (debugState.permitSwaps)
+        {
+            swap(event.data, debugState);
+        }
+    });
+    window.addEventListener("unload", function() {
+        connection.close();
+    });
+
+    return result.module;
 };
 
 
-function initModuleWithDebugState(elmModule, debugState /* =undefined */) {
-    var exposedDebugger = {};
+function initModuleWithDebugState(moduleName, previousDebugState) {
+    var debugState;
 
-    function debuggerAttach(elmModule, debugState) {
-        function make(runtime) {
-            var wrappedModule = initModule(elmModule, runtime);
-            exposedDebugger = debuggerInit(wrappedModule, runtime, debugState);
-            return wrappedModule.debuggedModule;
-        }
-        return { make: make };
+    function make(localRuntime) {
+        var result = initAndWrap(getModule(moduleName), localRuntime, previousDebugState);
+        debugState = result.debugState;
+        return result.values;
     }
 
-    var mainHandle = Elm.fullscreen(debuggerAttach(elmModule, debugState));
-    mainHandle.debugger = exposedDebugger;
-    return mainHandle;
+    return {
+        module: Elm.fullscreen({ make: make }),
+        debugState: debugState
+    };
+}
+
+function getModule(moduleName)
+{
+    var elmModule = Elm;
+    var names = moduleName.split('.');
+    for (var i = 0; i < names.length; ++i)
+    {
+        elmModule = elmModule[names[i]];
+    }
+    return elmModule;
 }
 
 
 // DEBUG STATE
 
-function emptyDebugState() {
+function emptyDebugState()
+{
     return {
         paused: false,
         pausedAtTime: 0,
@@ -327,21 +259,158 @@ function emptyDebugState() {
 
         index: 0,
         events: [],
-        watches: {},
+        watches: [{}],
         snapshots: [],
         asyncCallbacks: [],
+
+        initialSnapshot: [],
+        initialAsyncCallbacks: [],
+        signalGraphNodes: [],
 
         traces: {},
         traceCanvas: createCanvas(),
 
-        performSwaps: true
+        performSwaps: true,
+        onNotify: function() {},
+        node: null,
+        notify: function() {}
     };
 }
 
+function restart(debugState)
+{
+    var running = !debugState.paused;
+    if (running)
+    {
+        pause(debugState);
+    }
+    debugState.index = 0;
+    debugState.events = [];
+    debugState.watches = [debugState.watches[0]];
+
+    var snap = debugState.initialSnapshot;
+    debugState.snapshots = [snap];
+    for (var i = snap.length; i--; )
+    {
+        debugState.signalGraphNodes[i].value = snap[i].value;
+    }
+
+    debugState.asyncCallbacks = debugState.initialAsyncCallbacks.map(function(thunk) {
+        return {
+            thunk: thunk,
+            id: 0,
+            executed: false
+        };
+    });
+
+    debugState.traces = {};
+    redoTraces(debugState);
+
+    if (running)
+    {
+        unpause(debugState);
+    }
+}
+
+function pause(debugState)
+{
+    if (debugState.paused)
+    {
+        return;
+    }
+    debugState.paused = true;
+    pauseAsyncCallbacks(debugState);
+    debugState.pausedAtTime = Date.now();
+    addEventBlocker(debugState.node);
+}
+
+function unpause(debugState)
+{
+    debugState.paused = false;
+
+    // add delay due to the pause itself
+    var pauseDelay = Date.now() - debugState.pausedAtTime;
+    debugState.totalTimeLost += pauseDelay;
+
+    // add delay if travelling to older event
+    if (debugState.index < debugState.events.length - 1)
+    {
+        debugState.totalTimeLost = Date.now() - debugState.events[debugState.index].time;
+    }
+
+    // clear out future snapshots, events, and traces
+    var nearestSnapshotIndex = Math.floor(debugState.index / EVENTS_PER_SAVE);
+    debugState.snapshots = debugState.snapshots.slice(0, nearestSnapshotIndex + 1);
+    debugState.events = debugState.events.slice(0, debugState.index);
+    clearTracesAfter(debugState.index, debugState);
+
+    unpauseAsyncCallbacks(debugState.asyncCallbacks);
+
+    removeEventBlocker();
+}
+
+function jumpTo(index, debugState)
+{
+    if (!debugState.paused)
+    {
+        pause(debugState);
+    }
+
+    assert(
+        0 <= index && index <= debugState.events.length,
+        "Trying to step to non-existent event index " + index);
+
+    var potentialIndex = indexOfSnapshotBefore(index);
+    if (index < debugState.index || potentialIndex > debugState.index)
+    {
+        var snapshot = getNearestSnapshot(index, debugState.snapshots);
+
+        for (var i = debugState.signalGraphNodes.length; i-- ; )
+        {
+            debugState.signalGraphNodes[i].value = snapshot[i].value;
+        }
+
+        debugState.index = potentialIndex;
+    }
+
+    while (debugState.index < index)
+    {
+        var event = debugState.events[debugState.index];
+        debugState.notify(event.id, event.value, event.time);
+        debugState.index += 1;
+    }
+    redoTraces(debugState);
+}
+
+function swap(rawJsonResponse, debugState) {
+    var error = document.getElementById(ERROR_MESSAGE_ID);
+    if (error)
+    {
+        error.parentNode.removeChild(error);
+    }
+
+    var result = JSON.parse(rawJsonResponse);
+
+    if (!result.code)
+    {
+        var msg = result.error || 'something went wrong with swap';
+        document.body.appendChild(initErrorMessage(msg));
+        return null;
+    }
+    // TODO: pause/unpause?
+    window.eval(result.code);
+
+    // remove elm node
+    debugState.node.parentNode.removeChild(debugState.node);
+
+    return initModuleWithDebugState(getModule(result.name), debugState);
+}
 
 // CALLBACKS
 
-function executeCallbacks(callbacks) {
+// TODO: is it weird that the callbacks array never shrinks?
+
+function unpauseAsyncCallbacks(callbacks) {
     callbacks.forEach(function(callback) {
         if (!callback.executed) {
             callback.executed = true;
@@ -350,7 +419,7 @@ function executeCallbacks(callbacks) {
     });
 }
 
-function clearAsyncCallbacks(debugState) {
+function pauseAsyncCallbacks(debugState) {
     debugState.asyncCallbacks.forEach(function(callback) {
         if (!callback.executed) {
           clearTimeout(callback.id);
@@ -362,7 +431,8 @@ function clearAsyncCallbacks(debugState) {
 
 // TRACES
 
-function clearTracesAfter(index, debugState) {
+function clearTracesAfter(index, debugState)
+{
     var newTraces = {};
     for (var id in debugState.traces) {
         newTraces[id] = debugState.traces[id].slice(0, index);
@@ -382,32 +452,71 @@ function createCanvas() {
     return canvas;
 }
 
-function renderTraces(debugState) {
+function addTraces(debugState)
+{
     var ctx = debugState.traceCanvas.getContext('2d');
-    // TODO: be more clever about the size of the canvas on resize
-    ctx.clearRect(0, 0, debugState.traceCanvas.width, debugState.traceCanvas.height);
 
     ctx.save();
-    ctx.translate(ctx.canvas.width/2, ctx.canvas.height/2);
     for (var id in debugState.traces)
     {
         var points = debugState.traces[id];
-        var i = points.length - 1;
-        if (i < 0)
+        if (points.length < 2)
+        {
+            continue;
+        }
+        var lastTracePoint = points[points.length - 1];
+        if (lastTracePoint.index < debugState.index - 1)
         {
             continue;
         }
         ctx.beginPath();
-        var point = points[i];
-        ctx.moveTo(point.x, point.y);
-        while (i--)
-        {
-            point = points[i];
-            ctx.lineTo(point.x, point.y);
-        }
+        ctx.moveTo(lastTracePoint.x, lastTracePoint.y);
+        var secondToLastTracePoint = points[points.length - 2];
+        ctx.lineTo(secondToLastTracePoint.x, secondToLastTracePoint.y);
+
         ctx.lineWidth = 1;
-        // TODO: do different stroke color before and after current index
         ctx.strokeStyle = "rgba(50, 50, 50, 0.4)";
+        ctx.stroke();
+    }
+    ctx.restore();
+}
+
+function redoTraces(debugState) {
+    var ctx = debugState.traceCanvas.getContext('2d');
+
+    // TODO: be more clever about the size of the canvas on resize
+    ctx.clearRect(0, 0, debugState.traceCanvas.width, debugState.traceCanvas.height);
+
+    ctx.save();
+    for (var id in debugState.traces)
+    {
+        var points = debugState.traces[id];
+        var length = points.length;
+        if (length < 2)
+        {
+            continue;
+        }
+        ctx.beginPath();
+        ctx.lineWidth = 1;
+        ctx.moveTo(points[0].x, points[0].y);
+        var currentIndex = debugState.index;
+        var traceIndex = points[0].index;
+        for (var i = 1; traceIndex < currentIndex && i < length; ++i)
+        {
+            var point = points[i];
+            ctx.lineTo(point.x, point.y);
+            traceIndex = point.index;
+        }
+        ctx.strokeStyle = "rgba(50, 50, 50, 0.4)";
+        ctx.stroke();
+
+        for (; i < length; ++i)
+        {
+            var point = points[i];
+            ctx.lineTo(point.x, point.y);
+            traceIndex = point.index;
+        }
+        ctx.strokeStyle = "rgba(50, 50, 50, 0.2)";
         ctx.stroke();
     }
     ctx.restore();
@@ -423,15 +532,22 @@ function timeForSnapshot(debugState)
     return debugState.index % EVENTS_PER_SAVE === 0;
 }
 
-function getNearestSnapshot(i, snapshots) {
-    var snapshotEvent = Math.floor(i / EVENTS_PER_SAVE);
-    assert(
-        snapshotEvent < snapshots.length && snapshotEvent >= 0,
-        "Out of bounds index: " + snapshotEvent);
-    return snapshots[snapshotEvent];
+function indexOfSnapshotBefore(index)
+{
+    return Math.floor(index / EVENTS_PER_SAVE) * EVENTS_PER_SAVE;
 }
 
-function createSnapshot(signalGraphNodes) {
+function getNearestSnapshot(i, snapshots)
+{
+    var snapshotIndex = Math.floor(i / EVENTS_PER_SAVE);
+    assert(
+        snapshotIndex < snapshots.length && snapshotIndex >= 0,
+        "Trying to access non-existent snapshot (event " + i + ", snapshot " + snapshotIndex + ")");
+    return snapshots[snapshotIndex];
+}
+
+function createSnapshot(signalGraphNodes)
+{
     var nodeValues = [];
 
     signalGraphNodes.forEach(function(node) {
@@ -441,23 +557,8 @@ function createSnapshot(signalGraphNodes) {
     return nodeValues;
 }
 
-function restoreSnapshot(signalGraphNodes, snapshot) {
-    assert(
-        signalGraphNodes.length == snapshot.length,
-        "saved program state has wrong length");
-
-    for (var i=0; i < signalGraphNodes.length; i++) {
-        var node = signalGraphNodes[i];
-        var state = snapshot[i];
-
-        // TODO: give better message when snapshot swap fails
-        assert(node.id == state.id, "the nodes moved position");
-
-        node.value = state.value;
-    }
-}
-
-function flattenSignalGraph(nodes) {
+function flattenSignalGraph(nodes)
+{
     var nodesById = {};
 
     function addAllToDict(node) {
@@ -475,9 +576,9 @@ function flattenSignalGraph(nodes) {
 
 // WRAP THE RUNTIME
 
-function initModule(elmModule, runtime) {
+function initAndWrap(elmModule, runtime, previousDebugState)
+{
     var debugState = emptyDebugState();
-    var watchTracker = Elm.Native.Debug.make(runtime).watchTracker;
 
     // runtime is the prototype of wrappedRuntime
     // so we can access all runtime properties too
@@ -487,12 +588,12 @@ function initModule(elmModule, runtime) {
 
     // make a copy of the wrappedRuntime
     var assignedPropTracker = Object.create(wrappedRuntime);
-    var debuggedModule = elmModule.make(assignedPropTracker);
+    var values = elmModule.make(assignedPropTracker);
 
     // make sure the signal graph is actually a signal & extract the visual model
-    if ( !('recv' in debuggedModule.main) ) {
-        debuggedModule.main =
-            Elm.Signal.make(runtime).constant(debuggedModule.main);
+    if ( !('recv' in values.main) )
+    {
+        values.main = Elm.Signal.make(runtime).constant(values.main);
     }
 
     // The main module stores imported modules onto the runtime.
@@ -502,14 +603,62 @@ function initModule(elmModule, runtime) {
         runtime[key] = assignedPropTracker[key];
     });
 
-    var signalGraphNodes = flattenSignalGraph(wrappedRuntime.inputs);
-    var initialSnapshot = createSnapshot(signalGraphNodes);
-    debugState.snapshots = [initialSnapshot];
+    debugState.signalGraphNodes = flattenSignalGraph(wrappedRuntime.inputs);
+    debugState.initialSnapshot = createSnapshot(debugState.signalGraphNodes);
+    debugState.snapshots = [debugState.initialSnapshot];
+    debugState.initialAsyncCallbacks = debugState.asyncCallbacks.map(function(callback) {
+        return callback.thunk;
+    });
+    debugState.node = runtime.node;
+    debugState.notify = runtime.notify;
 
-    function notifyWrapper(id, v)
+
+    var replace = Elm.Native.Utils.make(runtime).replace;
+
+    runtime.debug = {};
+    runtime.debug.trace = function(tag, form)
     {
-        var timestep = runtime.timer.now();
+        function trace(x, y) {
+            if (debugState.paused)
+            {
+                return;
+            }
+            if ( !(tag in debugState.traces) )
+            {
+                debugState.traces[tag] = [{ index: debugState.index, x: x, y: y }];
+                return;
+            }                
+            var trace = debugState.traces[tag];
+            var lastPoint = trace[trace.length - 1];
+            if (lastPoint.x === x && lastPoint.y === y)
+            {
+                return;
+            }
+            trace.push({ index: debugState.index, x: x, y: y });
+        }
+        return replace([['trace', trace]], form);
+    }
+    runtime.debug.watch = function(tag, value)
+    {
+        if (!debugState.paused)
+        {
+            var index = debugState.index;
+            var numWatches = debugState.watches.length - 1;
+            assert(
+                index === numWatches,
+                'number of watch frames (' + numWatches + ') should match current index (' + index + ')');
+            debugState.watches[debugState.index][tag] = value;
+        }
+    }
 
+    runtime.timer.now = now;
+    function now()
+    {
+        return Date.now() - debugState.totalTimeLost;
+    };
+
+    function notifyWrapper(id, value)
+    {
         // Ignore all events that occur while the program is paused.
         if (debugState.paused)
         {
@@ -517,29 +666,29 @@ function initModule(elmModule, runtime) {
         }
 
         // Record the event
-        watchTracker.pushFrame();
-        debugState.events.push({ id:id, value:v, timestep:timestep });
+        debugState.events.push({ id: id, value: value, time: now() });
         debugState.index += 1;
+        pushWatchFrame(debugState);
 
-        var changed = runtime.notify(id, v, timestep);
+        var changed = runtime.notify(id, value);
 
         if (timeForSnapshot(debugState))
         {
-            debugState.snapshots.push(createSnapshot(signalGraphNodes));
+            debugState.snapshots.push(createSnapshot(debugState.signalGraphNodes));
         }
-        if (parent.window)
-        {
-            parent.window.postMessage("elmNotify", window.location.origin);
-        }
+        debugState.onNotify();
+        addTraces(debugState);
+
         return changed;
     }
 
-    function setTimeoutWrapper(thunk, delay) {
-        if (debugState.paused) {
-            // Don't push timers and such to the callback stack while we're paused.
-            // It causes too many callbacks to be fired during unpausing.
+    function setTimeoutWrapper(thunk, delay)
+    {
+        if (debugState.paused)
+        {
             return 0;
         }
+
         var callback = {
             thunk: thunk,
             id: 0,
@@ -555,198 +704,50 @@ function initModule(elmModule, runtime) {
         return callback.id;
     }
 
-    function pause() {
-        debugState.paused = true;
-        clearAsyncCallbacks(debugState);
-        debugState.pausedAtTime = Date.now();
-        addEventBlocker(runtime.node);
-    }
-
-    function continueFrom(position) {
-        var pauseDelay = Date.now() - debugState.pausedAtTime;
-        runtime.timer.addDelay(pauseDelay);
-        debugState.paused = false;
-
-        // we need to dump the events that are ahead of where we're continuing.
-        var lastSnapshotPosition = Math.floor(position / EVENTS_PER_SAVE);
-        debugState.snapshots = debugState.snapshots.slice(0, lastSnapshotPosition + 1);
-
-        if (position < debugState.events.length) {
-            var lastEventTime = debugState.events[position].timestep;
-            var scrubTime = runtime.timer.now() - lastEventTime;
-            runtime.timer.addDelay(scrubTime);
-        }
-
-        debugState.events = debugState.events.slice(0, position);
-        clearTracesAfter(position, debugState);
-        debugState.index = position;
-        executeCallbacks(debugState.asyncCallbacks);
-        removeEventBlocker();
-    }
-
-    function isPaused() {
-        return debugState.paused;
-    }
-
     return {
-        debuggedModule: debuggedModule,
-        signalGraphNodes: signalGraphNodes,
-        initialSnapshot: initialSnapshot,
-        initialAsyncCallbacks: debugState.asyncCallbacks.slice(),
-
-        // API functions
-        debugState: debugState,
-        isPaused: isPaused,
-        pause: pause,
-        continueFrom: continueFrom,
-        watchTracker: watchTracker
+        values: values,
+        debugState: debugState
     };
 }
 
 
-// The debugState variable is passed in on swap. It represents
-// the a state of the debugger for it to assume during init. It contains
-// the paused state of the debugger, the recorded events, and the current
-// event being processed.
-function debuggerInit(elmModule, runtime, debugState /* =undefined */) {
-    var currentEventIndex = 0;
-
-    function resetProgram(position) {
-        var nearestSnapshot = getNearestSnapshot(position, elmModule.debugState.snapshots);
-        clearAsyncCallbacks(elmModule.debugState);
-        restoreSnapshot(elmModule.signalGraphNodes, nearestSnapshot);
-        redrawGraphics();
+function redrawGraphics() {
+    var main = elmModule.values.main
+    for (var i = main.kids.length ; i-- ; )
+    {
+        main.kids[i].recv(runtime.timer.now(), true, main.id);
     }
-
-    function restartProgram() {
-        pauseProgram();
-        resetProgram(0);
-        elmModule.watchTracker.clear();
-        elmModule.debugState.traces = {};
-        elmModule.continueFrom(0);
-        elmModule.debugState.events = [];
-        elmModule.debugState.index = 0;
-        elmModule.debugState.snapshots = [elmModule.initialSnapshot];
-        executeCallbacks(elmModule.initialAsyncCallbacks);
-    }
-
-    function pauseProgram() {
-        elmModule.pause();
-        currentEventIndex = elmModule.debugState.events.length;
-    }
-
-    function continueProgram() {
-        if (elmModule.isPaused()) {
-            var closestSnapshotIndex =
-                Math.floor(currentEventIndex / EVENTS_PER_SAVE) * EVENTS_PER_SAVE;
-            resetProgram(currentEventIndex);
-            var continueIndex = currentEventIndex;
-            currentEventIndex = closestSnapshotIndex;
-            stepTo(continueIndex);
-            elmModule.continueFrom(currentEventIndex);
-        }
-    }
-
-    function stepTo(index) {
-        if (!elmModule.isPaused()) {
-            elmModule.pause();
-            resetProgram();
-        }
-
-        if (index < 0 || index > getMaxSteps()) {
-            throw "Index out of bounds: " + index;
-        }
-
-        if (index < currentEventIndex) {
-            var closestSnapshotIndex = Math.floor(index / EVENTS_PER_SAVE) * EVENTS_PER_SAVE;
-            resetProgram(index);
-            currentEventIndex = closestSnapshotIndex;
-        }
-
-        while (currentEventIndex < index) {
-            var nextEvent = elmModule.debugState.events[currentEventIndex];
-            runtime.notify(nextEvent.id, nextEvent.value, nextEvent.timestep);
-
-            currentEventIndex += 1;
-        }
-    }
-
-    function getMaxSteps() {
-        return elmModule.debugState.events.length;
-    }
-
-    function redrawGraphics() {
-        var main = elmModule.debuggedModule.main
-        for (var i = main.kids.length ; i-- ; ) {
-            main.kids[i].recv(runtime.timer.now(), true, main.id);
-        }
-    }
-
-    function getDebugState() {
-        var continueIndex = currentEventIndex;
-        if (!elmModule.isPaused()) {
-            continueIndex = getMaxSteps();
-        }
-        return {
-            paused: elmModule.isPaused(),
-            recordedEvents: elmModule.debugState.events.slice(),
-            currentEventIndex: continueIndex
-        };
-    }
-
-    function dispose() {
-        var parentNode = runtime.node.parentNode;
-        parentNode.removeChild(runtime.node);
-    }
-
-    if (debugState) {
-        // The problem is that we want to previous paused state. But
-        // by the time JS reaches here, the old code has been swapped out
-        // and the new modules are being generated. So we can ask the
-        // debugging console what it thinks the pause state is and go
-        // from there.
-        var paused = debugState.paused;
-        elmModule.pause();
-        elmModule.debugState.events = debugState.recordedEvents.slice();
-        var index = getMaxSteps();
-        debugState.index = 0; // TODO: this is wrong, maybe should be elmModule.debugState.index?
-        elmModule.debugState.traces = {};
-
-        // take all necessary snapshots
-        while(currentEventIndex < index) {
-            var nextEvent = elmModule.debugState.events[currentEventIndex];
-            debugState.index += 1;
-            runtime.notify(nextEvent.id, nextEvent.value, nextEvent.timestep);
-            elmModule.snapshotOnCheckpoint();
-            currentEventIndex += 1;
-        }
-
-        stepTo(debugState.currentEventIndex);
-        if (!paused) {
-            elmModule.continueFrom(debugState.currentEventIndex);
-        }
-    }
-
-    var elmDebugger = {
-        restart: restartProgram,
-        pause: pauseProgram,
-        kontinue: continueProgram,
-        getMaxSteps: getMaxSteps,
-        stepTo: stepTo,
-        isPaused: elmModule.isPaused,
-        getDebugState: getDebugState,
-        dispose: dispose,
-        allNodes: elmModule.signalGraphNodes,
-        watchTracker: elmModule.watchTracker
-    };
-
-    return elmDebugger;
 }
 
 
-// PRETTY PRINT VALUES
+// WATCHES
 
-var prettyPrint = function(){
+function watchesAt(index, debugState)
+{
+    var watchSnapshot = [];
+    var watches = debugState.watches[index];
+
+    for (var name in watches)
+    {
+        var value = prettyPrint(watches[name], "  ");
+        watchSnapshot.push([ name, value ]);
+    }
+    return watchSnapshot;
+}
+
+function pushWatchFrame(debugState)
+{
+    var length = debugState.watches.length;
+    var oldFrame = length === 0 ? {} : debugState.watches[length - 1];
+    var newFrame = {};
+    for (var tag in oldFrame)
+    {
+        newFrame[tag] = oldFrame[tag];
+    }
+    debugState.watches.push(newFrame);
+}
+
+var prettyPrint = function() {
 
     var independentRuntime = {};
     var List;

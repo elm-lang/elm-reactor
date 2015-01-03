@@ -24,22 +24,25 @@ startModel =
 
 
 update : Action -> Model -> Model
-update update state =
-  case update of
+update action state =
+  case action of
     Restart ->
-        startModel
-
-    Pause doPause ->
         { state |
-            paused <- doPause,
-            totalEvents <-
-                if doPause then state.totalEvents else state.scrubPosition
+            totalEvents <- 0,
+            scrubPosition <- 0
         }
 
-    TotalEvents events ->
+    Pause pause ->
         { state |
-            totalEvents <- events,
-            scrubPosition <- events
+            paused <- pause,
+            totalEvents <-
+                if pause then state.totalEvents else state.scrubPosition
+        }
+
+    TotalEvents n ->
+        { state |
+            totalEvents <- n,
+            scrubPosition <- n
         }
 
     ScrubPosition pos ->
