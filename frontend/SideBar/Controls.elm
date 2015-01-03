@@ -148,12 +148,12 @@ scrubSlider (w,_) state =
                 value <- toFloat state.scrubPosition
             }
     in
-        slider (\n -> Signal.send scrupChannel (round n)) sliderStyle
+        slider (\n -> Signal.send scrubChannel (round n)) sliderStyle
             |> container sliderLength 20 middle
 
 
-scrupChannel : Signal.Channel Int
-scrupChannel =
+scrubChannel : Signal.Channel Int
+scrubChannel =
     Signal.channel 0
 
 

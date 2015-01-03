@@ -47,7 +47,7 @@ aggregateUpdates =
     [ Signal.map (always Model.Restart) (Signal.subscribe Controls.restartChannel)
     , Signal.map Model.Pause (Signal.subscribe Controls.pausedInput)
     , Signal.map Model.TotalEvents eventCounter
-    , Signal.map Model.ScrubPosition (Signal.subscribe Controls.scrupChannel)
+    , Signal.map Model.ScrubPosition (Signal.subscribe Controls.scrubChannel)
     ]
 
 
@@ -64,12 +64,12 @@ port showSwap : Bool
 
 port scrubTo : Signal Int
 port scrubTo =
-    Signal.map .scrubPosition scene
+    Signal.subscribe Controls.scrubChannel
 
 
 port pause : Signal Bool
 port pause =
-    Signal.map .paused scene
+    Signal.subscribe Controls.pausedInput
 
 
 port restart : Signal Int
