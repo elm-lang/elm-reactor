@@ -187,6 +187,7 @@ Elm.fullscreenDebug = function(moduleName, fileName) {
             pause(debugState);
         } else {
             unpause(debugState);
+            redoTraces(debugState);
         }
     });
 
@@ -343,6 +344,7 @@ function unpause(debugState)
     debugState.snapshots = debugState.snapshots.slice(0, nearestSnapshotIndex + 1);
     debugState.events = debugState.events.slice(0, debugState.index);
     clearTracesAfter(debugState.index, debugState);
+    clearWatchesAfter(debugState.index, debugState);
 
     unpauseAsyncCallbacks(debugState.asyncCallbacks);
 
@@ -434,8 +436,17 @@ function pauseAsyncCallbacks(debugState) {
 function clearTracesAfter(index, debugState)
 {
     var newTraces = {};
-    for (var id in debugState.traces) {
-        newTraces[id] = debugState.traces[id].slice(0, index);
+    for (var id in debugState.traces)
+    {
+        var trace = debugState.traces[id];
+        for (var i = trace.length; i--; )
+        {
+            if (trace[i].index < index)
+            {
+                newTraces[id] = debugState.traces[id].slice(0, i);
+                break;
+            }
+        }
     }
     debugState.traces = newTraces;
 }
@@ -745,6 +756,11 @@ function pushWatchFrame(debugState)
         newFrame[tag] = oldFrame[tag];
     }
     debugState.watches.push(newFrame);
+}
+
+function clearWatchesAfter(index, debugState)
+{
+    debugState.watches = debugState.watches.slice(0, index + 1);
 }
 
 var prettyPrint = function() {
