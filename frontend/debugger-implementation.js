@@ -152,7 +152,10 @@ function addEventBlocker(node) {
 
 function removeEventBlocker() {
     var blocker = document.getElementById(EVENT_BLOCKER_ID);
-    blocker.parentNode.removeChild(blocker);
+    if (blocker)
+    {
+        blocker.parentNode.removeChild(blocker);
+    }
 }
 
 
@@ -160,11 +163,9 @@ function removeEventBlocker() {
 // CODE TO SET UP A MODULE FOR DEBUGGING
 
 Elm.fullscreenDebug = function(moduleName, fileName) {
-    var result = initModuleWithDebugState(moduleName); // TODO: emptyDebugState());
-    var debugState = result.debugState;
+    var result = initModuleWithDebugState(moduleName);
 
     document.body.appendChild(createSideBar());
-    document.body.appendChild(debugState.traceCanvas);
 
     var sideBar = Elm.embed(Elm.SideBar, document.getElementById(SIDE_BAR_BODY_ID), {
         eventCounter: 0,
@@ -174,33 +175,33 @@ Elm.fullscreenDebug = function(moduleName, fileName) {
 
     function updateWatches(index)
     {
-        sideBar.ports.watches.send(watchesAt(index, debugState)); 
+        sideBar.ports.watches.send(watchesAt(index, result.debugState)); 
     }
 
     sideBar.ports.scrubTo.subscribe(function(index) {
-        jumpTo(index, debugState);
+        jumpTo(index, result.debugState);
         updateWatches(index);
     });
 
     sideBar.ports.pause.subscribe(function(paused) {
         if (paused) {
-            pause(debugState);
+            pause(result.debugState);
         } else {
-            unpause(debugState);
-            redoTraces(debugState);
+            unpause(result.debugState);
+            redoTraces(result.debugState);
         }
     });
 
     sideBar.ports.restart.subscribe(function() {
-        restart(debugState);
+        restart(result.debugState);
         updateWatches(0);
     });
 
     sideBar.ports.permitSwap.subscribe(function(permitSwap) {
-        debugState.permitSwap = permitSwap;
+        result.debugState.permitSwap = permitSwap;
     });
 
-    debugState.onNotify = function() {
+    result.debugState.onNotify = function(debugState) {
         sideBar.ports.eventCounter.send(debugState.index);
         updateWatches(debugState.index);
     };
@@ -209,9 +210,9 @@ Elm.fullscreenDebug = function(moduleName, fileName) {
     var updates = 'ws://' + window.location.host + '/socket?file=' + fileName
     var connection = new WebSocket(updates);
     connection.addEventListener('message', function(event) {
-        if (debugState.permitSwaps)
+        if (result.debugState.permitSwaps)
         {
-            swap(event.data, debugState);
+            result = swap(event.data, result.debugState);
         }
     });
     window.addEventListener("unload", function() {
@@ -222,11 +223,11 @@ Elm.fullscreenDebug = function(moduleName, fileName) {
 };
 
 
-function initModuleWithDebugState(moduleName, previousDebugState) {
+function initModuleWithDebugState(moduleName) {
     var debugState;
 
     function make(localRuntime) {
-        var result = initAndWrap(getModule(moduleName), localRuntime, previousDebugState);
+        var result = initAndWrap(getModule(moduleName), localRuntime);
         debugState = result.debugState;
         return result.values;
     }
@@ -271,7 +272,9 @@ function emptyDebugState()
         traces: {},
         traceCanvas: createCanvas(),
 
-        performSwaps: true,
+        permitSwaps: true,
+        swapInProgress: false,
+
         onNotify: function() {},
         node: null,
         notify: function() {}
@@ -400,13 +403,49 @@ function swap(rawJsonResponse, debugState) {
         return null;
     }
     // TODO: pause/unpause?
+    pauseAsyncCallbacks(debugState);
     window.eval(result.code);
 
-    // remove elm node
+    // remove old nodes
     debugState.node.parentNode.removeChild(debugState.node);
+    document.body.removeChild(debugState.traceCanvas);
 
-    return initModuleWithDebugState(getModule(result.name), debugState);
+    var result = initModuleWithDebugState(result.name);
+    transferState(debugState, result.debugState);
+    return result;
 }
+
+function transferState(previousDebugState, debugState)
+{
+    debugState.swapInProgress = true;
+    debugState.events = previousDebugState.events;
+    debugState.onNotify = previousDebugState.onNotify;
+
+    while (debugState.index < debugState.events.length)
+    {
+        var event = debugState.events[debugState.index];
+        debugState.index += 1;
+        pushWatchFrame(debugState);
+
+        debugState.notify(event.id, event.value, event.time);
+        snapshotIfNeeded(debugState);
+    }
+    debugState.onNotify(debugState);
+    redoTraces(debugState);
+
+    jumpTo(previousDebugState.index, debugState);
+
+    if (previousDebugState.paused)
+    {
+        debugState.paused = true;
+        pauseAsyncCallbacks(debugState);
+        debugState.pausedAtTime = previousDebugState.pausedAtTime;
+        debugState.totalTimeLost = previousDebugState.totalTimeLost;
+        addEventBlocker(debugState.node);
+    }
+    debugState.swapInProgress = false;
+}
+
 
 // CALLBACKS
 
@@ -424,7 +463,7 @@ function unpauseAsyncCallbacks(callbacks) {
 function pauseAsyncCallbacks(debugState) {
     debugState.asyncCallbacks.forEach(function(callback) {
         if (!callback.executed) {
-          clearTimeout(callback.id);
+            clearTimeout(callback.id);
         }
     });
 }
@@ -443,7 +482,7 @@ function clearTracesAfter(index, debugState)
         {
             if (trace[i].index < index)
             {
-                newTraces[id] = debugState.traces[id].slice(0, i);
+                newTraces[id] = debugState.traces[id].slice(0, i + 1);
                 break;
             }
         }
@@ -538,9 +577,12 @@ function redoTraces(debugState) {
 
 var EVENTS_PER_SAVE = 100;
 
-function timeForSnapshot(debugState)
+function snapshotIfNeeded(debugState)
 {
-    return debugState.index % EVENTS_PER_SAVE === 0;
+    if (debugState.index % EVENTS_PER_SAVE === 0)
+    {
+        debugState.snapshots.push(createSnapshot(debugState.signalGraphNodes));
+    }
 }
 
 function indexOfSnapshotBefore(index)
@@ -578,16 +620,20 @@ function flattenSignalGraph(nodes)
     }
     nodes.forEach(addAllToDict);
 
-    var allNodes = Object.keys(nodesById).sort().map(function(key) {
+    var allNodes = Object.keys(nodesById).sort(compareNumbers).map(function(key) {
         return nodesById[key];
     });
     return allNodes;
 }
 
+function compareNumbers(a, b) {
+    return a - b;
+}
+
 
 // WRAP THE RUNTIME
 
-function initAndWrap(elmModule, runtime, previousDebugState)
+function initAndWrap(elmModule, runtime)
 {
     var debugState = emptyDebugState();
 
@@ -604,7 +650,7 @@ function initAndWrap(elmModule, runtime, previousDebugState)
     // make sure the signal graph is actually a signal & extract the visual model
     if ( !('recv' in values.main) )
     {
-        values.main = Elm.Signal.make(runtime).constant(values.main);
+        values.main = Elm.Signal.make(assignedPropTracker).constant(values.main);
     }
 
     // The main module stores imported modules onto the runtime.
@@ -623,14 +669,16 @@ function initAndWrap(elmModule, runtime, previousDebugState)
     debugState.node = runtime.node;
     debugState.notify = runtime.notify;
 
+    // Tracing stuff
+    document.body.appendChild(debugState.traceCanvas);
 
-    var replace = Elm.Native.Utils.make(runtime).replace;
+    var replace = Elm.Native.Utils.make(assignedPropTracker).replace;
 
     runtime.debug = {};
     runtime.debug.trace = function(tag, form)
     {
         function trace(x, y) {
-            if (debugState.paused)
+            if (debugState.paused && !debugState.swapInProgress)
             {
                 return;
             }
@@ -651,15 +699,16 @@ function initAndWrap(elmModule, runtime, previousDebugState)
     }
     runtime.debug.watch = function(tag, value)
     {
-        if (!debugState.paused)
+        if (debugState.paused && !debugState.swapInProgress)
         {
-            var index = debugState.index;
-            var numWatches = debugState.watches.length - 1;
-            assert(
-                index === numWatches,
-                'number of watch frames (' + numWatches + ') should match current index (' + index + ')');
-            debugState.watches[debugState.index][tag] = value;
+            return;
         }
+        var index = debugState.index;
+        var numWatches = debugState.watches.length - 1;
+        assert(
+            index === numWatches,
+            'number of watch frames (' + numWatches + ') should match current index (' + index + ')');
+        debugState.watches[debugState.index][tag] = value;
     }
 
     runtime.timer.now = now;
@@ -677,17 +726,14 @@ function initAndWrap(elmModule, runtime, previousDebugState)
         }
 
         // Record the event
-        debugState.events.push({ id: id, value: value, time: now() });
+        debugState.events.push({ id: id, value: value, time: runtime.timer.now() });
         debugState.index += 1;
         pushWatchFrame(debugState);
 
         var changed = runtime.notify(id, value);
 
-        if (timeForSnapshot(debugState))
-        {
-            debugState.snapshots.push(createSnapshot(debugState.signalGraphNodes));
-        }
-        debugState.onNotify();
+        snapshotIfNeeded(debugState);
+        debugState.onNotify(debugState);
         addTraces(debugState);
 
         return changed;
