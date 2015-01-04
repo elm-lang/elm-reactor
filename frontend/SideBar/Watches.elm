@@ -21,7 +21,7 @@ viewAttributes =
     [ ("overflow-y", "auto")
     , ("overflow-x", "hidden")
     , ("height", "100%")
-    , ("margin", "0 20px")
+    , ("padding", "0 20px")
     ]
   ]
 
