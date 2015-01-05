@@ -212,7 +212,7 @@ Elm.fullscreenDebug = function(moduleName, fileName) {
     connection.addEventListener('message', function(event) {
         if (result.debugState.permitSwaps)
         {
-            result = swap(event.data, result.debugState);
+            result = swap(event.data, result.debugState, result.module.dispose);
         }
     });
     window.addEventListener("unload", function() {
@@ -387,7 +387,7 @@ function jumpTo(index, debugState)
     redoTraces(debugState);
 }
 
-function swap(rawJsonResponse, debugState) {
+function swap(rawJsonResponse, debugState, freeOldRuntime) {
     var error = document.getElementById(ERROR_MESSAGE_ID);
     if (error)
     {
@@ -409,6 +409,7 @@ function swap(rawJsonResponse, debugState) {
     // remove old nodes
     debugState.node.parentNode.removeChild(debugState.node);
     document.body.removeChild(debugState.traceCanvas);
+    freeOldRuntime();
 
     var result = initModuleWithDebugState(result.name);
     transferState(debugState, result.debugState);
@@ -420,6 +421,15 @@ function transferState(previousDebugState, debugState)
     debugState.swapInProgress = true;
     debugState.events = previousDebugState.events;
     debugState.onNotify = previousDebugState.onNotify;
+
+    if (previousDebugState.paused)
+    {
+        debugState.paused = true;
+        pauseAsyncCallbacks(debugState);
+        debugState.pausedAtTime = previousDebugState.pausedAtTime;
+        debugState.totalTimeLost = previousDebugState.totalTimeLost;
+        addEventBlocker(debugState.node);
+    }
 
     while (debugState.index < debugState.events.length)
     {
@@ -435,14 +445,6 @@ function transferState(previousDebugState, debugState)
 
     jumpTo(previousDebugState.index, debugState);
 
-    if (previousDebugState.paused)
-    {
-        debugState.paused = true;
-        pauseAsyncCallbacks(debugState);
-        debugState.pausedAtTime = previousDebugState.pausedAtTime;
-        debugState.totalTimeLost = previousDebugState.totalTimeLost;
-        addEventBlocker(debugState.node);
-    }
     debugState.swapInProgress = false;
 }
 
@@ -675,8 +677,7 @@ function initAndWrap(elmModule, runtime)
     var replace = Elm.Native.Utils.make(assignedPropTracker).replace;
 
     runtime.debug = {};
-    runtime.debug.trace = function(tag, form)
-    {
+    runtime.debug.trace = function(tag, form) {
         function trace(x, y) {
             if (debugState.paused && !debugState.swapInProgress)
             {
