@@ -213,6 +213,7 @@ Elm.fullscreenDebug = function(moduleName, fileName) {
         if (result.debugState.permitSwaps)
         {
             result = swap(event.data, result.debugState, result.module.dispose);
+            updateWatches(result.debugState.index);
         }
     });
     window.addEventListener("unload", function() {
@@ -440,12 +441,10 @@ function transferState(previousDebugState, debugState)
         debugState.notify(event.id, event.value, event.time);
         snapshotIfNeeded(debugState);
     }
-    debugState.onNotify(debugState);
     redoTraces(debugState);
+    debugState.swapInProgress = false;
 
     jumpTo(previousDebugState.index, debugState);
-
-    debugState.swapInProgress = false;
 }
 
 
@@ -574,6 +573,78 @@ function redoTraces(debugState) {
     ctx.restore();
 }
 
+function makeTraceRecorder(debugState, runtime)
+{
+    var List = Elm.List.make(runtime);
+    var Transform = Elm.Transform2D.make(runtime);
+
+    function crawlElement(element)
+    {
+        if (debugState.paused && !debugState.swapInProgress)
+        {
+            return;
+        }
+
+        var e = element.element;
+        if (!e)
+        {
+            return;
+        }
+        if (e.ctor === 'Custom' && e.type === 'Collage')
+        {
+            var w = element.props.width;
+            var h = element.props.height;
+            var identity = A6( Transform.matrix, 1, 0, 0, -1, w/2, h/2 );
+            return A2(List.map, crawlForm(identity), e.model.forms);
+        }
+    }
+
+    function crawlForm(matrix)
+    {
+        return function(form) {
+            if (form.form.ctor == "FGroup")
+            {
+                var scale = form.scale;
+                var localMatrix = A6( Transform.matrix, scale, 0, 0, scale, form.x, form.y );
+
+                var theta = form.theta
+                if (theta !== 0)
+                {
+                    localMatrix = A2( Transform.multiply, localMatrix, Transform.rotation(theta) );
+                }
+
+                var newMatrix = A2( Transform.multiply, matrix, localMatrix );
+                A2(List.map, crawlForm(newMatrix), form.form._1);
+            }
+
+            var tag = form.trace;
+            if (!tag)
+            {
+                return;
+            }
+
+            var x = matrix[0] * form.x + matrix[1] * form.y + matrix[2];
+            var y = matrix[3] * form.x + matrix[4] * form.y + matrix[5];
+
+            if ( !(tag in debugState.traces) )
+            {
+                debugState.traces[tag] = [{ index: debugState.index, x: x, y: y }];
+                return;
+            }                
+
+            var trace = debugState.traces[tag];
+            var lastPoint = trace[trace.length - 1];
+            if (lastPoint.x === x && lastPoint.y === y)
+            {
+                return;
+            }
+            trace.push({ index: debugState.index, x: x, y: y });
+        }
+    }
+
+    return crawlElement;
+}
+
 
 // SNAPSHOTS
 
@@ -650,10 +721,12 @@ function initAndWrap(elmModule, runtime)
     var values = elmModule.make(assignedPropTracker);
 
     // make sure the signal graph is actually a signal & extract the visual model
+    var Signal = Elm.Signal.make(assignedPropTracker);
     if ( !('recv' in values.main) )
     {
-        values.main = Elm.Signal.make(assignedPropTracker).constant(values.main);
+        values.main = Signal.constant(values.main);
     }
+    A2(Signal.map, makeTraceRecorder(debugState, assignedPropTracker), values.main);
 
     // The main module stores imported modules onto the runtime.
     // To ensure only one instance of each module is created,
@@ -678,25 +751,7 @@ function initAndWrap(elmModule, runtime)
 
     runtime.debug = {};
     runtime.debug.trace = function(tag, form) {
-        function trace(x, y) {
-            if (debugState.paused && !debugState.swapInProgress)
-            {
-                return;
-            }
-            if ( !(tag in debugState.traces) )
-            {
-                debugState.traces[tag] = [{ index: debugState.index, x: x, y: y }];
-                return;
-            }                
-            var trace = debugState.traces[tag];
-            var lastPoint = trace[trace.length - 1];
-            if (lastPoint.x === x && lastPoint.y === y)
-            {
-                return;
-            }
-            trace.push({ index: debugState.index, x: x, y: y });
-        }
-        return replace([['trace', trace]], form);
+        return replace([['trace', tag]], form);
     }
     runtime.debug.watch = function(tag, value)
     {
