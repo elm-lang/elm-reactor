@@ -277,6 +277,7 @@ function emptyDebugState()
         swapInProgress: false,
 
         onNotify: function() {},
+        refreshScreen: function() {},
         node: null,
         notify: function() {}
     };
@@ -310,6 +311,7 @@ function restart(debugState)
 
     debugState.traces = {};
     redoTraces(debugState);
+    debugState.refreshScreen();
 
     if (running)
     {
@@ -728,6 +730,14 @@ function initAndWrap(elmModule, runtime)
     }
     A2(Signal.map, makeTraceRecorder(debugState, assignedPropTracker), values.main);
 
+    debugState.refreshScreen = function() {
+        var main = values.main
+        for (var i = main.kids.length ; i-- ; )
+        {
+            main.kids[i].recv(runtime.timer.now(), true, main.id);
+        }
+    };
+
     // The main module stores imported modules onto the runtime.
     // To ensure only one instance of each module is created,
     // we assign them back on the original runtime object.
@@ -821,15 +831,6 @@ function initAndWrap(elmModule, runtime)
         values: values,
         debugState: debugState
     };
-}
-
-
-function redrawGraphics() {
-    var main = elmModule.values.main
-    for (var i = main.kids.length ; i-- ; )
-    {
-        main.kids[i].recv(runtime.timer.now(), true, main.id);
-    }
 }
 
 
