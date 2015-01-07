@@ -197,8 +197,8 @@ Elm.fullscreenDebug = function(moduleName, fileName) {
         updateWatches(0);
     });
 
-    sideBar.ports.permitSwap.subscribe(function(permitSwap) {
-        result.debugState.permitSwap = permitSwap;
+    sideBar.ports.permitSwap.subscribe(function(permitSwaps) {
+        result.debugState.permitSwaps = permitSwaps;
     });
 
     result.debugState.onNotify = function(debugState) {
