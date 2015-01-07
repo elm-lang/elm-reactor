@@ -759,12 +759,17 @@ function initAndWrap(elmModule, runtime)
 
     var replace = Elm.Native.Utils.make(assignedPropTracker).replace;
 
+    runtime.timer.now = function() {
+        return Date.now() - debugState.totalTimeLost;
+    };
+
     runtime.debug = {};
+
     runtime.debug.trace = function(tag, form) {
         return replace([['trace', tag]], form);
     }
-    runtime.debug.watch = function(tag, value)
-    {
+
+    runtime.debug.watch = function(tag, value) {
         if (debugState.paused && !debugState.swapInProgress)
         {
             return;
@@ -776,12 +781,6 @@ function initAndWrap(elmModule, runtime)
             'number of watch frames (' + numWatches + ') should match current index (' + index + ')');
         debugState.watches[debugState.index][tag] = value;
     }
-
-    runtime.timer.now = now;
-    function now()
-    {
-        return Date.now() - debugState.totalTimeLost;
-    };
 
     function notifyWrapper(id, value)
     {
