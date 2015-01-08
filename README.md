@@ -24,8 +24,8 @@ else it needs.
 ## Use
 
 Navigate to the Elm project you want to work on. A great project to get started
-with is [elm-examples][] which contains a simple Mario game and todo list app,
-both setup to be fun to debug.
+with is [elm-examples][] which contains some simple programs that should be fun
+to debug.
 
 [elm-examples]: https://github.com/evancz/elm-examples
 
@@ -51,27 +51,30 @@ start your Elm program with a control panel that lets you:
 
   * Add watches and traces to track and visualize values over time.
 
-  * Hot-swap in new code at any time, maintaining all recorded events.
+  * Swap in new code at any time, maintaining all recorded events.
 
 
 #### Debugging code embedded in HTML
 
 To use the debugger with more complex HTML or CSS, you may want to start the
-debugger from within an HTML file.
+debugger from within an HTML file. This process is still improving, so *use this
+with caution*.
 
-In your custom HTML file load the `/debugger.js` script:
+In your custom HTML file, load the `/_reactor/debug.js` script.
 
 ```html
-<script type="text/javascript" src="/debugger.js"></script>
+<script type="text/javascript" src="/_reactor/debug.js"></script>
 ```
 
-That creates the `Elm.debugFullscreen` function so you can initiate your Elm
+That creates the `Elm.fullscreenDebug` function so you can initiate your Elm
 program with the debugger:
 
 ```javascript
-var runningElmModule = Elm.debugFullscreen(Elm.Todo, "todo.elm");
+var main = Elm.fullscreenDebug('MyProject.Main', 'MyProject/Main.elm');
 ```
 
-The argument `"todo.elm"` is the file path to the root module of your project,
-the one with a `main` value. This file path makes it possible to hot-swap when
-you change any relevant code.
+The first argument is the name of the module you would like to debug.
+The second argument is the name of the source file for that module.
+The file name is needed so that we know which file to recompile when
+the Reactor detects that a file has changed. You may edit a dependency,
+but we always need to compile from the root file.
