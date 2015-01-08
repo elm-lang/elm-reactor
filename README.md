@@ -19,7 +19,7 @@ Sublime Text, emacs, vim, or whatever else to edit Elm code.
 Install [Elm Platform][platform]. This will install Elm Reactor and everything
 else it needs.
 
-[platform]: https://github.com/elm-lang/elm-platform
+[platform]: http://elm-lang.org/Install.elm
 
 ## Use
 
