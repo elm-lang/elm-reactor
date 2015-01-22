@@ -79,12 +79,12 @@ noWatches = Markdown.toHtml """
 
 <span style="color: rgb(170,170,170)">
 <span style="font-family: Gotham, Futura, 'Lucida Grande', sans-serif; font-size: 10pt; color: rgb(170,170,170)">
-Use [<span style="text-decoration:underline; color: rgb(170,170,170)">Debug.watch</span>](http://library.elm-lang.org/catalog/elm-lang-Elm/latest/Debug#watch)
+Use [<span style="text-decoration:underline; color: rgb(170,170,170)">Debug.watch</span>](http://package.elm-lang.org/packages/elm-lang/core/latest/Debug#watch)
 to show any value. <br>
 `watch : String -> a -> a`</span>
 
 <span style="font-family: Gotham, Futura, 'Lucida Grande', sans-serif; font-size: 10pt; color: rgb(170,170,170)">
-Use [<span style="text-decoration:underline; color: rgb(170,170,170)">Debug.watchSummary</span>](http://library.elm-lang.org/catalog/elm-lang-Elm/latest/Debug#watchSummary) to show a <br>
+Use [<span style="text-decoration:underline; color: rgb(170,170,170)">Debug.watchSummary</span>](http://package.elm-lang.org/packages/elm-lang/core/latest/Debug#watchSummary) to show a <br>
 summary or subvalue of any value. </span><br>
 
 """
