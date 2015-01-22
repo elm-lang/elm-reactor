@@ -723,12 +723,12 @@ function initAndWrap(elmModule, runtime)
     var values = elmModule.make(assignedPropTracker);
 
     // make sure the signal graph is actually a signal & extract the visual model
-    var Signal = Elm.Signal.make(assignedPropTracker);
+    var NS = Elm.Native.Signal.make(assignedPropTracker);
     if ( !('recv' in values.main) )
     {
-        values.main = Signal.constant(values.main);
+        values.main = NS.input(values.main);
     }
-    A2(Signal.map, makeTraceRecorder(debugState, assignedPropTracker), values.main);
+    A2(NS.map, makeTraceRecorder(debugState, assignedPropTracker), values.main);
 
     debugState.refreshScreen = function() {
         var main = values.main
