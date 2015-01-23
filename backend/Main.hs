@@ -74,6 +74,7 @@ startupMessage =
   "Elm Reactor " ++ Version.showVersion version
   ++ " (Elm Platform " ++ Compiler.version ++ ")"
 
+
 directoryConfig :: MonadSnap m => DirectoryConfig m
 directoryConfig =
     fancyDirectoryConfig
