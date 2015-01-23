@@ -23,6 +23,7 @@ import qualified Compile
 import qualified Socket
 import qualified Utils
 import Paths_elm_reactor (version)
+import qualified Elm.Compiler as Compiler
 import Elm.Utils ((|>))
 
 
@@ -43,8 +44,7 @@ flags = Flags
     &= versionArg [ explicit, name "version", name "v"
                   , summary (Version.showVersion version)
                   ]
-    &= summary ("Elm Reactor " ++ Version.showVersion version ++
-                ", (c) Evan Czaplicki 2011-2014")
+    &= summary startupMessage
 
 
 config :: BSC.ByteString -> Int -> Config Snap a
@@ -72,7 +72,7 @@ main =
 startupMessage :: String
 startupMessage =
   "Elm Reactor " ++ Version.showVersion version
-
+  ++ " (Elm Platform " ++ Compiler.version ++ ")"
 
 directoryConfig :: MonadSnap m => DirectoryConfig m
 directoryConfig =
