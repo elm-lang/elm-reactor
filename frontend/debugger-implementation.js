@@ -212,8 +212,11 @@ Elm.fullscreenDebug = function(moduleName, fileName) {
     connection.addEventListener('message', function(event) {
         if (result.debugState.permitSwaps)
         {
-            result = swap(event.data, result.debugState, result.module.dispose);
-            updateWatches(result.debugState.index);
+            var newModule = swap(event.data, result.debugState, result.module.dispose);
+            if (newModule) {
+                result = newModule;
+                updateWatches(result.debugState.index);
+            }
         }
     });
     window.addEventListener("unload", function() {
