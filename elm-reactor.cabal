@@ -78,7 +78,6 @@ Executable elm-reactor
     elm-compiler >= 0.14.1 && < 0.15,
     filepath,
     fsnotify >= 0.1.0.2,
-    HTTP,
     mtl,
     process,
     snap-core,
