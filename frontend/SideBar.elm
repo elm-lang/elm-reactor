@@ -1,6 +1,6 @@
 module SideBar where
 
-import Graphics.Element (..)
+import Graphics.Element exposing (..)
 import Html
 import List
 import Signal

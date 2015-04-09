@@ -1,14 +1,13 @@
 module SideBar.Controls where
 
 import Color
-import Graphics.Collage (..)
-import Graphics.Element (..)
-import Graphics.Element as GE
-import Graphics.Input (..)
+import Graphics.Collage exposing (..)
+import Graphics.Element as GE exposing (..)
+import Graphics.Input exposing (..)
 import List
 import Signal
-import Signal (Signal, (<~), (~))
-import Slider (..)
+import Signal exposing (Signal, (<~), (~))
+import Slider exposing (..)
 import Text
 
 import SideBar.Model as Model

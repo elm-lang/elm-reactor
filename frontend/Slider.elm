@@ -10,7 +10,7 @@ module Slider where
 
 import Debug
 import Native.Slider
-import Graphics.Element (Element)
+import Graphics.Element exposing (Element)
 import Signal
 
 {-| The attributes of a slider. This lets you customize a slider to fit however
