@@ -2,7 +2,6 @@ module SideBar.Watches where
 
 import Html as Html exposing (..)
 import Html.Attributes exposing (..)
-import List as List exposing (map)
 import Markdown
 
 
@@ -11,7 +10,7 @@ view watches =
   div viewAttributes <|
       case watches of
         [] -> [noWatches]
-        _ -> map viewWatch watches
+        _ -> List.map viewWatch watches
 
 
 viewAttributes : List Attribute

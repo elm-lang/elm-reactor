@@ -5,7 +5,7 @@ import Graphics.Collage exposing (..)
 import Graphics.Element as GE exposing (..)
 import Graphics.Input exposing (..)
 import List
-import Signal as Signal exposing (Signal, Message, Mailbox, (<~), (~), send, mailbox)
+import Signal as S exposing (Signal, (<~), (~))
 import Slider exposing (..)
 import Text
 
@@ -50,7 +50,7 @@ textStyle string =
 
 -- VIEW
 
-myButton : Message -> String -> Element
+myButton : Signal.Message -> String -> Element
 myButton message name =
     let img state =
           image 40 40 ("/_reactor/debugger/" ++ name ++ "-button-" ++ state ++ ".png")
@@ -60,27 +60,27 @@ myButton message name =
 
 playButton : Element
 playButton =
-    myButton (send pausedInput False) "play"
+    myButton (Signal.send pausedInput False) "play"
 
 
 pauseButton : Element
 pauseButton =
-    myButton (send pausedInput True) "pause"
+    myButton (Signal.send pausedInput True) "pause"
 
 
-pausedInput : Mailbox Bool
+pausedInput : Signal.Mailbox Bool
 pausedInput =
-    mailbox False
+    Signal.mailbox False
 
 
 restartButton : Element
 restartButton =
-    myButton (send restartMailbox ()) "restart"
+    myButton (Signal.send restartSignal ()) "restart"
 
 
-restartMailbox : Mailbox ()
-restartMailbox =
-    mailbox ()
+restartSignal : Signal.Mailbox ()
+restartSignal =
+    Signal.mailbox ()
 
 
 swapButton : Bool -> Element
@@ -115,12 +115,12 @@ swapButton permitSwap =
         button =
             case permitSwap of
               True ->
-                customButton (send permitSwapMailbox False)
+                customButton (Signal.send permitSwapSignal False)
                     (collage hsWidth hsWidth trueButton)
                     (collage hsWidth hsWidth trueButtonHover)
                     (collage hsWidth hsWidth trueButtonClick)
               False ->
-                customButton (send permitSwapMailbox True)
+                customButton (Signal.send permitSwapSignal True)
                     (collage hsWidth hsWidth falseButton)
                     (collage hsWidth hsWidth falseButtonHover)
                     (collage hsWidth hsWidth falseButtonClick)
@@ -130,8 +130,9 @@ swapButton permitSwap =
         flow right [ info, spacer 10 1, button ]
 
 
-permitSwapMailbox : Mailbox Bool
-permitSwapMailbox = mailbox True
+permitSwapChannel : Signal.Mailbox Bool
+permitSwapChannel =
+    Signal.mailbox True
 
 
 scrubSlider : (Int, Int) -> Model.Model -> Element
@@ -145,12 +146,13 @@ scrubSlider (w,_) state =
                 value <- toFloat state.scrubPosition
             }
     in
-        slider (\n -> send scrubMailbox (round n)) sliderStyle
+        slider (\n -> Signal.message scrubSignal.address (round n)) sliderStyle
             |> container sliderLength 20 middle
 
 
-scrubMailbox : Mailbox Int
-scrubMailbox = mailbox 0
+scrubChannel : Signal.Mailbox Int
+scrubChannel =
+    Signal.mailbox 0
 
 
 sliderEventText : Int -> Model.Model -> Element
