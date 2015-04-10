@@ -5,7 +5,7 @@ import Graphics.Collage exposing (..)
 import Graphics.Element as GE exposing (..)
 import Graphics.Input exposing (..)
 import List
-import Signal as Signal exposing (Signal, Message, (<~), (~), send)
+import Signal as Signal exposing (Signal, Message, Mailbox, (<~), (~), send, mailbox)
 import Slider exposing (..)
 import Text
 
@@ -68,19 +68,19 @@ pauseButton =
     myButton (send pausedInput True) "pause"
 
 
-pausedInput : Signal.Channel Bool
+pausedInput : Mailbox Bool
 pausedInput =
-    Signal.channel False
+    mailbox False
 
 
 restartButton : Element
 restartButton =
-    myButton (send restartChannel ()) "restart"
+    myButton (send restartMailbox ()) "restart"
 
 
-restartChannel : Signal.Channel ()
-restartChannel =
-    Signal.channel ()
+restartMailbox : Mailbox ()
+restartMailbox =
+    mailbox ()
 
 
 swapButton : Bool -> Element
@@ -115,12 +115,12 @@ swapButton permitSwap =
         button =
             case permitSwap of
               True ->
-                customButton (send permitSwapChannel False)
+                customButton (send permitSwapMailbox False)
                     (collage hsWidth hsWidth trueButton)
                     (collage hsWidth hsWidth trueButtonHover)
                     (collage hsWidth hsWidth trueButtonClick)
               False ->
-                customButton (send permitSwapChannel True)
+                customButton (send permitSwapMailbox True)
                     (collage hsWidth hsWidth falseButton)
                     (collage hsWidth hsWidth falseButtonHover)
                     (collage hsWidth hsWidth falseButtonClick)
@@ -130,9 +130,8 @@ swapButton permitSwap =
         flow right [ info, spacer 10 1, button ]
 
 
-permitSwapChannel : Signal.Channel Bool
-permitSwapChannel =
-    Signal.channel True
+permitSwapMailbox : Mailbox Bool
+permitSwapMailbox = mailbox True
 
 
 scrubSlider : (Int, Int) -> Model.Model -> Element
@@ -146,13 +145,12 @@ scrubSlider (w,_) state =
                 value <- toFloat state.scrubPosition
             }
     in
-        slider (\n -> send scrubChannel (round n)) sliderStyle
+        slider (\n -> send scrubMailbox (round n)) sliderStyle
             |> container sliderLength 20 middle
 
 
-scrubChannel : Signal.Channel Int
-scrubChannel =
-    Signal.channel 0
+scrubMailbox : Mailbox Int
+scrubMailbox = mailbox 0
 
 
 sliderEventText : Int -> Model.Model -> Element
