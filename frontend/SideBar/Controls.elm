@@ -60,12 +60,12 @@ myButton message name =
 
 playButton : Element
 playButton =
-    myButton (Signal.send pausedInput False) "play"
+    myButton (Signal.message pausedInput.address False) "play"
 
 
 pauseButton : Element
 pauseButton =
-    myButton (Signal.send pausedInput True) "pause"
+    myButton (Signal.message pausedInput.address True) "pause"
 
 
 pausedInput : Signal.Mailbox Bool
@@ -75,7 +75,7 @@ pausedInput =
 
 restartButton : Element
 restartButton =
-    myButton (Signal.send restartSignal ()) "restart"
+    myButton (Signal.message restartSignal.address ()) "restart"
 
 
 restartSignal : Signal.Mailbox ()
@@ -115,12 +115,12 @@ swapButton permitSwap =
         button =
             case permitSwap of
               True ->
-                customButton (Signal.send permitSwapSignal False)
+                customButton (Signal.message permitSwapMailbox.address False)
                     (collage hsWidth hsWidth trueButton)
                     (collage hsWidth hsWidth trueButtonHover)
                     (collage hsWidth hsWidth trueButtonClick)
               False ->
-                customButton (Signal.send permitSwapSignal True)
+                customButton (Signal.message permitSwapMailbox.address True)
                     (collage hsWidth hsWidth falseButton)
                     (collage hsWidth hsWidth falseButtonHover)
                     (collage hsWidth hsWidth falseButtonClick)
@@ -130,8 +130,8 @@ swapButton permitSwap =
         flow right [ info, spacer 10 1, button ]
 
 
-permitSwapChannel : Signal.Mailbox Bool
-permitSwapChannel =
+permitSwapMailbox : Signal.Mailbox Bool
+permitSwapMailbox =
     Signal.mailbox True
 
 
@@ -146,12 +146,12 @@ scrubSlider (w,_) state =
                 value <- toFloat state.scrubPosition
             }
     in
-        slider (\n -> Signal.message scrubSignal.address (round n)) sliderStyle
+        slider (\n -> Signal.message scrubMailbox.address (round n)) sliderStyle
             |> container sliderLength 20 middle
 
 
-scrubChannel : Signal.Mailbox Int
-scrubChannel =
+scrubMailbox : Signal.Mailbox Int
+scrubMailbox =
     Signal.mailbox 0
 
 
