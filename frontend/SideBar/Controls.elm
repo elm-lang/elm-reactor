@@ -5,8 +5,7 @@ import Graphics.Collage exposing (..)
 import Graphics.Element as GE exposing (..)
 import Graphics.Input exposing (..)
 import List
-import Signal
-import Signal exposing (Signal, (<~), (~))
+import Signal as Signal exposing (Signal, Message, (<~), (~), send)
 import Slider exposing (..)
 import Text
 
@@ -51,7 +50,7 @@ textStyle string =
 
 -- VIEW
 
-myButton : Signal.Message -> String -> Element
+myButton : Message -> String -> Element
 myButton message name =
     let img state =
           image 40 40 ("/_reactor/debugger/" ++ name ++ "-button-" ++ state ++ ".png")
@@ -61,12 +60,12 @@ myButton message name =
 
 playButton : Element
 playButton =
-    myButton (Signal.send pausedInput False) "play"
+    myButton (send pausedInput False) "play"
 
 
 pauseButton : Element
 pauseButton =
-    myButton (Signal.send pausedInput True) "pause"
+    myButton (send pausedInput True) "pause"
 
 
 pausedInput : Signal.Channel Bool
@@ -76,7 +75,7 @@ pausedInput =
 
 restartButton : Element
 restartButton =
-    myButton (Signal.send restartChannel ()) "restart"
+    myButton (send restartChannel ()) "restart"
 
 
 restartChannel : Signal.Channel ()
@@ -116,12 +115,12 @@ swapButton permitSwap =
         button =
             case permitSwap of
               True ->
-                customButton (Signal.send permitSwapChannel False)
+                customButton (send permitSwapChannel False)
                     (collage hsWidth hsWidth trueButton)
                     (collage hsWidth hsWidth trueButtonHover)
                     (collage hsWidth hsWidth trueButtonClick)
               False ->
-                customButton (Signal.send permitSwapChannel True)
+                customButton (send permitSwapChannel True)
                     (collage hsWidth hsWidth falseButton)
                     (collage hsWidth hsWidth falseButtonHover)
                     (collage hsWidth hsWidth falseButtonClick)
@@ -147,7 +146,7 @@ scrubSlider (w,_) state =
                 value <- toFloat state.scrubPosition
             }
     in
-        slider (\n -> Signal.send scrubChannel (round n)) sliderStyle
+        slider (\n -> send scrubChannel (round n)) sliderStyle
             |> container sliderLength 20 middle
 
 

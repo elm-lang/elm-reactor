@@ -11,7 +11,7 @@ module Slider where
 import Debug
 import Native.Slider
 import Graphics.Element exposing (Element)
-import Signal
+import Signal exposing (Message)
 
 {-| The attributes of a slider. This lets you customize a slider to fit however
 you want. You may also modify the default slider style with record updates.
@@ -68,5 +68,5 @@ meters with centimeter accuracy (0.01).
                   }
           in  slider age.handle id ageStyle
 -}
-slider : (Float -> Signal.Message) -> SliderStyle -> Element
+slider : (Float -> Message) -> SliderStyle -> Element
 slider = Native.Slider.slider
