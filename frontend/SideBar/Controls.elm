@@ -125,7 +125,7 @@ swapButton permitSwap =
                     (collage hsWidth hsWidth falseButtonHover)
                     (collage hsWidth hsWidth falseButtonClick)
 
-        info = Text.leftAligned (textStyle "swap")
+        info = GE.leftAligned (textStyle "swap")
     in
         flow right [ info, spacer 10 1, button ]
 
@@ -179,7 +179,7 @@ sliderEventText w state =
         textPosition = middleAt xPos yPos
 
         text' =
-          Text.centered (textStyle (toString state.scrubPosition))
+          GE.centered (textStyle (toString state.scrubPosition))
     in
         container w textHeight textPosition text'
 
@@ -188,13 +188,13 @@ sliderMinMaxText : Int -> Model.Model -> Element
 sliderMinMaxText w state =
     let sliderStartText =
             textStyle "0"
-                |> Text.leftAligned
+                |> GE.leftAligned
                 |> container w textHeight topLeft
 
         sliderTotalEvents =
             toString state.totalEvents
                 |> textStyle
-                |> Text.rightAligned
+                |> GE.rightAligned
                 |> container w textHeight topRight
     in
         flow outward
