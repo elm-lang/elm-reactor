@@ -3,7 +3,6 @@ module SideBar where
 import Graphics.Element exposing (..)
 import Html
 import List
-import Signal
 import Window
 
 import SideBar.Controls as Controls
