@@ -384,7 +384,7 @@ function jumpTo(index, debugState)
     while (debugState.index < index)
     {
         var event = debugState.events[debugState.index];
-        debugState.notify(event.id, event.value, event.time);
+        debugState.notify(event.id, event.value);
         debugState.index += 1;
     }
     redoTraces(debugState);
@@ -440,7 +440,7 @@ function transferState(previousDebugState, debugState)
         debugState.index += 1;
         pushWatchFrame(debugState);
 
-        debugState.notify(event.id, event.value, event.time);
+        debugState.notify(event.id, event.value);
         snapshotIfNeeded(debugState);
     }
     redoTraces(debugState);
