@@ -2,7 +2,7 @@ module SideBar.Controls where
 
 import Color
 import Graphics.Collage exposing (..)
-import Graphics.Element as GE exposing (..)
+import Graphics.Element exposing (..)
 import Graphics.Input exposing (..)
 import List
 import Signal as S exposing (Signal, (<~), (~))
@@ -125,7 +125,7 @@ swapButton permitSwap =
                     (collage hsWidth hsWidth falseButtonHover)
                     (collage hsWidth hsWidth falseButtonClick)
 
-        info = GE.leftAligned (textStyle "swap")
+        info = leftAligned (textStyle "swap")
     in
         flow right [ info, spacer 10 1, button ]
 
@@ -179,7 +179,7 @@ sliderEventText w state =
         textPosition = middleAt xPos yPos
 
         text' =
-          GE.centered (textStyle (toString state.scrubPosition))
+          centered (textStyle (toString state.scrubPosition))
     in
         container w textHeight textPosition text'
 
@@ -188,13 +188,13 @@ sliderMinMaxText : Int -> Model.Model -> Element
 sliderMinMaxText w state =
     let sliderStartText =
             textStyle "0"
-                |> GE.leftAligned
+                |> leftAligned
                 |> container w textHeight topLeft
 
         sliderTotalEvents =
             toString state.totalEvents
                 |> textStyle
-                |> GE.rightAligned
+                |> rightAligned
                 |> container w textHeight topRight
     in
         flow outward
