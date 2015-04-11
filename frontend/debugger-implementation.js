@@ -724,7 +724,7 @@ function initAndWrap(elmModule, runtime)
 
     // make sure the signal graph is actually a signal & extract the visual model
     var Signal = Elm.Signal.make(assignedPropTracker);
-    if ( !('recv' in values.main) )
+    if ( !('notify' in values.main) )
     {
         values.main = Signal.constant(values.main);
     }
@@ -734,7 +734,7 @@ function initAndWrap(elmModule, runtime)
         var main = values.main
         for (var i = main.kids.length ; i-- ; )
         {
-            main.kids[i].recv(runtime.timer.now(), true, main.id);
+            main.kids[i].notify(runtime.timer.now(), true, main.id);
         }
     };
 
@@ -949,7 +949,7 @@ var prettyPrint = function() {
                 return v.ctor + output;
             }
         }
-        if (type === 'object' && 'recv' in v) return '<signal>';
+        if (type === 'object' && 'notify' in v) return '<signal>';
         return "<internal structure>";
     };
 
