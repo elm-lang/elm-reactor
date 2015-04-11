@@ -63,7 +63,7 @@ Elm.Native.Slider.make = function(localRuntime) {
             width = height;
             height = temp;
         }
-        return A3(Element.newElement, width, height, {
+        return A3(NativeElement.newElement, width, height, {
             ctor: 'Custom',
             type: 'Slider',
             render: renderSlider,
