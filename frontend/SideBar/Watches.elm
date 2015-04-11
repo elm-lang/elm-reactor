@@ -1,9 +1,7 @@
 module SideBar.Watches where
 
-import Html
-import Html (..)
-import Html.Attributes (..)
-import List
+import Html exposing (..)
+import Html.Attributes exposing (..)
 import Markdown
 
 

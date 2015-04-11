@@ -1,9 +1,8 @@
 module SideBar where
 
-import Graphics.Element (..)
+import Graphics.Element exposing (..)
 import Html
 import List
-import Signal
 import Window
 
 import SideBar.Controls as Controls
@@ -32,7 +31,7 @@ main =
   Signal.map4 view
     (Signal.map (\(w,h) -> (Controls.panelWidth, h)) Window.dimensions)
     watches
-    (Signal.subscribe Controls.permitSwapChannel)
+    permitSwapMailbox.signal
     scene
 
 
@@ -44,12 +43,21 @@ scene =
 aggregateUpdates : Signal Model.Action
 aggregateUpdates =
   Signal.mergeMany
-    [ Signal.map (always Model.Restart) (Signal.subscribe Controls.restartChannel)
-    , Signal.map Model.Pause (Signal.subscribe Controls.pausedInput)
+    [ Signal.map (always Model.Restart) restartMailbox.signal
+    , Signal.map Model.Pause pausedInputMailbox.signal
     , Signal.map Model.TotalEvents eventCounter
-    , Signal.map Model.ScrubPosition (Signal.subscribe Controls.scrubChannel)
+    , Signal.map Model.ScrubPosition scrubMailbox.signal
     ]
 
+-- CONTROL MAILBOXES
+
+permitSwapMailbox = Controls.permitSwapMailbox
+
+restartMailbox = Controls.restartMailbox
+
+pausedInputMailbox = Controls.pausedInputMailbox
+
+scrubMailbox = Controls.scrubMailbox
 
 -- INCOMING PORTS
 
@@ -64,19 +72,19 @@ port showSwap : Bool
 
 port scrubTo : Signal Int
 port scrubTo =
-    Signal.subscribe Controls.scrubChannel
+    scrubMailbox.signal
 
 
 port pause : Signal Bool
 port pause =
-    Signal.subscribe Controls.pausedInput
+    pausedInputMailbox.signal
 
 
 port restart : Signal Int
 port restart =
-    Signal.map (always 0) (Signal.subscribe Controls.restartChannel)
+    Signal.map (always 0) restartMailbox.signal
 
 
 port permitSwap : Signal Bool
 port permitSwap =
-    Signal.subscribe Controls.permitSwapChannel
+    permitSwapMailbox.signal

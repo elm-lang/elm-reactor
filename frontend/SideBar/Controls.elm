@@ -1,14 +1,12 @@
 module SideBar.Controls where
 
 import Color
-import Graphics.Collage (..)
-import Graphics.Element (..)
-import Graphics.Element as GE
-import Graphics.Input (..)
+import Graphics.Collage exposing (..)
+import Graphics.Element exposing (..)
+import Graphics.Input exposing (..)
 import List
-import Signal
-import Signal (Signal, (<~), (~))
-import Slider (..)
+import Signal as S exposing (Signal, (<~), (~))
+import Slider exposing (..)
 import Text
 
 import SideBar.Model as Model
@@ -62,27 +60,27 @@ myButton message name =
 
 playButton : Element
 playButton =
-    myButton (Signal.send pausedInput False) "play"
+    myButton (Signal.message pausedInputMailbox.address False) "play"
 
 
 pauseButton : Element
 pauseButton =
-    myButton (Signal.send pausedInput True) "pause"
+    myButton (Signal.message pausedInputMailbox.address True) "pause"
 
 
-pausedInput : Signal.Channel Bool
-pausedInput =
-    Signal.channel False
+pausedInputMailbox : Signal.Mailbox Bool
+pausedInputMailbox =
+    Signal.mailbox False
 
 
 restartButton : Element
 restartButton =
-    myButton (Signal.send restartChannel ()) "restart"
+    myButton (Signal.message restartMailbox.address ()) "restart"
 
 
-restartChannel : Signal.Channel ()
-restartChannel =
-    Signal.channel ()
+restartMailbox : Signal.Mailbox ()
+restartMailbox =
+    Signal.mailbox ()
 
 
 swapButton : Bool -> Element
@@ -117,24 +115,24 @@ swapButton permitSwap =
         button =
             case permitSwap of
               True ->
-                customButton (Signal.send permitSwapChannel False)
+                customButton (Signal.message permitSwapMailbox.address False)
                     (collage hsWidth hsWidth trueButton)
                     (collage hsWidth hsWidth trueButtonHover)
                     (collage hsWidth hsWidth trueButtonClick)
               False ->
-                customButton (Signal.send permitSwapChannel True)
+                customButton (Signal.message permitSwapMailbox.address True)
                     (collage hsWidth hsWidth falseButton)
                     (collage hsWidth hsWidth falseButtonHover)
                     (collage hsWidth hsWidth falseButtonClick)
 
-        info = Text.leftAligned (textStyle "swap")
+        info = leftAligned (textStyle "swap")
     in
         flow right [ info, spacer 10 1, button ]
 
 
-permitSwapChannel : Signal.Channel Bool
-permitSwapChannel =
-    Signal.channel True
+permitSwapMailbox : Signal.Mailbox Bool
+permitSwapMailbox =
+    Signal.mailbox True
 
 
 scrubSlider : (Int, Int) -> Model.Model -> Element
@@ -148,13 +146,13 @@ scrubSlider (w,_) state =
                 value <- toFloat state.scrubPosition
             }
     in
-        slider (\n -> Signal.send scrubChannel (round n)) sliderStyle
+        slider (\n -> Signal.message scrubMailbox.address (round n)) sliderStyle
             |> container sliderLength 20 middle
 
 
-scrubChannel : Signal.Channel Int
-scrubChannel =
-    Signal.channel 0
+scrubMailbox : Signal.Mailbox Int
+scrubMailbox =
+    Signal.mailbox 0
 
 
 sliderEventText : Int -> Model.Model -> Element
@@ -181,7 +179,7 @@ sliderEventText w state =
         textPosition = middleAt xPos yPos
 
         text' =
-          Text.centered (textStyle (toString state.scrubPosition))
+          centered (textStyle (toString state.scrubPosition))
     in
         container w textHeight textPosition text'
 
@@ -190,13 +188,13 @@ sliderMinMaxText : Int -> Model.Model -> Element
 sliderMinMaxText w state =
     let sliderStartText =
             textStyle "0"
-                |> Text.leftAligned
+                |> leftAligned
                 |> container w textHeight topLeft
 
         sliderTotalEvents =
             toString state.totalEvents
                 |> textStyle
-                |> Text.rightAligned
+                |> rightAligned
                 |> container w textHeight topRight
     in
         flow outward
