@@ -9,6 +9,7 @@ Elm.Native.Slider.make = function(localRuntime) {
 
     var Element = Elm.Graphics.Element.make(localRuntime);
     var NativeElement = Elm.Native.Graphics.Element.make(localRuntime);
+    var Signal = Elm.Native.Signal.make(localRuntime);
 
     function renderSlider(model) {
         var node = NativeElement.createNode('input');
@@ -35,7 +36,7 @@ Elm.Native.Slider.make = function(localRuntime) {
         node.addEventListener('input', notifySlider);
         node.addEventListener('change', notifySlider);
         function notifySlider() {
-            node.elm_handler(node.value)();
+            Signal.sendMessage(node.elm_handler(node.value));
         }
         return node;
     }
