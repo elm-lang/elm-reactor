@@ -60,26 +60,26 @@ myButton message name =
 
 playButton : Element
 playButton =
-    myButton (Signal.message pausedInput.address False) "play"
+    myButton (Signal.message pausedInputMailbox.address False) "play"
 
 
 pauseButton : Element
 pauseButton =
-    myButton (Signal.message pausedInput.address True) "pause"
+    myButton (Signal.message pausedInputMailbox.address True) "pause"
 
 
-pausedInput : Signal.Mailbox Bool
-pausedInput =
+pausedInputMailbox : Signal.Mailbox Bool
+pausedInputMailbox =
     Signal.mailbox False
 
 
 restartButton : Element
 restartButton =
-    myButton (Signal.message restartSignal.address ()) "restart"
+    myButton (Signal.message restartMailbox.address ()) "restart"
 
 
-restartSignal : Signal.Mailbox ()
-restartSignal =
+restartMailbox : Signal.Mailbox ()
+restartMailbox =
     Signal.mailbox ()
 
 

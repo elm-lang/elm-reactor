@@ -31,7 +31,7 @@ main =
   Signal.map4 view
     (Signal.map (\(w,h) -> (Controls.panelWidth, h)) Window.dimensions)
     watches
-    Controls.permitSwapMailbox.signal
+    permitSwapMailbox.signal
     scene
 
 
@@ -43,12 +43,21 @@ scene =
 aggregateUpdates : Signal Model.Action
 aggregateUpdates =
   Signal.mergeMany
-    [ Signal.map (always Model.Restart) Controls.restartMailbox.signal
-    , Signal.map Model.Pause Controls.pausedInput.signal
+    [ Signal.map (always Model.Restart) restartMailbox.signal
+    , Signal.map Model.Pause pausedInputMailbox.signal
     , Signal.map Model.TotalEvents eventCounter
-    , Signal.map Model.ScrubPosition Controls.scrubMailbox.signal
+    , Signal.map Model.ScrubPosition scrubMailbox.signal
     ]
 
+-- CONTROL MAILBOXES
+
+permitSwapMailbox = Controls.permitSwapMailbox
+
+restartMailbox = Controls.restartMailbox
+
+pausedInputMailbox = Controls.pausedInputMailbox
+
+scrubMailbox = Controls.scrubMailbox
 
 -- INCOMING PORTS
 
@@ -63,19 +72,19 @@ port showSwap : Bool
 
 port scrubTo : Signal Int
 port scrubTo =
-    Controls.scrubMailbox.signal
+    scrubMailbox.signal
 
 
 port pause : Signal Bool
 port pause =
-    Controls.pausedInput.signal
+    pausedInputMailbox.signal
 
 
 port restart : Signal Int
 port restart =
-    Signal.map (always 0) Controls.restartMailbox.signal
+    Signal.map (always 0) restartMailbox.signal
 
 
 port permitSwap : Signal Bool
 port permitSwap =
-    Controls.permitSwapMailbox.signal
+    permitSwapMailbox.signal
