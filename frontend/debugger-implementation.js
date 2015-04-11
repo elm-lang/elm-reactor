@@ -384,7 +384,7 @@ function jumpTo(index, debugState)
     while (debugState.index < index)
     {
         var event = debugState.events[debugState.index];
-        debugState.notify(event.id, event.value, event.time);
+        debugState.notify(event.id, event.value);
         debugState.index += 1;
     }
     redoTraces(debugState);
@@ -437,10 +437,9 @@ function transferState(previousDebugState, debugState)
     while (debugState.index < debugState.events.length)
     {
         var event = debugState.events[debugState.index];
-        debugState.index += 1;
         pushWatchFrame(debugState);
-
-        debugState.notify(event.id, event.value, event.time);
+        debugState.notify(event.id, event.value);
+        debugState.index += 1;
         snapshotIfNeeded(debugState);
     }
     redoTraces(debugState);
@@ -760,6 +759,11 @@ function initAndWrap(elmModule, runtime)
     var replace = Elm.Native.Utils.make(assignedPropTracker).replace;
 
     runtime.timer.now = function() {
+        if (debugState.paused || debugState.swapInProgress)
+        {
+            var event = debugState.events[debugState.index];
+            return event.time;
+        }
         return Date.now() - debugState.totalTimeLost;
     };
 
