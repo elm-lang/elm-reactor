@@ -2,7 +2,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Compile (toHtml, toJson) where
 
-import Control.Applicative ((<$>),(<*>))
 import Control.Monad (when)
 import qualified Data.Text as Text
 import qualified Text.Blaze as Blaze
@@ -73,7 +72,7 @@ toHtml debug filePath =
 
 htmlDocument :: String -> H.Html -> H.Html
 htmlDocument title content =
-  H.docTypeHtml $ do 
+  H.docTypeHtml $ do
     H.head $ do
       H.meta ! A.charset "UTF-8"
       H.title (H.toHtml title)
