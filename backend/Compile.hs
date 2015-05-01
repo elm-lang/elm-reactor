@@ -67,8 +67,8 @@ toHtml debug filePath =
 
         Left errMsg ->
             return $ htmlDocument "Oops!" $
-                H.span ! A.style "font-family: monospace;" $
-                    Blaze.preEscapedToMarkup (addSpaces errMsg)
+                H.pre ! A.style "margin: 0; padding: 8px;" $
+                  Blaze.toMarkup errMsg
 
 
 htmlDocument :: String -> H.Html -> H.Html
@@ -96,22 +96,6 @@ myStyle =
     \a:active { text-decoration: none; }\n\
     \a:hover { text-decoration: underline; color: rgb(234,21,122); }\n\
     \html,body { height: 100%; margin: 0px; }\n"
-
-
-
-addSpaces :: String -> String
-addSpaces str =
-  case str of
-    ' ' : ' ' : rest ->
-        " &nbsp;" ++ addSpaces rest
-
-    '\n' : rest ->
-        "<br>" ++ addSpaces rest
-
-    c : rest ->
-        c : addSpaces rest
-
-    [] -> []
 
 
 initialize :: Bool -> Module.Name -> FilePath -> String
