@@ -36,7 +36,7 @@ data Flags = Flags
 
 flags :: Flags
 flags = Flags
-  { bind = "0.0.0.0" &= help "set the host to bind to (default: 0.0.0.0)" &= typ "SPEC"
+  { bind = "localhost" &= help "set the host to bind to (default: localhost)" &= typ "SPEC"
   , port = 8000 &= help "set the port of the reactor (default: 8000)"
   } &= help "Interactive development tool that makes it easy to develop and debug Elm programs.\n\
             \    Read more about it at <https://github.com/elm-lang/elm-reactor>."
