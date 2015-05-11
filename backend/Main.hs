@@ -2,7 +2,7 @@
 {-# LANGUAGE OverloadedStrings, DeriveDataTypeable #-}
 module Main where
 
-import Control.Applicative ((<$>),(<|>))
+import Control.Applicative ((<|>))
 import Control.Monad (guard)
 import Control.Monad.Trans (MonadIO(liftIO))
 import Data.Maybe (isJust)
