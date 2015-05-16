@@ -29,7 +29,7 @@ import Elm.Utils ((|>))
 
 
 data Flags = Flags
-    { bind :: String
+    { address :: String
     , port :: Int
     }
     deriving (Data,Typeable,Show,Eq)
@@ -37,14 +37,25 @@ data Flags = Flags
 
 flags :: Flags
 flags = Flags
-  { bind = "0.0.0.0" &= help "set the host to bind to (default: 0.0.0.0)" &= typ "SPEC"
-  , port = 8000 &= help "set the port of the reactor (default: 8000)"
-  } &= help "Interactive development tool that makes it easy to develop and debug Elm programs.\n\
-            \    Read more about it at <https://github.com/elm-lang/elm-reactor>."
-    &= helpArg [explicit, name "help", name "h"]
-    &= versionArg [ explicit, name "version", name "v"
-                  , summary (Version.showVersion version)
-                  ]
+  { address = "0.0.0.0"
+      &= help "set the address of the server (0.0.0.0, localhost, 127.0.0.1)"
+      &= typ "ADDRESS"
+
+  , port = 8000
+      &= help "set the port of the reactor (default: 8000)"
+
+  } &= help
+        "Interactive development tool that makes it easy to develop and debug Elm programs.\n\
+        \    Read more about it at <https://github.com/elm-lang/elm-reactor>."
+    &= helpArg
+        [ explicit
+        , name "help"
+        , name "h"
+        ]
+    &= versionArg
+        [ explicit, name "version", name "v"
+        , summary (Version.showVersion version)
+        ]
     &= summary startupMessage
 
 
@@ -62,7 +73,7 @@ main :: IO ()
 main =
   do  cargs <- cmdArgs flags
       putStrLn startupMessage
-      httpServe (config (BSC.pack (bind cargs)) (port cargs)) $
+      httpServe (config (BSC.pack (address cargs)) (port cargs)) $
           serveElm
           <|> route [ ("socket", socket) ]
           <|> serveDirectoryWith directoryConfig "."
