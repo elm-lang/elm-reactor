@@ -2,6 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Compile (toHtml, toJson) where
 
+import Control.Applicative ((<$>),(<*>))
 import Control.Monad (when)
 import qualified Data.Text as Text
 import qualified Text.Blaze as Blaze
@@ -31,21 +32,31 @@ compile filePath =
               return (Right code)
 
 
+getName :: FilePath -> String -> Either String Module.Name
+getName filePath sourceCode =
+  case Compiler.parseDependencies sourceCode of
+    Right (name, _deps) ->
+        Right name
+
+    Left errors ->
+        Left (concatMap (Compiler.errorToString filePath sourceCode) errors)
+
+
 -- TO JSON
 
 toJson :: FilePath -> IO String
 toJson filePath =
   do  sourceCode <- readFile filePath
       result <- compile filePath
-      case (,) <$> Compiler.parseDependencies sourceCode <*> result of
-        Right ((name, _deps), code) ->
+      case (,) <$> getName filePath sourceCode <*> result of
+        Right (name, code) ->
           return $
             "{ \"name\": " ++ show (Module.nameToString name) ++
             ", \"code\": " ++ show code ++ " }"
 
         Left err ->
           return $
-            "{ \"error\": " ++ show err ++ " }"
+            "{ \"error\": " ++ show ( err) ++ " }"
 
 
 -- TO HTML
@@ -54,8 +65,8 @@ toHtml :: Bool -> FilePath -> IO H.Html
 toHtml debug filePath =
   do  sourceCode <- readFile filePath
       result <- compile filePath
-      case (,) <$> Compiler.parseDependencies sourceCode <*> result of
-        Right ((name, _deps), code) ->
+      case (,) <$> getName filePath sourceCode <*> result of
+        Right (name, code) ->
             return $ htmlDocument (Module.nameToString name) $
                 do  H.script $ Blaze.preEscapedToMarkup code
 

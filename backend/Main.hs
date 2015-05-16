@@ -1,8 +1,9 @@
 {-# OPTIONS_GHC -Wall #-}
-{-# LANGUAGE OverloadedStrings, DeriveDataTypeable #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE OverloadedStrings #-}
 module Main where
 
-import Control.Applicative ((<|>))
+import Control.Applicative ((<$>),(<|>))
 import Control.Monad (guard)
 import Control.Monad.Trans (MonadIO(liftIO))
 import Data.Maybe (isJust)
