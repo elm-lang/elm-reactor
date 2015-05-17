@@ -1,8 +1,10 @@
 (function() {
 'use strict';
 
-function assert(bool, msg) {
-	if (!bool) {
+function assert(bool, msg)
+{
+	if (!bool)
+	{
 		throw new Error("Assertion error: " + msg);
 	}
 }
@@ -17,7 +19,8 @@ var SIDE_BAR_WIDTH = 275;
 var DARK_GREY = "#4A4A4A";
 var LIGHT_GREY = "#E4E4E4";
 
-function createSideBar() {
+function createSideBar()
+{
 	var debuggingPanelExpanded = true;
 
 	var sideBar = document.createElement("div");
@@ -41,10 +44,12 @@ function createSideBar() {
 
 	// Prevent clicks from reaching the main elm instance under the panel
 	sideBar.addEventListener("click", blockClicks);
-	function blockClicks(e) {
+	function blockClicks(e)
+	{
 		var event = e || window.event;
 		event.cancelBubble = true;
-		if (event.stopPropagation) {
+		if (event.stopPropagation)
+		{
 			event.stopPropagation();
 		}
 	}
@@ -66,10 +71,13 @@ function createSideBar() {
 	// Wire the button
 	sideBarTab.onclick = function() {
 		var toolPanel = document.getElementById(SIDE_BAR_ID);
-		if (debuggingPanelExpanded){
+		if (debuggingPanelExpanded)
+		{
 			toolPanel.style.width = "0px";
 			debuggingPanelExpanded = false;
-		} else {
+		}
+		else
+		{
 			toolPanel.style.right = "0px";
 			toolPanel.style.width = SIDE_BAR_WIDTH + "px";
 			debuggingPanelExpanded = true;
@@ -86,7 +94,8 @@ function createSideBar() {
 
 var ERROR_MESSAGE_ID = 'elm-reactor-error-message';
 
-function initErrorMessage(message) {
+function initErrorMessage(message)
+{
 	var node = document.createElement("pre");
 	node.id = ERROR_MESSAGE_ID;
 	node.innerHTML = message;
@@ -114,21 +123,26 @@ var eventsToIgnore = [
 	"pointerout", "pointerenter", "pointerleave", "pointercancel"
 ];
 
-function ignore(e) {
+function ignore(e)
+{
 	var event = e || window.event;
-	if (event.stopPropagation) {
+	if (event.stopPropagation)
+	{
 		event.stopPropagation();
 	}
-	if (event.cancelBubble !== null) {
+	if (event.cancelBubble !== null)
+	{
 		event.cancelBubble = true;
 	}
-	if (event.preventDefault) {
+	if (event.preventDefault)
+	{
 		event.preventDefault();
 	}
 	return false;
 }
 
-function initEventBlocker() {
+function initEventBlocker()
+{
 	var node = document.createElement("div");
 	node.id = EVENT_BLOCKER_ID;
 	node.style.position = "absolute";
@@ -137,20 +151,24 @@ function initEventBlocker() {
 	node.style.width = "100%";
 	node.style.height = "100%";
 
-	for (var i = eventsToIgnore.length; i-- ;) {
+	for (var i = eventsToIgnore.length; i-- ;)
+	{
 		node.addEventListener(eventsToIgnore[i], ignore, true);
 	}
 
 	return node;
 }
 
-function addEventBlocker(node) {
-	if (!document.getElementById(EVENT_BLOCKER_ID)) {
+function addEventBlocker(node)
+{
+	if (!document.getElementById(EVENT_BLOCKER_ID))
+	{
 		node.appendChild(initEventBlocker());
 	}
 }
 
-function removeEventBlocker() {
+function removeEventBlocker()
+{
 	var blocker = document.getElementById(EVENT_BLOCKER_ID);
 	if (blocker)
 	{
@@ -184,9 +202,12 @@ Elm.fullscreenDebug = function(moduleName, fileName) {
 	});
 
 	sideBar.ports.pause.subscribe(function(paused) {
-		if (paused) {
+		if (paused)
+		{
 			pause(result.debugState);
-		} else {
+		}
+		else
+		{
 			unpause(result.debugState);
 			redoTraces(result.debugState);
 		}
@@ -224,10 +245,12 @@ Elm.fullscreenDebug = function(moduleName, fileName) {
 };
 
 
-function initModuleWithDebugState(moduleName) {
+function initModuleWithDebugState(moduleName)
+{
 	var debugState;
 
-	function make(localRuntime) {
+	function make(localRuntime)
+	{
 		var result = initAndWrap(getModule(moduleName), localRuntime);
 		debugState = result.debugState;
 		return result.values;
@@ -366,7 +389,8 @@ function jumpTo(index, debugState)
 
 	assert(
 		0 <= index && index <= debugState.events.length,
-		"Trying to step to non-existent event index " + index);
+		"Trying to step to non-existent event index " + index
+	);
 
 	var potentialIndex = indexOfSnapshotBefore(index);
 	if (index < debugState.index || potentialIndex > debugState.index)
@@ -454,18 +478,22 @@ function transferState(previousDebugState, debugState)
 
 // TODO: is it weird that the callbacks array never shrinks?
 
-function unpauseAsyncCallbacks(callbacks) {
+function unpauseAsyncCallbacks(callbacks)
+{
 	callbacks.forEach(function(callback) {
-		if (!callback.executed) {
+		if (!callback.executed)
+		{
 			callback.executed = true;
 			callback.thunk();
 		}
 	});
 }
 
-function pauseAsyncCallbacks(debugState) {
+function pauseAsyncCallbacks(debugState)
+{
 	debugState.asyncCallbacks.forEach(function(callback) {
-		if (!callback.executed) {
+		if (!callback.executed)
+		{
 			clearTimeout(callback.id);
 		}
 	});
@@ -670,7 +698,8 @@ function getNearestSnapshot(i, snapshots)
 	var snapshotIndex = Math.floor(i / EVENTS_PER_SAVE);
 	assert(
 		snapshotIndex < snapshots.length && snapshotIndex >= 0,
-		"Trying to access non-existent snapshot (event " + i + ", snapshot " + snapshotIndex + ")");
+		"Trying to access non-existent snapshot (event " + i + ", snapshot " + snapshotIndex + ")"
+	);
 	return snapshots[snapshotIndex];
 }
 
@@ -689,7 +718,8 @@ function flattenSignalGraph(nodes)
 {
 	var nodesById = {};
 
-	function addAllToDict(node) {
+	function addAllToDict(node)
+	{
 		nodesById[node.id] = node;
 		node.kids.forEach(addAllToDict);
 	}
@@ -701,7 +731,8 @@ function flattenSignalGraph(nodes)
 	return allNodes;
 }
 
-function compareNumbers(a, b) {
+function compareNumbers(a, b)
+{
 	return a - b;
 }
 
@@ -958,7 +989,8 @@ var prettyPrint = function() {
 		return "<internal structure>";
 	};
 
-	function addSlashes(str) {
+	function addSlashes(str)
+	{
 		return str.replace(/\\/g, '\\\\')
 				  .replace(/\n/g, '\\n')
 				  .replace(/\t/g, '\\t')
@@ -969,7 +1001,8 @@ var prettyPrint = function() {
 				  .replace(/\"/g, '\\"');
 	}
 
-	function probablyPublic(v) {
+	function probablyPublic(v)
+	{
 		var keys = Object.keys(v);
 		var len = keys.length;
 		if (len === 3
