@@ -175,7 +175,7 @@ Elm.fullscreenDebug = function(moduleName, fileName) {
 
     function updateWatches(index)
     {
-        sideBar.ports.watches.send(watchesAt(index, result.debugState)); 
+        sideBar.ports.watches.send(watchesAt(index, result.debugState));
     }
 
     sideBar.ports.scrubTo.subscribe(function(index) {
@@ -212,7 +212,7 @@ Elm.fullscreenDebug = function(moduleName, fileName) {
     connection.addEventListener('message', function(event) {
         if (result.debugState.permitSwaps)
         {
-            result = swap(event.data, result.debugState, result.module.dispose);
+            result = swap(event.data, result);
             updateWatches(result.debugState.index);
         }
     });
@@ -390,32 +390,33 @@ function jumpTo(index, debugState)
     redoTraces(debugState);
 }
 
-function swap(rawJsonResponse, debugState, freeOldRuntime) {
+function swap(rawJsonResponse, oldResult)
+{
     var error = document.getElementById(ERROR_MESSAGE_ID);
     if (error)
     {
         error.parentNode.removeChild(error);
     }
 
-    var result = JSON.parse(rawJsonResponse);
+    var response = JSON.parse(rawJsonResponse);
 
-    if (!result.code)
+    if (!response.code)
     {
-        var msg = result.error || 'something went wrong with swap';
+        var msg = response.error || 'something went wrong with swap';
         document.body.appendChild(initErrorMessage(msg));
-        return null;
+        return oldResult;
     }
     // TODO: pause/unpause?
-    pauseAsyncCallbacks(debugState);
-    window.eval(result.code);
+    pauseAsyncCallbacks(oldResult.debugState);
+    window.eval(response.code);
 
     // remove old nodes
-    debugState.node.parentNode.removeChild(debugState.node);
-    document.body.removeChild(debugState.traceCanvas);
-    freeOldRuntime();
+    oldResult.debugState.node.parentNode.removeChild(oldResult.debugState.node);
+    document.body.removeChild(oldResult.debugState.traceCanvas);
+    oldResult.module.dispose();
 
-    var result = initModuleWithDebugState(result.name);
-    transferState(debugState, result.debugState);
+    var result = initModuleWithDebugState(response.name);
+    transferState(oldResult.debugState, result.debugState);
     return result;
 }
 
@@ -631,7 +632,7 @@ function makeTraceRecorder(debugState, runtime)
             {
                 debugState.traces[tag] = [{ index: debugState.index, x: x, y: y }];
                 return;
-            }                
+            }
 
             var trace = debugState.traces[tag];
             var lastPoint = trace[trace.length - 1];
