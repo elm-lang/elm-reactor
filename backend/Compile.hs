@@ -39,7 +39,11 @@ getName filePath sourceCode =
         Right name
 
     Left errors ->
-        Left (concatMap (Compiler.errorToString filePath sourceCode) errors)
+        let
+          toString err =
+            Compiler.errorToString Compiler.dummyDealiaser filePath sourceCode err
+        in
+          Left (concatMap toString errors)
 
 
 -- TO JSON
