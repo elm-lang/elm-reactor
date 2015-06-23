@@ -4,9 +4,13 @@ import Color
 import Graphics.Collage exposing (..)
 import Graphics.Element exposing (..)
 import Graphics.Input exposing (..)
+import Html exposing (..)
+import Html.Attributes as Attr exposing (..)
+import Html.Events exposing (..)
+import Json.Decode exposing (..)
 import List
+import String
 import Signal as S exposing (Signal, (<~), (~))
-import Slider exposing (..)
 import Text
 
 import SideBar.Model as Model
@@ -138,16 +142,19 @@ permitSwapMailbox =
 scrubSlider : (Int, Int) -> Model.Model -> Element
 scrubSlider (w,_) state =
     let sliderLength = w
-
-        sliderStyle =
-            { defaultSlider |
-                length <- sliderLength,
-                max <- toFloat state.totalEvents,
-                value <- toFloat state.scrubPosition
-            }
-    in
-        slider (\n -> Signal.message scrubMailbox.address (round n)) sliderStyle
-            |> container sliderLength 20 middle
+    in 
+        input
+          [ type' "range"
+          , style [("width", toString sliderLength ++ "px")]
+          , Attr.min (toString 0)
+          , Attr.max (toString state.totalEvents)
+          , Attr.value (toString state.scrubPosition)
+          , on "input"
+              (at ["target","value"] (customDecoder string String.toInt))
+              (Signal.message scrubMailbox.address)
+          ]
+          []
+            |> toElement sliderLength 20
 
 
 scrubMailbox : Signal.Mailbox Int
