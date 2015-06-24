@@ -20,7 +20,7 @@ view (w,h) watches permitSwap state =
           Watches.view watches
   in
       div
-        [ id "sidebar-view" ]
+        []
         [ controls
         , watchView
         ]

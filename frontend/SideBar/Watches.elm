@@ -3,6 +3,9 @@ module SideBar.Watches where
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Markdown
+import Color
+
+import Styles exposing (..)
 
 
 view : List (String, String) -> Html
@@ -35,7 +38,7 @@ viewWatch (name, value) =
 watchAttributes : List Attribute
 watchAttributes =
   [ style
-    [ ("color", "rgb(228, 228, 228)")
+    [ ("color", colorToCss Color.lightGrey)
     ]
   ]
 
@@ -50,7 +53,7 @@ nameAttributes =
   [ style 
     [ ("margin", "20px 0 10px") 
     , ("font-weight", "bold")
-    , ("font-family", "Gotham, Futura, 'Lucida Grande', sans-serif")
+    , ("font-family", textTypefaces)
     ]
   ]
 
@@ -70,19 +73,30 @@ valueAttributes =
 
 -- NO WATCHES
 
+
 noWatches : Html
-noWatches = Markdown.toHtml """
+noWatches =
+  div
+    [ style
+        [ ("font-family", textTypefaces)
+        , ("color", "rgb(170, 170, 170)") -- dark grey
+        ]
+    ]
+    [ Markdown.toHtml noWatchText ]
 
-### <span style="font-family: Gotham, Futura, 'Lucida Grande', sans-serif; font-size: 12pt; color: rgb(170,170,170)"> You don't have any watches! </span>
 
-<span style="color: rgb(170,170,170)">
-<span style="font-family: Gotham, Futura, 'Lucida Grande', sans-serif; font-size: 10pt; color: rgb(170,170,170)">
-Use [<span style="text-decoration:underline; color: rgb(170,170,170)">Debug.watch</span>](http://package.elm-lang.org/packages/elm-lang/core/latest/Debug#watch)
+noWatchText : String
+noWatchText = """
+
+### <span style="font-size: 12pt"> You don't have any watches! </span>
+
+<span style="font-size: 10pt">
+Use [<span style="text-decoration:underline; color: rgb(170, 170, 170)">Debug.watch</span>](http://package.elm-lang.org/packages/elm-lang/core/latest/Debug#watch)
 to show any value. <br>
-`watch : String -> a -> a`</span>
+`watch : String -> a -> a`
 
-<span style="font-family: Gotham, Futura, 'Lucida Grande', sans-serif; font-size: 10pt; color: rgb(170,170,170)">
-Use [<span style="text-decoration:underline; color: rgb(170,170,170)">Debug.watchSummary</span>](http://package.elm-lang.org/packages/elm-lang/core/latest/Debug#watchSummary) to show a <br>
+<span style="font-size: 10pt">
+Use [<span style="text-decoration:underline; color: rgb(170, 170, 170)">Debug.watchSummary</span>](http://package.elm-lang.org/packages/elm-lang/core/latest/Debug#watchSummary) to show a
 summary or subvalue of any value. </span><br>
 
 """

@@ -13,6 +13,7 @@ import Signal as S exposing (Signal, (<~), (~))
 import Text
 
 import SideBar.Model as Model
+import Styles exposing (..)
 
 
 -- STYLE
@@ -28,27 +29,22 @@ lightGrey = Color.rgb 228 228 228
 darkGrey = Color.rgb 74 74 74
 
 
-dataStyle : List String -> Float -> String -> Text.Text
-dataStyle typefaces height string =
-    let default = Text.defaultStyle
-        myStyle =
-             { default |
-                typeface <- typefaces,
-                color <- lightGrey,
-                height <- Just height
-             }
-    in
-        Text.style myStyle (Text.fromString string)
+--dataStyle : List String -> Float -> String -> Text.Text
+--dataStyle typefaces height string =
+--    let default = Text.defaultStyle
+--        myStyle =
+--             { default |
+--                typeface <- typefaces,
+--                color <- lightGrey,
+--                height <- Just height
+--             }
+--    in
+--        Text.style myStyle (Text.fromString string)
 
 
-textTypefaces : List String
-textTypefaces =
-    ["Gotham", "Futura", "Lucida Grande", "sans-serif"]
-
-
-textStyle : String -> Text.Text
-textStyle string =
-    dataStyle textTypefaces 12 string
+--textStyle : String -> Text.Text
+--textStyle string =
+--    dataStyle textTypefaces 12 string
 
 
 -- VIEW
@@ -281,25 +277,6 @@ view (w,h) showSwap permitSwap state =
 
 
 -- UTILITIES
-
--- TODO: put this in Html.Attributes?
-colorToCss : Color.Color -> String
-colorToCss color =
-    let
-      record =
-        Color.toRgb color
-
-      rgb =
-        List.map toString
-          [record.red, record.green, record.blue]
-      
-      numbers =
-        String.join ","
-          (rgb ++ [toString record.alpha])
-          
-    in
-      "rgba(" ++ numbers ++ ")"
-
 
 intToPx : Int -> String
 intToPx x = toString x ++ "px"
