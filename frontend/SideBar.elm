@@ -1,7 +1,8 @@
 module SideBar where
 
 import Graphics.Element exposing (..)
-import Html
+import Html exposing (..)
+import Html.Attributes exposing (..)
 import List
 import Window
 
@@ -10,15 +11,16 @@ import SideBar.Model as Model
 import SideBar.Watches as Watches
 
 
-view : (Int, Int) -> List (String, String) -> Bool -> Model.Model -> Element
+view : (Int, Int) -> List (String, String) -> Bool -> Model.Model -> Html
 view (w,h) watches permitSwap state =
   let controls =
           Controls.view (w, h) showSwap permitSwap state
 
       watchView =
-          Html.toElement w (h - 150) (Watches.view watches)
+          Watches.view watches
   in
-      flow down
+      div
+        [ id "sidebar-view" ]
         [ controls
         , watchView
         ]
@@ -26,7 +28,7 @@ view (w,h) watches permitSwap state =
 
 -- SIGNALS    
 
-main : Signal Element
+main : Signal Html
 main =
   Signal.map4 view
     (Signal.map (\(w,h) -> (Controls.panelWidth, h)) Window.dimensions)
@@ -47,6 +49,8 @@ aggregateUpdates =
     , Signal.map Model.Pause pausedInputMailbox.signal
     , Signal.map Model.TotalEvents eventCounter
     , Signal.map Model.ScrubPosition scrubMailbox.signal
+    , Signal.map Model.RestartButtonState restartButtonStateMailbox.signal
+    , Signal.map Model.PlayPauseButtonState playPauseButtonStateMailbox.signal
     ]
 
 -- CONTROL MAILBOXES
@@ -58,6 +62,10 @@ restartMailbox = Controls.restartMailbox
 pausedInputMailbox = Controls.pausedInputMailbox
 
 scrubMailbox = Controls.scrubMailbox
+
+restartButtonStateMailbox = Controls.restartButtonStateMailbox
+
+playPauseButtonStateMailbox = Controls.playPauseButtonStateMailbox
 
 -- INCOMING PORTS
 

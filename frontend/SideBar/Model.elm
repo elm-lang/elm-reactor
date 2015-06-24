@@ -6,12 +6,17 @@ type Action
     | Pause Bool
     | TotalEvents Int
     | ScrubPosition Int
+    | RestartButtonState ButtonState
+    | PlayPauseButtonState ButtonState
 
+type ButtonState = Up | Hover | Down
 
 type alias Model =
     { paused : Bool
     , totalEvents : Int
     , scrubPosition : Int
+    , restartButtonState : ButtonState
+    , playPauseButtonState : ButtonState
     }
 
 
@@ -20,6 +25,8 @@ startModel =
     { paused = False
     , totalEvents = 0
     , scrubPosition = 0
+    , restartButtonState = Up
+    , playPauseButtonState = Up
     }
 
 
@@ -49,5 +56,15 @@ update action state =
         { state |
             scrubPosition <- pos,
             paused <- True
+        }
+
+    RestartButtonState buttonSt ->
+        { state |
+            restartButtonState <- buttonSt
+        }
+
+    PlayPauseButtonState buttonSt ->
+        { state |
+            playPauseButtonState <- buttonSt
         }
 
