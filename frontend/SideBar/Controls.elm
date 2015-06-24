@@ -193,31 +193,46 @@ view showSwap permitSwap state =
 
         buttonSliderSpaceHeight = 10
 
-        --fittedSwapButton =
-        --    if showSwap then
-        --        swapButton permitSwap
-        --          |> container (w - 2 * buttonWidth - sideMargin) buttonHeight middle
-        --    else
-        --        spacer (2 * buttonWidth) 1
-
-        -- TODO: center, make conditional on `showSwap`
         fittedSwapButton =
-          swapButton permitSwap
+          div
+            [ style
+                ([ ("display", "inline-block")
+                 , ("position", "absolute")
+                 , ("transform", "translate(100%, 50%)")
+                 ] ++ eventNumberTextStyle)
+            ]
+            (if showSwap
+             then [ text "swap"
+                  , swapButton permitSwap
+                  ]
+             else [])
+
+        floatButton floatDir button =
+          div
+            [ style
+                [ ("display", "inline-block")
+                , ("float", floatDir)
+                ]
+            ]
+            [ button ]
+
+        rightButton =
+            if state.paused
+            then playButton state.playPauseButtonState
+            else pauseButton state.playPauseButtonState
 
         -- TODO: get these horizontally aligned
         buttonContainer =
           div
-            [ id "button-container" ]
-            [ restartButton state.restartButtonState
+            [ style [("height", "50px")] ]
+            [ floatButton "left" (restartButton state.restartButtonState)
             , fittedSwapButton
-            , if state.paused
-              then playButton state.playPauseButtonState
-              else pauseButton state.playPauseButtonState
+            , floatButton "right" rightButton
             ]
 
         sliderContainer =
           div
-            [ id "slider-container" ]
+            []
             [ sliderEventText midWidth state
             , scrubSlider midWidth state
             , sliderMinMaxText midWidth state
@@ -242,7 +257,7 @@ view showSwap permitSwap state =
               []
     in
         div
-          [ id "controls-view" ]
+          []
           [ controls
           , bar
           ]
