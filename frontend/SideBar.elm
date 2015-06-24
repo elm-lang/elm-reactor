@@ -48,8 +48,7 @@ aggregateUpdates =
     , Signal.map Model.Pause pausedInputMailbox.signal
     , Signal.map Model.TotalEvents eventCounter
     , Signal.map Model.ScrubPosition scrubMailbox.signal
-    , Signal.map Model.RestartButtonState restartButtonStateMailbox.signal
-    , Signal.map Model.PlayPauseButtonState playPauseButtonStateMailbox.signal
+    , buttonStateMailbox.signal
     ]
 
 -- CONTROL MAILBOXES
@@ -62,9 +61,7 @@ pausedInputMailbox = Controls.pausedInputMailbox
 
 scrubMailbox = Controls.scrubMailbox
 
-restartButtonStateMailbox = Controls.restartButtonStateMailbox
-
-playPauseButtonStateMailbox = Controls.playPauseButtonStateMailbox
+buttonStateMailbox = Controls.buttonStateMailbox
 
 -- INCOMING PORTS
 

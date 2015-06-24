@@ -1,22 +1,23 @@
 module SideBar.Model where
 
+import Button
+
 
 type Action
     = Restart
     | Pause Bool
     | TotalEvents Int
     | ScrubPosition Int
-    | RestartButtonState ButtonState
-    | PlayPauseButtonState ButtonState
-
-type ButtonState = Up | Hover | Down
+    | RestartButtonAction Button.Action
+    | PlayPauseButtonAction Button.Action
+    | NoOp
 
 type alias Model =
     { paused : Bool
     , totalEvents : Int
     , scrubPosition : Int
-    , restartButtonState : ButtonState
-    , playPauseButtonState : ButtonState
+    , restartButtonState : Button.Model
+    , playPauseButtonState : Button.Model
     }
 
 
@@ -25,8 +26,8 @@ startModel =
     { paused = False
     , totalEvents = 0
     , scrubPosition = 0
-    , restartButtonState = Up
-    , playPauseButtonState = Up
+    , restartButtonState = Button.Up
+    , playPauseButtonState = Button.Up
     }
 
 
@@ -58,13 +59,13 @@ update action state =
             paused <- True
         }
 
-    RestartButtonState buttonSt ->
+    RestartButtonAction buttonAct ->
         { state |
-            restartButtonState <- buttonSt
+            restartButtonState <- Button.update buttonAct state.restartButtonState
         }
 
-    PlayPauseButtonState buttonSt ->
+    PlayPauseButtonAction buttonAct ->
         { state |
-            playPauseButtonState <- buttonSt
+            playPauseButtonState <- Button.update buttonAct state.restartButtonState
         }
 

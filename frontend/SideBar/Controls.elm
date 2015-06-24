@@ -12,6 +12,7 @@ import String
 import Signal as S exposing (Signal, (<~), (~))
 import Text
 
+import Button
 import SideBar.Model as Model
 import Styles exposing (..)
 
@@ -36,17 +37,15 @@ eventNumberTextStyle =
 
 -- VIEW
 
--- TODO: replace w/ FontAwesome
-myButton : Signal.Address a -> a
-         -> Signal.Address Model.ButtonState
-         -> Model.ButtonState -> String -> Html
-myButton addr action buttonStateAddr buttonState name =
+buttonImage : String -> Button.Model -> Html
+buttonImage name state =
   let
     stateName =
-      case buttonState of
-        Model.Up -> "up"
-        Model.Down -> "down"
-        Model.Hover -> "hover"
+      case state of
+        Button.Up -> "up"
+        Button.Down -> "down"
+        Button.Hover -> "hover"
+    
     path =
       "/_reactor/debugger/" ++ name ++ "-button-" ++ stateName ++ ".png"
   in
@@ -54,27 +53,20 @@ myButton addr action buttonStateAddr buttonState name =
       [ src path
       , Attr.width 40
       , Attr.height 40
-      , onMouseOver buttonStateAddr Model.Hover
-      , onMouseDown buttonStateAddr Model.Down
-      , onMouseUp buttonStateAddr Model.Hover
-      , onMouseLeave buttonStateAddr Model.Up
-      , onClick addr action
       ]
       []
 
 
-playButton : Model.ButtonState -> Html
-playButton state =
-    myButton
-        pausedInputMailbox.address False
-        playPauseButtonStateMailbox.address state "play"
-
-
-pauseButton : Model.ButtonState -> Html
-pauseButton state =
-    myButton
-        pausedInputMailbox.address True
-        playPauseButtonStateMailbox.address state "pause"
+playPauseButton : Bool -> Button.Model -> Html
+playPauseButton isPlay state =
+    let
+      name =
+        if isPlay then "play" else "pause"
+    in 
+      Button.view
+          (Signal.forwardTo buttonStateMailbox.address Model.PlayPauseButtonAction)
+          pausedInputMailbox.address False
+          state (buttonImage name)
 
 
 pausedInputMailbox : Signal.Mailbox Bool
@@ -82,16 +74,12 @@ pausedInputMailbox =
     Signal.mailbox False
 
 
-playPauseButtonStateMailbox : Signal.Mailbox Model.ButtonState
-playPauseButtonStateMailbox =
-    Signal.mailbox Model.Up
-
-
-restartButton : Model.ButtonState -> Html
+restartButton : Button.Model -> Html
 restartButton state =
-    myButton
+    Button.view
+        (Signal.forwardTo buttonStateMailbox.address Model.RestartButtonAction)
         restartMailbox.address ()
-        restartButtonStateMailbox.address state "restart"
+        state (buttonImage "restart")
 
 
 restartMailbox : Signal.Mailbox ()
@@ -99,9 +87,9 @@ restartMailbox =
     Signal.mailbox ()
 
 
-restartButtonStateMailbox : Signal.Mailbox Model.ButtonState
-restartButtonStateMailbox =
-    Signal.mailbox Model.Up
+buttonStateMailbox : Signal.Mailbox Model.Action
+buttonStateMailbox =
+    Signal.mailbox Model.NoOp
 
 
 swapButton : Bool -> Html
@@ -216,18 +204,15 @@ view showSwap permitSwap state =
             ]
             [ button ]
 
-        rightButton =
-            if state.paused
-            then playButton state.playPauseButtonState
-            else pauseButton state.playPauseButtonState
-
         -- TODO: get these horizontally aligned
         buttonContainer =
           div
             [ style [("height", "50px")] ]
-            [ floatButton "left" (restartButton state.restartButtonState)
+            [ floatButton "left"
+                (restartButton state.restartButtonState)
             , fittedSwapButton
-            , floatButton "right" rightButton
+            , floatButton "right"
+                (playPauseButton state.paused state.playPauseButtonState)
             ]
 
         sliderContainer =
