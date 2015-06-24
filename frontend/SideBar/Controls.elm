@@ -20,7 +20,7 @@ import Styles exposing (..)
 
 buttonHeight = 40
 buttonWidth = 40
-sideMargin = 2 * 20
+sideMargin = 20
 textHeight = 20
 panelWidth = 275
 
@@ -28,23 +28,10 @@ blue = Color.rgb 28 129 218
 lightGrey = Color.rgb 228 228 228
 darkGrey = Color.rgb 74 74 74
 
-
---dataStyle : List String -> Float -> String -> Text.Text
---dataStyle typefaces height string =
---    let default = Text.defaultStyle
---        myStyle =
---             { default |
---                typeface <- typefaces,
---                color <- lightGrey,
---                height <- Just height
---             }
---    in
---        Text.style myStyle (Text.fromString string)
-
-
---textStyle : String -> Text.Text
---textStyle string =
---    dataStyle textTypefaces 12 string
+eventNumberTextStyle =
+    [ ("color", colorToCss lightGrey)
+    , ("font-face", textTypefaces)
+    ]
 
 
 -- VIEW
@@ -135,11 +122,11 @@ permitSwapMailbox =
     Signal.mailbox True
 
 
-scrubSlider : (Int, Int) -> Model.Model -> Html
-scrubSlider (sliderLength,_) state =
+scrubSlider : Int -> Model.Model -> Html
+scrubSlider width state =
   input
     [ type' "range"
-    , style [("width", intToPx sliderLength)]
+    , style [("width", intToPx width)]
     , Attr.min (toString 0)
     , Attr.max (toString state.totalEvents)
     , Attr.value (toString state.scrubPosition)
@@ -156,66 +143,51 @@ scrubMailbox =
 
 
 sliderEventText : Int -> Model.Model -> Html
-sliderEventText w state =
-  let
-    textWidthOffset = 14
-
-    scrubPosition =
-      toFloat state.scrubPosition
-
-    totalEvents =
-      toFloat state.totalEvents
-
-    midWidth =
-      toFloat w - sideMargin - textWidthOffset
-
-    leftDistance = 
-      case totalEvents of
-        0 -> sideMargin/2 + textWidthOffset/2
-        _ -> scrubPosition / totalEvents * midWidth + sideMargin/2 + textWidthOffset/2
-
-    xPos = round leftDistance
-    yPos = round (textHeight / 2)
-
-    textPositionStyle =
-      [ ("position", "absolute")
-      , ("left", intToPx xPos)
-      , ("top", intToPx yPos)
-      , ("text-align", "center")
-      ]
-  in
-    div
-      [ id "slider-event-text-container"
-      , style [("width", intToPx w), ("height", intToPx textHeight)]
-      ]
-      [ div
-          [ id "slider-event-text"
-          , style textPositionStyle
-          ]
-          [ text (toString state.scrubPosition) ]
-      ]
+sliderEventText width state =
+  div
+    [ style
+        [ ("height", intToPx textHeight)
+        , ("position", "relative")
+        ]
+    ]
+    [ positionedText width state.scrubPosition state.totalEvents False ]
 
 
 sliderMinMaxText : Int -> Model.Model -> Html
-sliderMinMaxText w state =
+sliderMinMaxText width state =
     div
-      [ id "slider-min-max-text" ]
-      [ div
-          [ id "slider-min-text"
-          , style [("float", "left")]
+      [ style
+          [ ("height", intToPx textHeight)
+          , ("position", "relative")
           ]
-          [ text "0" ]
-      , div
-          [ id "slider-max-text"
-          , style [("float", "right")]
-          ]
-          [ text (toString state.totalEvents) ]
+      ]
+      [ positionedText width 0 state.totalEvents False
+      , positionedText width state.totalEvents state.totalEvents True
       ]
 
+positionedText : Int -> Int -> Int -> Bool -> Html
+positionedText width frameIdx totalEvents alwaysRight =
+  let
+    textWidthOffset = 14
 
-view : (Int, Int) -> Bool -> Bool -> Model.Model -> Html
-view (w,h) showSwap permitSwap state =
-    let midWidth = w - sideMargin
+    xFraction =
+      if alwaysRight then 1 else (toFloat frameIdx) / (toFloat totalEvents)
+
+    xPos =
+      xFraction * (toFloat width - textWidthOffset)
+  in
+    div
+      [ style
+          ([ ("position", "absolute")
+           , ("display", "inline-block")
+           , ("left", intToPx (round xPos))
+           ] ++ eventNumberTextStyle)
+      ]
+      [ text (toString frameIdx) ]
+
+view : Bool -> Bool -> Model.Model -> Html
+view showSwap permitSwap state =
+    let midWidth = panelWidth - sideMargin * 2
 
         topSpacerHeight = 15
 
@@ -246,14 +218,14 @@ view (w,h) showSwap permitSwap state =
         sliderContainer =
           div
             [ id "slider-container" ]
-            [ sliderEventText w state
-            , scrubSlider (midWidth, h) state
+            [ sliderEventText midWidth state
+            , scrubSlider midWidth state
             , sliderMinMaxText midWidth state
             ]
 
         controls =
           div
-            [ id "controls" ]
+            [ style [("margin", intToPx sideMargin)] ]
             [ buttonContainer
             , sliderContainer
             ]
@@ -262,7 +234,7 @@ view (w,h) showSwap permitSwap state =
             div
               [ style
                   [ ("height", "1px")
-                  , ("width", intToPx w)
+                  , ("width", intToPx panelWidth)
                   , ("opacity", "0.3")
                   , ("background-color", colorToCss Color.lightGrey)
                   ]

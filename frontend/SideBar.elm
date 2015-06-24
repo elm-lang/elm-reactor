@@ -11,10 +11,10 @@ import SideBar.Model as Model
 import SideBar.Watches as Watches
 
 
-view : (Int, Int) -> List (String, String) -> Bool -> Model.Model -> Html
-view (w,h) watches permitSwap state =
+view : List (String, String) -> Bool -> Model.Model -> Html
+view watches permitSwap state =
   let controls =
-          Controls.view (w, h) showSwap permitSwap state
+          Controls.view showSwap permitSwap state
 
       watchView =
           Watches.view watches
@@ -30,8 +30,7 @@ view (w,h) watches permitSwap state =
 
 main : Signal Html
 main =
-  Signal.map4 view
-    (Signal.map (\(w,h) -> (Controls.panelWidth, h)) Window.dimensions)
+  Signal.map3 view
     watches
     permitSwapMailbox.signal
     scene
