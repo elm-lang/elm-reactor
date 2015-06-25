@@ -10,7 +10,7 @@ import Json.Decode exposing (..)
 import List
 import String
 import Signal as S exposing (Signal, (<~), (~))
-import Text
+import FontAwesome
 
 import Button
 import SideBar.Model as Model
@@ -19,11 +19,14 @@ import Styles exposing (..)
 
 -- STYLE
 
-buttonHeight = 40
-buttonWidth = 40
+buttonIconSize = 20
+buttonSideLength = 40
+buttonBorderRadius = 8
 sideMargin = 20
 textHeight = 20
 panelWidth = 275
+
+playPauseButtonColor = Color.rgb 20 131 213
 
 blue = Color.rgb 28 129 218
 lightGrey = Color.rgb 228 228 228
@@ -37,36 +40,21 @@ eventNumberTextStyle =
 
 -- VIEW
 
-buttonImage : String -> Button.Model -> Html
-buttonImage name state =
-  let
-    stateName =
-      case state of
-        Button.Up -> "up"
-        Button.Down -> "down"
-        Button.Hover -> "hover"
-    
-    path =
-      "/_reactor/debugger/" ++ name ++ "-button-" ++ stateName ++ ".png"
-  in
-    img
-      [ src path
-      , Attr.width 40
-      , Attr.height 40
-      ]
-      []
-
 
 playPauseButton : Bool -> Button.Model -> Html
 playPauseButton isPlay state =
     let
-      name =
-        if isPlay then "play" else "pause"
+      icon =
+        if isPlay
+        then FontAwesome.play Color.white buttonIconSize
+        else FontAwesome.pause Color.white buttonIconSize
+      render state =
+        iconButton playPauseButtonColor icon
     in 
       Button.view
           (Signal.forwardTo buttonStateMailbox.address Model.PlayPauseButtonAction)
-          pausedInputMailbox.address False
-          state (buttonImage name)
+          pausedInputMailbox.address (not isPlay)
+          state render
 
 
 pausedInputMailbox : Signal.Mailbox Bool
@@ -76,10 +64,14 @@ pausedInputMailbox =
 
 restartButton : Button.Model -> Html
 restartButton state =
-    Button.view
+    let
+      render st =
+        iconButton lightGrey (FontAwesome.undo darkGrey buttonIconSize)
+    in 
+      Button.view
         (Signal.forwardTo buttonStateMailbox.address Model.RestartButtonAction)
         restartMailbox.address ()
-        state (buttonImage "restart")
+        state render
 
 
 restartMailbox : Signal.Mailbox ()
@@ -249,6 +241,31 @@ view showSwap permitSwap state =
 
 
 -- UTILITIES
+
+iconButton : Color.Color -> Html -> Html
+iconButton bgColor iconHtml =
+  let
+    transPx =
+      (buttonSideLength - buttonIconSize) // 2
+  in
+    div
+      [ style
+          [ ("background-color", colorToCss bgColor)
+          , ("border-radius", intToPx buttonBorderRadius)
+          , ("width", intToPx buttonSideLength)
+          , ("height", intToPx buttonSideLength)
+          ]
+      ]
+      [ div
+          [ style [("transform", translateToCss transPx transPx)] ]
+          [ iconHtml ]
+      ]
+
+
+translateToCss : Int -> Int -> String
+translateToCss x y =
+    "translate(" ++ intToPx x ++ "," ++ intToPx y ++ ")"
+
 
 intToPx : Int -> String
 intToPx x = toString x ++ "px"
