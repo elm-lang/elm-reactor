@@ -26,7 +26,24 @@ sideMargin = 20
 textHeight = 20
 panelWidth = 275
 
-playPauseButtonColor = Color.rgb 20 131 213
+
+hoverBrightness : Color.Color -> Button.Model -> Color.Color
+hoverBrightness baseColor state =
+  case state of
+    Button.Up -> baseColor
+    Button.Down -> darker 0.2 baseColor
+    Button.Hover -> brighter 0.2 baseColor
+
+
+playPauseButtonColor : Button.Model -> Color.Color
+playPauseButtonColor =
+  hoverBrightness (Color.rgb 20 131 213)
+
+
+restartButtonColor : Button.Model -> Color.Color
+restartButtonColor =
+  hoverBrightness lightGrey
+
 
 blue = Color.rgb 28 129 218
 lightGrey = Color.rgb 228 228 228
@@ -49,7 +66,7 @@ playPauseButton isPlay state =
         then FontAwesome.play Color.white buttonIconSize
         else FontAwesome.pause Color.white buttonIconSize
       render state =
-        iconButton playPauseButtonColor icon
+        iconButton (playPauseButtonColor state) icon
     in 
       Button.view
           (Signal.forwardTo buttonStateMailbox.address Model.PlayPauseButtonAction)
@@ -66,7 +83,9 @@ restartButton : Button.Model -> Html
 restartButton state =
     let
       render st =
-        iconButton lightGrey (FontAwesome.undo darkGrey buttonIconSize)
+        iconButton
+          (restartButtonColor st)
+          (FontAwesome.undo darkGrey buttonIconSize)
     in 
       Button.view
         (Signal.forwardTo buttonStateMailbox.address Model.RestartButtonAction)
