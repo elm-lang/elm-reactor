@@ -10,8 +10,8 @@ type Model
     | Down
     | Hover
 
-type Action =
-    MouseUpdate Model
+type Action
+    = MouseUpdate Model
 
 update : Action -> Model -> Model
 update action state =
