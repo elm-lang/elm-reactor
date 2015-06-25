@@ -1,9 +1,9 @@
 module SideBar.Watches where
 
+import Color
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Markdown
-import Color
 
 import Styles exposing (..)
 
@@ -44,14 +44,14 @@ watchAttributes =
 
 
 viewName : String -> Html
-viewName name = 
+viewName name =
   div nameAttributes [ text name ]
 
 
 nameAttributes : List Attribute
 nameAttributes =
-  [ style 
-    [ ("margin", "20px 0 10px") 
+  [ style
+    [ ("margin", "20px 0 10px")
     , ("font-weight", "bold")
     , ("font-family", textTypefaces)
     ]
@@ -59,15 +59,15 @@ nameAttributes =
 
 
 viewValue : String -> Html
-viewValue value = 
+viewValue value =
   pre valueAttributes [ text value ]
 
 
 valueAttributes : List Attribute
 valueAttributes =
   [ style
-    [ ("margin", "0 0 0 10px") 
-    ] 
+    [ ("margin", "0 0 0 10px")
+    ]
   ]
 
 

@@ -13,20 +13,21 @@ import SideBar.Watches as Watches
 
 view : List (String, String) -> Bool -> Model.Model -> Html
 view watches permitSwap state =
-  let controls =
-          Controls.view showSwap permitSwap state
+  let
+    controls =
+      Controls.view showSwap permitSwap state
 
-      watchView =
-          Watches.view watches
+    watchView =
+      Watches.view watches
   in
-      div
-        []
-        [ controls
-        , watchView
-        ]
+    div
+      []
+      [ controls
+      , watchView
+      ]
 
 
--- SIGNALS    
+-- SIGNALS
 
 main : Signal Html
 main =
@@ -53,15 +54,25 @@ aggregateUpdates =
 
 -- CONTROL MAILBOXES
 
-permitSwapMailbox = Controls.permitSwapMailbox
+permitSwapMailbox =
+  Controls.permitSwapMailbox
 
-restartMailbox = Controls.restartMailbox
 
-pausedInputMailbox = Controls.pausedInputMailbox
+restartMailbox =
+  Controls.restartMailbox
 
-scrubMailbox = Controls.scrubMailbox
 
-buttonStateMailbox = Controls.buttonStateMailbox
+pausedInputMailbox =
+  Controls.pausedInputMailbox
+
+
+scrubMailbox =
+  Controls.scrubMailbox
+
+
+buttonStateMailbox =
+  Controls.buttonStateMailbox
+
 
 -- INCOMING PORTS
 
