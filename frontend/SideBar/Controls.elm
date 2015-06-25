@@ -51,7 +51,8 @@ darkGrey = Color.rgb 74 74 74
 
 eventNumberTextStyle =
     [ ("color", colorToCss lightGrey)
-    , ("font-face", textTypefaces)
+    , ("font-family", textTypefaces)
+    , ("font-size", "12px")
     ]
 
 
@@ -105,7 +106,6 @@ buttonStateMailbox =
 
 swapButton : Bool -> Html
 swapButton permitSwap =
-    -- TODO: put text "swap" next to it
     input
       [ type' "checkbox"
       , on "change"
