@@ -151,14 +151,5 @@ staticAssets =
     [ "favicon.ico"
     , "_reactor/debug.js"
     , "_reactor/wrench.png"
-    , "_reactor/debugger/pause-button-up.png"
-    , "_reactor/debugger/pause-button-down.png"
-    , "_reactor/debugger/pause-button-hover.png"
-    , "_reactor/debugger/play-button-up.png"
-    , "_reactor/debugger/play-button-down.png"
-    , "_reactor/debugger/play-button-hover.png"
-    , "_reactor/debugger/restart-button-up.png"
-    , "_reactor/debugger/restart-button-down.png"
-    , "_reactor/debugger/restart-button-hover.png"
     ]
 

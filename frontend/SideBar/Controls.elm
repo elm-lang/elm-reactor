@@ -1,71 +1,77 @@
 module SideBar.Controls where
 
 import Color
-import Graphics.Collage exposing (..)
 import Graphics.Element exposing (..)
 import Graphics.Input exposing (..)
+import Html exposing (..)
+import Html.Attributes as Attr exposing (..)
+import Html.Events exposing (..)
+import Json.Decode exposing (..)
 import List
+import String
 import Signal as S exposing (Signal, (<~), (~))
-import Slider exposing (..)
-import Text
+import FontAwesome
 
+import Button
 import SideBar.Model as Model
+import Styles exposing (..)
 
 
 -- STYLE
 
-buttonHeight = 40
-buttonWidth = 40
-sideMargin = 2 * 20
+buttonIconSize = 20
+buttonSideLength = 40
+buttonBorderRadius = 8
+sideMargin = 20
 textHeight = 20
 panelWidth = 275
+
+
+hoverBrightness : Color.Color -> Button.Model -> Color.Color
+hoverBrightness baseColor state =
+  case state of
+    Button.Up -> baseColor
+    Button.Down -> darker 0.2 baseColor
+    Button.Hover -> brighter 0.2 baseColor
+
+
+playPauseButtonColor : Button.Model -> Color.Color
+playPauseButtonColor =
+  hoverBrightness (Color.rgb 20 131 213)
+
+
+restartButtonColor : Button.Model -> Color.Color
+restartButtonColor =
+  hoverBrightness lightGrey
+
 
 blue = Color.rgb 28 129 218
 lightGrey = Color.rgb 228 228 228
 darkGrey = Color.rgb 74 74 74
 
-
-dataStyle : List String -> Float -> String -> Text.Text
-dataStyle typefaces height string =
-    let default = Text.defaultStyle
-        myStyle =
-             { default |
-                typeface <- typefaces,
-                color <- lightGrey,
-                height <- Just height
-             }
-    in
-        Text.style myStyle (Text.fromString string)
-
-
-textTypefaces : List String
-textTypefaces =
-    ["Gotham", "Futura", "Lucida Grande", "sans-serif"]
-
-
-textStyle : String -> Text.Text
-textStyle string =
-    dataStyle textTypefaces 12 string
+eventNumberTextStyle =
+    [ ("color", colorToCss lightGrey)
+    , ("font-face", textTypefaces)
+    ]
 
 
 -- VIEW
 
-myButton : Signal.Message -> String -> Element
-myButton message name =
-    let img state =
-          image 40 40 ("/_reactor/debugger/" ++ name ++ "-button-" ++ state ++ ".png")
-    in
-        customButton message (img "up") (img "hover") (img "down")
 
-
-playButton : Element
-playButton =
-    myButton (Signal.message pausedInputMailbox.address False) "play"
-
-
-pauseButton : Element
-pauseButton =
-    myButton (Signal.message pausedInputMailbox.address True) "pause"
+playPauseButton : Bool -> Button.Model -> Html
+playPauseButton isPlay state =
+    let
+      icon =
+        if isPlay
+        then FontAwesome.play Color.white buttonIconSize
+        else FontAwesome.pause Color.white buttonIconSize
+      render state =
+        iconButton (playPauseButtonColor state) icon
+    in 
+      Button.view
+          (Signal.forwardTo buttonStateMailbox.address Model.PlayPauseButtonAction)
+          pausedInputMailbox.address (not isPlay)
+          state render
 
 
 pausedInputMailbox : Signal.Mailbox Bool
@@ -73,9 +79,18 @@ pausedInputMailbox =
     Signal.mailbox False
 
 
-restartButton : Element
-restartButton =
-    myButton (Signal.message restartMailbox.address ()) "restart"
+restartButton : Button.Model -> Html
+restartButton state =
+    let
+      render st =
+        iconButton
+          (restartButtonColor st)
+          (FontAwesome.undo darkGrey buttonIconSize)
+    in 
+      Button.view
+        (Signal.forwardTo buttonStateMailbox.address Model.RestartButtonAction)
+        restartMailbox.address ()
+        state render
 
 
 restartMailbox : Signal.Mailbox ()
@@ -83,51 +98,22 @@ restartMailbox =
     Signal.mailbox ()
 
 
-swapButton : Bool -> Element
+buttonStateMailbox : Signal.Mailbox Model.Action
+buttonStateMailbox =
+    Signal.mailbox Model.NoOp
+
+
+swapButton : Bool -> Html
 swapButton permitSwap =
-    let hsWidth = 25
-        radius = 4
-        bgButton =
-            roundedSquare hsWidth radius (filled lightGrey)
-
-        trueButton =
-            [bgButton, roundedSquare 22 radius (filled blue)]
-
-        trueButtonHover =
-            [ bgButton
-            , roundedSquare 22 radius (filled blue)
-            , roundedSquare 22 radius (filled darkGrey) |> alpha 0.1
-            ]
-
-        trueButtonClick = falseButton
-
-        falseButton =
-            [bgButton, roundedSquare 22 radius (filled darkGrey)]
-
-        falseButtonHover =
-            [ bgButton
-            , roundedSquare 22 radius (filled darkGrey)
-            , roundedSquare 22 radius (filled blue) |> alpha 0.1
-            ]
-
-        falseButtonClick = trueButton
-
-        button =
-            case permitSwap of
-              True ->
-                customButton (Signal.message permitSwapMailbox.address False)
-                    (collage hsWidth hsWidth trueButton)
-                    (collage hsWidth hsWidth trueButtonHover)
-                    (collage hsWidth hsWidth trueButtonClick)
-              False ->
-                customButton (Signal.message permitSwapMailbox.address True)
-                    (collage hsWidth hsWidth falseButton)
-                    (collage hsWidth hsWidth falseButtonHover)
-                    (collage hsWidth hsWidth falseButtonClick)
-
-        info = leftAligned (textStyle "swap")
-    in
-        flow right [ info, spacer 10 1, button ]
+    -- TODO: put text "swap" next to it
+    input
+      [ type' "checkbox"
+      , on "change"
+          targetChecked
+          (Signal.message permitSwapMailbox.address)
+      , checked permitSwap
+      ]
+      []
 
 
 permitSwapMailbox : Signal.Mailbox Bool
@@ -135,19 +121,19 @@ permitSwapMailbox =
     Signal.mailbox True
 
 
-scrubSlider : (Int, Int) -> Model.Model -> Element
-scrubSlider (w,_) state =
-    let sliderLength = w
-
-        sliderStyle =
-            { defaultSlider |
-                length <- sliderLength,
-                max <- toFloat state.totalEvents,
-                value <- toFloat state.scrubPosition
-            }
-    in
-        slider (\n -> Signal.message scrubMailbox.address (round n)) sliderStyle
-            |> container sliderLength 20 middle
+scrubSlider : Int -> Model.Model -> Html
+scrubSlider width state =
+  input
+    [ type' "range"
+    , style [("width", intToPx width)]
+    , Attr.min (toString 0)
+    , Attr.max (toString state.totalEvents)
+    , Attr.value (toString state.scrubPosition)
+    , on "input"
+        (at ["target","value"] (customDecoder string String.toInt))
+        (Signal.message scrubMailbox.address)
+    ]
+    []
 
 
 scrubMailbox : Signal.Mailbox Int
@@ -155,106 +141,119 @@ scrubMailbox =
     Signal.mailbox 0
 
 
-sliderEventText : Int -> Model.Model -> Element
-sliderEventText w state =
-    let textWidthOffset = 14
-
-        scrubPosition =
-            toFloat state.scrubPosition
-
-        totalEvents =
-            toFloat state.totalEvents
-
-        midWidth =
-            toFloat w - sideMargin - textWidthOffset
-
-        leftDistance = 
-            case totalEvents of
-              0 -> sideMargin/2 + textWidthOffset/2
-              _ -> scrubPosition / totalEvents * midWidth + sideMargin/2 + textWidthOffset/2
-
-        xPos = absolute (round leftDistance)
-        yPos = absolute (round (textHeight / 2))
-
-        textPosition = middleAt xPos yPos
-
-        text' =
-          centered (textStyle (toString state.scrubPosition))
-    in
-        container w textHeight textPosition text'
+sliderEventText : Int -> Model.Model -> Html
+sliderEventText width state =
+  div
+    [ style
+        [ ("height", intToPx textHeight)
+        , ("position", "relative")
+        ]
+    ]
+    [ positionedText width state.scrubPosition state.totalEvents False ]
 
 
-sliderMinMaxText : Int -> Model.Model -> Element
-sliderMinMaxText w state =
-    let sliderStartText =
-            textStyle "0"
-                |> leftAligned
-                |> container w textHeight topLeft
+sliderMinMaxText : Int -> Model.Model -> Html
+sliderMinMaxText width state =
+    div
+      [ style
+          [ ("height", intToPx textHeight)
+          , ("position", "relative")
+          ]
+      ]
+      [ positionedText width 0 state.totalEvents False
+      , positionedText width state.totalEvents state.totalEvents True
+      ]
 
-        sliderTotalEvents =
-            toString state.totalEvents
-                |> textStyle
-                |> rightAligned
-                |> container w textHeight topRight
-    in
-        flow outward
-            [ sliderStartText
-            , sliderTotalEvents
-            ]
+positionedText : Int -> Int -> Int -> Bool -> Html
+positionedText width frameIdx totalEvents alwaysRight =
+  let
+    textWidthOffset = 14
 
+    xFraction =
+      if alwaysRight then 1 else (toFloat frameIdx) / (toFloat totalEvents)
 
-view : (Int, Int) -> Bool -> Bool -> Model.Model -> Element
-view (w,h) showSwap permitSwap state =
-    let midWidth = w - sideMargin
+    xPos =
+      xFraction * (toFloat width - textWidthOffset)
+  in
+    div
+      [ style
+          ([ ("position", "absolute")
+           , ("display", "inline-block")
+           , ("left", intToPx (round xPos))
+           ] ++ eventNumberTextStyle)
+      ]
+      [ text (toString frameIdx) ]
+
+view : Bool -> Bool -> Model.Model -> Html
+view showSwap permitSwap state =
+    let midWidth = panelWidth - sideMargin * 2
 
         topSpacerHeight = 15
 
         buttonSliderSpaceHeight = 10
 
         fittedSwapButton =
-            if showSwap then
-                swapButton permitSwap
-                  |> container (w - 2 * buttonWidth - sideMargin) buttonHeight middle
-            else
-                spacer (2 * buttonWidth) 1
+          div
+            [ style
+                ([ ("display", "inline-block")
+                 , ("position", "absolute")
+                 , ("transform", "translate(100%, 50%)")
+                 ] ++ eventNumberTextStyle)
+            ]
+            (if showSwap
+             then [ text "swap"
+                  , swapButton permitSwap
+                  ]
+             else [])
 
-        buttons =
-            flow right
-            [ restartButton
+        floatButton floatDir button =
+          div
+            [ style
+                [ ("display", "inline-block")
+                , ("float", floatDir)
+                ]
+            ]
+            [ button ]
+
+        -- TODO: get these horizontally aligned
+        buttonContainer =
+          div
+            [ style [("height", "50px")] ]
+            [ floatButton "left"
+                (restartButton state.restartButtonState)
             , fittedSwapButton
-            , if state.paused then playButton else pauseButton
+            , floatButton "right"
+                (playPauseButton state.paused state.playPauseButtonState)
             ]
 
-        centeredSliderContainer =
-          container w (24 + textHeight) midTop <|
-            flow down
-            [ scrubSlider (midWidth, h) state
+        sliderContainer =
+          div
+            []
+            [ sliderEventText midWidth state
+            , scrubSlider midWidth state
             , sliderMinMaxText midWidth state
             ]
 
-        slider =
-          container w (24 + 2* textHeight) midTop <|
-            flow down
-            [ sliderEventText w state
-            , centeredSliderContainer
-            ]
-
-        buttonContainer =
-            container w buttonHeight midTop buttons
-
         controls =
-            flow down
-            [ spacer midWidth topSpacerHeight
-            , buttonContainer
-            , spacer midWidth buttonSliderSpaceHeight
-            , slider
-            , spacer midWidth 10
+          div
+            [ style [("margin", intToPx sideMargin)] ]
+            [ buttonContainer
+            , sliderContainer
             ]
 
         bar =
-            opacity 0.3 (color lightGrey (spacer w 1))
+            div
+              [ style
+                  [ ("height", "1px")
+                  , ("width", intToPx panelWidth)
+                  , ("opacity", "0.3")
+                  , ("background-color", colorToCss Color.lightGrey)
+                  ]
+              ]
+              []
     in
-        flow down
+        div
+          []
           [ controls
           , bar
           ]
@@ -262,17 +261,30 @@ view (w,h) showSwap permitSwap state =
 
 -- UTILITIES
 
-roundedSquare : Float -> Float -> (Shape -> Form) -> Form
-roundedSquare side radius toForm =
-    let shortSide = side - 2 * radius
-        xRect = rect side shortSide |> toForm
-        yRect = rect shortSide side |> toForm
-        circleOffset = shortSide / 2
-        formedCircle = circle radius |> toForm
-        tl = formedCircle |> move (-circleOffset, circleOffset)
-        tr = formedCircle |> move ( circleOffset, circleOffset)
-        bl = formedCircle |> move (-circleOffset,-circleOffset)
-        br = formedCircle |> move ( circleOffset,-circleOffset)
-    in
-        group [xRect, yRect, tl, tr, bl, br]
+iconButton : Color.Color -> Html -> Html
+iconButton bgColor iconHtml =
+  let
+    transPx =
+      (buttonSideLength - buttonIconSize) // 2
+  in
+    div
+      [ style
+          [ ("background-color", colorToCss bgColor)
+          , ("border-radius", intToPx buttonBorderRadius)
+          , ("width", intToPx buttonSideLength)
+          , ("height", intToPx buttonSideLength)
+          ]
+      ]
+      [ div
+          [ style [("transform", translateToCss transPx transPx)] ]
+          [ iconHtml ]
+      ]
 
+
+translateToCss : Int -> Int -> String
+translateToCss x y =
+    "translate(" ++ intToPx x ++ "," ++ intToPx y ++ ")"
+
+
+intToPx : Int -> String
+intToPx x = toString x ++ "px"
