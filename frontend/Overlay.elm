@@ -14,8 +14,27 @@ import SideBar.Watches as Watches
 
 view : Bool -> Int -> Model.Model -> Html
 view showSwap height state =
-  -- TODO: event blocker, errors
-  sidebar showSwap height state
+  div
+    []
+    [ sidebar showSwap height state
+    , eventBlocker state.paused
+    ]
+
+
+eventBlocker : Bool -> Html
+eventBlocker visible =
+  div
+    [ id "elm-reactor-event-blocker"
+    , style
+        [ "position" => "absolute"
+        , "top" => "0px"
+        , "left" => "0px"
+        , "width" => "100%"
+        , "height" => "100%"
+        , "display" => if visible then "block" else "none"
+        ]
+    ]
+    []
 
 
 sidebar : Bool -> Int -> Model.Model -> Html

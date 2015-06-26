@@ -44,8 +44,6 @@ function initErrorMessage(message)
 
 // EVENT BLOCKER
 
-var EVENT_BLOCKER_ID = 'elm-reactor-event-blocker'
-
 var eventsToIgnore = [
 	"click", "mousemove", "mouseup", "mousedown", "mouseclick", "keydown",
 	"keypress", "keyup", "touchstart", "touchend", "touchcancel", "touchleave",
@@ -70,42 +68,6 @@ function ignore(e)
 	}
 	return false;
 }
-
-function initEventBlocker()
-{
-	var node = document.createElement("div");
-	node.id = EVENT_BLOCKER_ID;
-	node.style.position = "absolute";
-	node.style.top = "0px";
-	node.style.left = "0px";
-	node.style.width = "100%";
-	node.style.height = "100%";
-
-	for (var i = eventsToIgnore.length; i-- ;)
-	{
-		node.addEventListener(eventsToIgnore[i], ignore, true);
-	}
-
-	return node;
-}
-
-function addEventBlocker(node)
-{
-	if (!document.getElementById(EVENT_BLOCKER_ID))
-	{
-		node.appendChild(initEventBlocker());
-	}
-}
-
-function removeEventBlocker()
-{
-	var blocker = document.getElementById(EVENT_BLOCKER_ID);
-	if (blocker)
-	{
-		blocker.parentNode.removeChild(blocker);
-	}
-}
-
 
 
 // CODE TO SET UP A MODULE FOR DEBUGGING
@@ -137,6 +99,12 @@ Elm.fullscreenDebug = function(moduleName, fileName) {
 		{
 			event.stopPropagation();
 		}
+	}
+
+	var eventBlocker = document.getElementById('elm-reactor-event-blocker');
+	for (var i = eventsToIgnore.length; i-- ;)
+	{
+		eventBlocker.addEventListener(eventsToIgnore[i], ignore, true);
 	}
 
 	function updateWatches(index)
@@ -299,7 +267,6 @@ function pause(debugState)
 	debugState.paused = true;
 	pauseAsyncCallbacks(debugState);
 	debugState.pausedAtTime = Date.now();
-	addEventBlocker(debugState.node);
 }
 
 function unpause(debugState)
@@ -324,8 +291,6 @@ function unpause(debugState)
 	clearWatchesAfter(debugState.index, debugState);
 
 	unpauseAsyncCallbacks(debugState.asyncCallbacks);
-
-	removeEventBlocker();
 }
 
 function jumpTo(index, debugState)
@@ -404,7 +369,6 @@ function transferState(previousDebugState, debugState)
 		pauseAsyncCallbacks(debugState);
 		debugState.pausedAtTime = previousDebugState.pausedAtTime;
 		debugState.totalTimeLost = previousDebugState.totalTimeLost;
-		addEventBlocker(debugState.node);
 	}
 
 	while (debugState.index < debugState.events.length)
