@@ -24,7 +24,6 @@ sidebar showSwap height state =
     constantStyles =
       [ ("background", colorToCss darkGrey) -- dark grey
       , ("width", intToPx sidebarWidth)
-      , ("height", "100%")
       , ("position", "absolute")
       , ("top", "0px")
       , ("right", "0px")

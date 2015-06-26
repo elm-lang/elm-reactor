@@ -114,8 +114,11 @@ Elm.fullscreenDebug = function(moduleName, fileName) {
 	var result = initModuleWithDebugState(moduleName);
 
 	var container = document.createElement("div");
-	// vv else it's 0 px, which is ready by Elm's Window
+	container.style.width = "100%";
 	container.style.height = "100%";
+	container.style.position = "absolute";
+	container.style.top = 0;
+	container.style.left = 0;
 	document.body.appendChild(container);
 
 	var overlay = Elm.embed(Elm.Overlay, container, {
