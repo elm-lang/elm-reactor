@@ -22,31 +22,31 @@ sidebar : Bool -> Int -> Model.Model -> Html
 sidebar showSwap height state =
   let
     constantStyles =
-      [ ("background", colorToCss darkGrey) -- dark grey
-      , ("width", intToPx sidebarWidth)
-      , ("position", "absolute")
-      , ("top", "0px")
-      , ("right", "0px")
-      , ("transition-duration", "0.3s")
-      , ("opacity", "0.97")
-      , ("z-index", "1")
+      [ "background" => colorToCss darkGrey
+      , "width" => intToPx sidebarWidth
+      , "position" => "absolute"
+      , "top" => "0px"
+      , "right" => "0px"
+      , "transition-duration" => "0.3s"
+      , "opacity" => "0.97"
+      , "z-index" => "1"
       ]
     
     toggleStyles =
       if state.sidebarVisible
-      then [ ("right", "0px")
-           , ("width", intToPx sidebarWidth)
+      then [ "right" => "0px"
+           , "width" => intToPx sidebarWidth
            ]
-      else [("width", "0px")]
+      else [ "width" => "0px" ]
   in
     div
       [ id "elm-reactor-side-bar"
-      -- TODO: done in JS: cancelBubble / stopPropagation on this
+      -- done in JS: cancelBubble / stopPropagation on this
       , style (constantStyles ++ toggleStyles)
       ]
       [ sidebarTab state
       , div
-          [ style [ ("height", "100%") ] ]
+          [ style [ "height" => "100%" ] ]
           [ Controls.view showSwap state
           , Watches.view (height - Controls.controlsHeight) state.watches
           ]
@@ -59,14 +59,14 @@ sidebarTab : Model.Model -> Html
 sidebarTab state =
   div
     [ style
-        [ ("position", "absolute")
-        , ("width", intToPx tabWidth)
-        , ("height", "60px")
-        , ("top", "50%")
-        , ("left", intToPx -tabWidth)
-        , ("border-top-left-radius", "3px")
-        , ("border-bottom-left-radius", "3px")
-        , ("background", colorToCss darkGrey)
+        [ "position" => "absolute"
+        , "width" => intToPx tabWidth
+        , "height" => "60px"
+        , "top" => "50%"
+        , "left" => intToPx -tabWidth
+        , "border-top-left-radius" => "3px"
+        , "border-bottom-left-radius" => "3px"
+        , "background" => colorToCss darkGrey
         ]
     , onClick sidebarVisibleMailbox.address (not state.sidebarVisible)
     ]
@@ -104,15 +104,20 @@ aggregateUpdates =
 
 -- CONTROL MAILBOXES
 
-permitSwapMailbox = Controls.permitSwapMailbox
+permitSwapMailbox =
+  Controls.permitSwapMailbox
 
-restartMailbox = Controls.restartMailbox
+restartMailbox =
+  Controls.restartMailbox
 
-pausedInputMailbox = Controls.pausedInputMailbox
+pausedInputMailbox =
+  Controls.pausedInputMailbox
 
-scrubMailbox = Controls.scrubMailbox
+scrubMailbox =
+  Controls.scrubMailbox
 
-buttonStateMailbox = Controls.buttonStateMailbox
+buttonStateMailbox =
+  Controls.buttonStateMailbox
 
 -- INCOMING PORTS
 

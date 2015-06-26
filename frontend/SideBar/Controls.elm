@@ -31,9 +31,14 @@ controlsHeight = 111 + 2 * sideMargin
 hoverBrightness : Color.Color -> Button.Model -> Color.Color
 hoverBrightness baseColor state =
   case state of
-    Button.Up -> baseColor
-    Button.Down -> darker 0.2 baseColor
-    Button.Hover -> brighter 0.2 baseColor
+    Button.Up ->
+      baseColor
+
+    Button.Down ->
+      darker 0.2 baseColor
+
+    Button.Hover ->
+      brighter 0.2 baseColor
 
 
 playPauseButtonColor : Button.Model -> Color.Color
@@ -47,37 +52,44 @@ restartButtonColor =
 
 
 eventNumberTextStyle =
-  [ ("color", colorToCss lightGrey)
-  , ("font-family", textTypefaces)
-  , ("font-size", "12px")
+  [ "color" => colorToCss lightGrey
+  , "font-family" => textTypefaces
+  , "font-size" => "12px"
   ]
 
 
 swapButtonTextStyle =
-  [ ("color", colorToCss lightGrey)
-  , ("font-family", textTypefaces)
-  , ("font-size", "14px")
+  [ "color" => colorToCss lightGrey
+  , "font-family" => textTypefaces
+  , "font-size" => "14px"
   ]
 
 
+blue = Color.rgb 28 129 218
+lightGrey = Color.rgb 228 228 228
+darkGrey = Color.rgb 74 74 74
+
 
 -- VIEW
-
 
 playPauseButton : Bool -> Button.Model -> Html
 playPauseButton isPlay state =
   let
     icon =
-      if isPlay
-      then FontAwesome.play Color.white buttonIconSize
-      else FontAwesome.pause Color.white buttonIconSize
+      if isPlay then
+        FontAwesome.play Color.white buttonIconSize
+      else
+        FontAwesome.pause Color.white buttonIconSize
+
     render state =
       iconButton (playPauseButtonColor state) icon
   in 
     Button.view
         (Signal.forwardTo buttonStateMailbox.address Model.PlayPauseButtonAction)
-        pausedInputMailbox.address (not isPlay)
-        state render
+        pausedInputMailbox.address
+        (not isPlay)
+        state
+        render
 
 
 pausedInputMailbox : Signal.Mailbox Bool
@@ -95,8 +107,10 @@ restartButton state =
   in 
     Button.view
       (Signal.forwardTo buttonStateMailbox.address Model.RestartButtonAction)
-      restartMailbox.address ()
-      state render
+      restartMailbox.address
+      ()
+      state
+      render
 
 
 restartMailbox : Signal.Mailbox ()
@@ -130,7 +144,7 @@ scrubSlider : Int -> Model.Model -> Html
 scrubSlider width state =
   input
     [ type' "range"
-    , style [("width", intToPx width)]
+    , style ["width" => intToPx width]
     , Attr.min (toString 0)
     , Attr.max (toString state.totalEvents)
     , Attr.value (toString state.scrubPosition)
@@ -150,8 +164,8 @@ sliderEventText : Int -> Model.Model -> Html
 sliderEventText width state =
   div
     [ style
-        [ ("height", intToPx textHeight)
-        , ("position", "relative")
+        [ "height" => intToPx textHeight
+        , "position" => "relative"
         ]
     ]
     [ positionedText width state.scrubPosition state.totalEvents False ]
@@ -161,105 +175,109 @@ sliderMinMaxText : Int -> Model.Model -> Html
 sliderMinMaxText width state =
   div
     [ style
-        [ ("height", intToPx textHeight)
-        , ("position", "relative")
+        [ "height" => intToPx textHeight
+        , "position" => "relative"
         ]
     ]
     [ positionedText width 0 state.totalEvents False
     , positionedText width state.totalEvents state.totalEvents True
     ]
 
+
 positionedText : Int -> Int -> Int -> Bool -> Html
 positionedText width frameIdx totalEvents alwaysRight =
   let
-    textWidthOffset = 14
+    textWidthOffset =
+      14
 
     xFraction =
-      if alwaysRight then 1 else (toFloat frameIdx) / (toFloat totalEvents)
+      if alwaysRight then
+        1
+      else
+        toFloat frameIdx / toFloat totalEvents
 
     xPos =
       xFraction * (toFloat width - textWidthOffset)
   in
     div
-      [ style
-          ([ ("position", "absolute")
-           , ("display", "inline-block")
-           , ("left", intToPx (round xPos))
-           ] ++ eventNumberTextStyle)
+      [ style <|
+          eventNumberTextStyle ++
+          [ "position" => "absolute"
+          , "display" => "inline-block"
+          , "left" => intToPx (round xPos)
+          ]
       ]
       [ text (toString frameIdx) ]
+
 
 view : Bool -> Model.Model -> Html
 view showSwap state =
   let
-      midWidth = sidebarWidth - sideMargin * 2
+    midWidth =
+      sidebarWidth - sideMargin * 2
 
-      topSpacerHeight = 15
+    fittedSwapButton =
+      div
+        [ style <|
+            swapButtonTextStyle ++
+            [ "display" => "inline-block"
+            , "position" => "absolute"
+            , "transform" => "translate(100%, 50%)"
+            ]
+        ]
+        (if showSwap then [ text "swap", swapButton state.permitSwap ] else [])
 
-      buttonSliderSpaceHeight = 10
+    floatButton floatDir button =
+      div
+        [ style
+            [ "display" => "inline-block"
+            , "float" => floatDir
+            ]
+        ]
+        [ button ]
 
-      fittedSwapButton =
+    -- TODO: get these horizontally aligned
+    buttonContainer =
+      div
+        [ style
+            [ "height" => "50px"
+            , "width" => intToPx (sidebarWidth - 2 * sideMargin)
+            ]
+        ]
+        [ floatButton "left"
+            (restartButton state.restartButtonState)
+        , fittedSwapButton
+        , floatButton "right"
+            (playPauseButton state.paused state.playPauseButtonState)
+        ]
+
+    sliderContainer =
+      div
+        []
+        [ sliderEventText midWidth state
+        , scrubSlider midWidth state
+        , sliderMinMaxText midWidth state
+        ]
+
+    controls =
+      div
+        [ style
+            [ "margin" => intToPx sideMargin]
+        ]
+        [ buttonContainer
+        , sliderContainer
+        ]
+
+    bar =
         div
           [ style
-              ([ ("display", "inline-block")
-               , ("position", "absolute")
-               , ("transform", "translate(100%, 50%)")
-               ] ++ swapButtonTextStyle)
-          ]
-          (if showSwap
-           then [ text "swap"
-                , swapButton state.permitSwap
-                ]
-           else [])
-
-      floatButton floatDir button =
-        div
-          [ style
-              [ ("display", "inline-block")
-              , ("float", floatDir)
+              [ "height" => "1px"
+              , "width" => intToPx sidebarWidth
+              , "opacity" => "0.3"
+              , "background-color" => colorToCss Color.lightGrey
               ]
           ]
-          [ button ]
-
-      -- TODO: get these horizontally aligned
-      buttonContainer =
-        div
-          [ style
-              [ ("height", "50px")
-              , ("width", intToPx (sidebarWidth - 2 * sideMargin)) ]
-          ]
-          [ floatButton "left"
-              (restartButton state.restartButtonState)
-          , fittedSwapButton
-          , floatButton "right"
-              (playPauseButton state.paused state.playPauseButtonState)
-          ]
-
-      sliderContainer =
-        div
           []
-          [ sliderEventText midWidth state
-          , scrubSlider midWidth state
-          , sliderMinMaxText midWidth state
-          ]
-
-      controls =
-        div
-          [ style [("margin", intToPx sideMargin)] ]
-          [ buttonContainer
-          , sliderContainer
-          ]
-
-      bar =
-          div
-            [ style
-                [ ("height", "1px")
-                , ("width", intToPx sidebarWidth)
-                , ("opacity", "0.3")
-                , ("background-color", colorToCss Color.lightGrey)
-                ]
-            ]
-            []
   in
     div
       []
@@ -278,14 +296,14 @@ iconButton bgColor iconHtml =
   in
     div
       [ style
-          [ ("background-color", colorToCss bgColor)
-          , ("border-radius", intToPx buttonBorderRadius)
-          , ("width", intToPx buttonSideLength)
-          , ("height", intToPx buttonSideLength)
+          [ "background-color" => colorToCss bgColor
+          , "border-radius" => intToPx buttonBorderRadius
+          , "width" => intToPx buttonSideLength
+          , "height" => intToPx buttonSideLength
           ]
       ]
       [ div
-          [ style [("transform", translateToCss transPx transPx)] ]
+          [ style ["transform" => translateToCss transPx transPx] ]
           [ iconHtml ]
       ]
 

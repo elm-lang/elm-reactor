@@ -5,22 +5,30 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 
+
 type Model
     = Up
     | Down
     | Hover
 
+
 type Action
     = MouseUpdate Model
+
 
 update : Action -> Model -> Model
 update action state =
   case action of
-    MouseUpdate st -> st
+    MouseUpdate newState ->
+      newState
+
 
 view : Signal.Address Action
-     -> Signal.Address a -> a
-     -> Model -> (Model -> Html) -> Html
+    -> Signal.Address a
+    -> a
+    -> Model
+    -> (Model -> Html)
+    -> Html
 view buttonStateAddr actionAddr action state render =
   div
     [ onMouseOver buttonStateAddr (MouseUpdate Hover)

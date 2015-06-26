@@ -3,6 +3,10 @@ module Styles where
 import Color
 import String
 
+
+(=>) = (,)
+
+
 sidebarWidth = 275
 
 
@@ -12,7 +16,7 @@ darkGrey = Color.rgb 74 74 74
 
 textTypefaces : String
 textTypefaces =
-    "Gotham, Futura, 'Lucida Grande', sans-serif"
+  "Gotham, Futura, 'Lucida Grande', sans-serif"
 
 
 -- TODO: put this in Html.Attributes?
@@ -22,16 +26,14 @@ colorToCss color =
     record =
       Color.toRgb color
 
-    rgb =
-      List.map toString
-        [record.red, record.green, record.blue]
-    
+    colors =
+      List.map toString [record.red, record.green, record.blue]
+
     numbers =
-      String.join ","
-        (rgb ++ [toString record.alpha])
-        
-  in
-    "rgba(" ++ numbers ++ ")"
+      String.join "," (colors ++ [toString record.alpha])
+
+    in
+      "rgba(" ++ numbers ++ ")"
 
 
 intToPx : Int -> String
@@ -57,7 +59,7 @@ multClampChannels (cMin, cMax) color factor =
   let
     record =
       Color.toRgb color
-    
+
     multClamp x =
       round <| clamp cMin cMax ((toFloat x) * 0.7 ^ factor)
   in
