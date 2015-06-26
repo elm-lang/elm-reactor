@@ -222,7 +222,8 @@ view showSwap state =
             swapButtonTextStyle ++
             [ "display" => "inline-block"
             , "position" => "absolute"
-            , "transform" => "translate(100%, 50%)"
+            , "left" => "110px"
+            , "top" => "30px"
             ]
         ]
         (if showSwap then [ text "swap", swapButton state.permitSwap ] else [])
@@ -303,7 +304,11 @@ iconButton bgColor iconHtml =
           ]
       ]
       [ div
-          [ style ["transform" => translateToCss transPx transPx] ]
+          [ style
+              [ "padding" => intToPx transPx
+              , "display" => "inline-block"
+              ]
+          ]
           [ iconHtml ]
       ]
 
