@@ -53,6 +53,14 @@ eventNumberTextStyle =
   ]
 
 
+swapButtonTextStyle =
+  [ ("color", colorToCss lightGrey)
+  , ("font-family", textTypefaces)
+  , ("font-size", "14px")
+  ]
+
+
+
 -- VIEW
 
 
@@ -196,7 +204,7 @@ view showSwap state =
               ([ ("display", "inline-block")
                , ("position", "absolute")
                , ("transform", "translate(100%, 50%)")
-               ] ++ eventNumberTextStyle)
+               ] ++ swapButtonTextStyle)
           ]
           (if showSwap
            then [ text "swap"
