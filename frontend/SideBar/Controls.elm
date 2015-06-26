@@ -144,7 +144,10 @@ scrubSlider : Int -> Model.Model -> Html
 scrubSlider width state =
   input
     [ type' "range"
-    , style ["width" => intToPx width]
+    , style
+        [ "width" => intToPx width
+        , "margin" => "0"
+        ]
     , Attr.min (toString 0)
     , Attr.max (toString state.totalEvents)
     , Attr.value (toString state.scrubPosition)
@@ -187,8 +190,20 @@ sliderMinMaxText width state =
 positionedText : Int -> Int -> Int -> Bool -> Html
 positionedText width frameIdx totalEvents alwaysRight =
   let
-    textWidthOffset =
-      14
+    charWidth =
+      10
+
+    numDigits =
+      if frameIdx == 0 then
+        1
+      else
+        ceiling <| logBase 10 (toFloat frameIdx)
+
+    textWidth =
+      charWidth * numDigits
+
+    sliderOffset =
+      8
 
     xFraction =
       if alwaysRight then
@@ -196,8 +211,14 @@ positionedText width frameIdx totalEvents alwaysRight =
       else
         toFloat frameIdx / toFloat totalEvents
 
+    textCenterpointRange =
+      toFloat width - 2 * sliderOffset + 5
+
+    textCenterpoint =
+      xFraction * textCenterpointRange
+
     xPos =
-      xFraction * (toFloat width - textWidthOffset)
+      textCenterpoint - (toFloat textWidth)/2 + sliderOffset
   in
     div
       [ style <|
@@ -242,7 +263,7 @@ view showSwap state =
       div
         [ style
             [ "height" => "50px"
-            , "width" => intToPx (sidebarWidth - 2 * sideMargin)
+            , "width" => intToPx midWidth
             ]
         ]
         [ floatButton "left"
