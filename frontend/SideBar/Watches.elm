@@ -10,10 +10,13 @@ import Styles exposing (..)
 
 view : List (String, String) -> Html
 view watches =
-  div viewAttributes <|
-      case watches of
-        [] -> [noWatches]
-        _ -> List.map viewWatch watches
+  div
+    [style [("display", "block")]]
+    [ div viewAttributes <|
+      (case watches of
+              [] -> [noWatches]
+              _ -> List.map viewWatch watches)
+    ]
 
 
 viewAttributes : List Attribute

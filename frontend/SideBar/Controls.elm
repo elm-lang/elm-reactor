@@ -24,7 +24,6 @@ buttonSideLength = 40
 buttonBorderRadius = 8
 sideMargin = 20
 textHeight = 20
-panelWidth = 275
 
 
 hoverBrightness : Color.Color -> Button.Model -> Color.Color
@@ -44,10 +43,6 @@ restartButtonColor : Button.Model -> Color.Color
 restartButtonColor =
   hoverBrightness lightGrey
 
-
-blue = Color.rgb 28 129 218
-lightGrey = Color.rgb 228 228 228
-darkGrey = Color.rgb 74 74 74
 
 eventNumberTextStyle =
   [ ("color", colorToCss lightGrey)
@@ -184,10 +179,10 @@ positionedText width frameIdx totalEvents alwaysRight =
       ]
       [ text (toString frameIdx) ]
 
-view : Bool -> Bool -> Model.Model -> Html
-view showSwap permitSwap state =
+view : Bool -> Model.Model -> Html
+view showSwap state =
   let
-      midWidth = panelWidth - sideMargin * 2
+      midWidth = sidebarWidth - sideMargin * 2
 
       topSpacerHeight = 15
 
@@ -203,7 +198,7 @@ view showSwap permitSwap state =
           ]
           (if showSwap
            then [ text "swap"
-                , swapButton permitSwap
+                , swapButton state.permitSwap
                 ]
            else [])
 
@@ -219,7 +214,10 @@ view showSwap permitSwap state =
       -- TODO: get these horizontally aligned
       buttonContainer =
         div
-          [ style [("height", "50px")] ]
+          [ style
+              [ ("height", "50px")
+              , ("width", intToPx (sidebarWidth - 2 * sideMargin)) ]
+          ]
           [ floatButton "left"
               (restartButton state.restartButtonState)
           , fittedSwapButton
@@ -246,7 +244,7 @@ view showSwap permitSwap state =
           div
             [ style
                 [ ("height", "1px")
-                , ("width", intToPx panelWidth)
+                , ("width", intToPx sidebarWidth)
                 , ("opacity", "0.3")
                 , ("background-color", colorToCss Color.lightGrey)
                 ]
@@ -285,8 +283,3 @@ iconButton bgColor iconHtml =
 translateToCss : Int -> Int -> String
 translateToCss x y =
   "translate(" ++ intToPx x ++ "," ++ intToPx y ++ ")"
-
-
-intToPx : Int -> String
-intToPx x =
-  toString x ++ "px"

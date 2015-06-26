@@ -3,6 +3,12 @@ module Styles where
 import Color
 import String
 
+sidebarWidth = 275
+
+
+lightGrey = Color.rgb 228 228 228
+darkGrey = Color.rgb 74 74 74
+
 
 textTypefaces : String
 textTypefaces =
@@ -26,6 +32,11 @@ colorToCss color =
         
   in
     "rgba(" ++ numbers ++ ")"
+
+
+intToPx : Int -> String
+intToPx x =
+  toString x ++ "px"
 
 
 -- TODO: would be nice to have these in the Color lib
