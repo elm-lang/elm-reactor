@@ -8,10 +8,14 @@ import Color
 import Styles exposing (..)
 
 
-view : List (String, String) -> Html
-view watches =
+view : Int -> List (String, String) -> Html
+view height watches =
   div
-    [style [("display", "block")]]
+    [ style
+      [ ("display", "block")
+      , ("height", intToPx height)
+      ]
+    ]
     [ div viewAttributes <|
       (case watches of
               [] -> [noWatches]

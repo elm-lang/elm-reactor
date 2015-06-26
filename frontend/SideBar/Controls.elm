@@ -1,21 +1,16 @@
 module SideBar.Controls where
 
 import Color
-import Graphics.Element exposing (..)
-import Graphics.Input exposing (..)
 import Html exposing (..)
 import Html.Attributes as Attr exposing (..)
 import Html.Events exposing (..)
 import Json.Decode exposing (..)
-import List
 import String
-import Signal as S exposing (Signal, (<~), (~))
 import FontAwesome
 
 import Button
 import SideBar.Model as Model
 import Styles exposing (..)
-
 
 -- STYLE
 
@@ -24,6 +19,13 @@ buttonSideLength = 40
 buttonBorderRadius = 8
 sideMargin = 20
 textHeight = 20
+
+
+{- 111 read off of chrome inspector because I can't figure
+out how to make the watches scroll properly without knowing
+the height of everything.
+-}
+controlsHeight = 111 + 2 * sideMargin
 
 
 hoverBrightness : Color.Color -> Button.Model -> Color.Color

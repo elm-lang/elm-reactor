@@ -113,7 +113,9 @@ function removeEventBlocker()
 Elm.fullscreenDebug = function(moduleName, fileName) {
 	var result = initModuleWithDebugState(moduleName);
 
-	var container = document.createElement('div');
+	var container = document.createElement("div");
+	// vv else it's 0 px, which is ready by Elm's Window
+	container.style.height = "100%";
 	document.body.appendChild(container);
 
 	var overlay = Elm.embed(Elm.Overlay, container, {

@@ -4,6 +4,7 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import Signal
+import Window
 
 import Styles exposing (..)
 import SideBar.Model as Model
@@ -11,14 +12,14 @@ import SideBar.Controls as Controls
 import SideBar.Watches as Watches
 
 
-view : Bool -> Model.Model -> Html
-view showSwap state =
+view : Bool -> Int -> Model.Model -> Html
+view showSwap height state =
   -- TODO: event blocker, errors
-  sidebar showSwap state
+  sidebar showSwap height state
 
 
-sidebar : Bool -> Model.Model -> Html
-sidebar showSwap state =
+sidebar : Bool -> Int -> Model.Model -> Html
+sidebar showSwap height state =
   let
     constantStyles =
       [ ("background", colorToCss darkGrey) -- dark grey
@@ -48,7 +49,7 @@ sidebar showSwap state =
       , div
           [ style [ ("height", "100%") ] ]
           [ Controls.view showSwap state
-          , Watches.view state.watches
+          , Watches.view (height - Controls.controlsHeight) state.watches
           ]
       ]
 
@@ -81,7 +82,7 @@ sidebarVisibleMailbox =
 main : Signal Html
 main =
   -- TODO: move showSwap to the #@$ model
-  Signal.map (view showSwap) scene
+  Signal.map2 (view showSwap) Window.height scene
 
 
 scene : Signal Model.Model
