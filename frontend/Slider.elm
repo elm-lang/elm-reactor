@@ -49,7 +49,7 @@ defaultSlider =
     , value = 0
     }
 
- {-| Create a range slider. The following slider lets you choose your height in
+{-| Create a range slider. The following slider lets you choose your height in
 meters with centimeter accuracy (0.01).
 
       height : Input Float
