@@ -33,11 +33,11 @@ output =
 buildSideBar :: IO ()
 buildSideBar =
   do  (exitCode, out, err) <-
-        readProcessWithExitCode "elm-make" [ "--yes", "frontend" </> "SideBar.elm", "--output=" ++ output ] ""
+        readProcessWithExitCode "elm-make" [ "--yes", "frontend" </> "Overlay.elm", "--output=" ++ output ] ""
       case exitCode of
         ExitSuccess ->
           return ()
 
         ExitFailure _ ->
-          do  hPutStrLn stderr ("Failed to build SideBar.elm\n\n" ++ out ++ err)
+          do  hPutStrLn stderr ("Failed to build Overlay.elm\n\n" ++ out ++ err)
               exitFailure

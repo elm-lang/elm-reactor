@@ -4,6 +4,7 @@ import Signal
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
+import Html.Lazy exposing (..)
 
 
 type Model
@@ -37,4 +38,4 @@ view buttonStateAddr actionAddr action state render =
     , onMouseLeave buttonStateAddr (MouseUpdate Up)
     , onClick actionAddr action
     ]
-    [ render state ]
+    [ lazy render state ]

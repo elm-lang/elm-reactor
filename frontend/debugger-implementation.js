@@ -19,76 +19,6 @@ var SIDE_BAR_WIDTH = 275;
 var DARK_GREY = "#4A4A4A";
 var LIGHT_GREY = "#E4E4E4";
 
-function createSideBar()
-{
-	var debuggingPanelExpanded = true;
-
-	var sideBar = document.createElement("div");
-	sideBar.id = SIDE_BAR_ID;
-
-	var sideBarBody = document.createElement("div");
-	sideBarBody.id = SIDE_BAR_BODY_ID;
-	sideBarBody.style.overflow = "hidden";
-	sideBarBody.style.height = "100%";
-
-	// Create and style the panel
-	sideBar.style.background = DARK_GREY;
-	sideBar.style.width = SIDE_BAR_WIDTH + "px";
-	sideBar.style.height = "100%";
-	sideBar.style.position = "absolute";
-	sideBar.style.top = "0px";
-	sideBar.style.right = "0px";
-	sideBar.style.transitionDuration = "0.3s";
-	sideBar.style.opacity = 0.97;
-	sideBar.style.zIndex = 1;
-
-	// Prevent clicks from reaching the main elm instance under the panel
-	sideBar.addEventListener("click", blockClicks);
-	function blockClicks(e)
-	{
-		var event = e || window.event;
-		event.cancelBubble = true;
-		if (event.stopPropagation)
-		{
-			event.stopPropagation();
-		}
-	}
-
-	// Create and style the button
-	var tabWidth = 25;
-	var sideBarTab = document.createElement("div");
-	sideBarTab.id = "debugToggle";
-	sideBarTab.style.position = "absolute";
-	sideBarTab.style.width = tabWidth + "px";
-	sideBarTab.style.height = "60px";
-	sideBarTab.style.top = "50%";
-	sideBarTab.style.left = "-" + tabWidth + "px";
-	sideBarTab.style.borderTopLeftRadius = "3px";
-	sideBarTab.style.borderBottomLeftRadius = "3px";
-	sideBarTab.style.background = DARK_GREY;
-
-
-	// Wire the button
-	sideBarTab.onclick = function() {
-		var toolPanel = document.getElementById(SIDE_BAR_ID);
-		if (debuggingPanelExpanded)
-		{
-			toolPanel.style.width = "0px";
-			debuggingPanelExpanded = false;
-		}
-		else
-		{
-			toolPanel.style.right = "0px";
-			toolPanel.style.width = SIDE_BAR_WIDTH + "px";
-			debuggingPanelExpanded = true;
-		}
-	};
-
-	sideBar.appendChild(sideBarTab);
-	sideBar.appendChild(sideBarBody);
-	return sideBar;
-}
-
 
 // ERROR MESSAGE
 
@@ -113,8 +43,6 @@ function initErrorMessage(message)
 
 
 // EVENT BLOCKER
-
-var EVENT_BLOCKER_ID = 'elm-reactor-event-blocker'
 
 var eventsToIgnore = [
 	"click", "mousemove", "mouseup", "mousedown", "mouseclick", "keydown",
@@ -141,67 +69,55 @@ function ignore(e)
 	return false;
 }
 
-function initEventBlocker()
-{
-	var node = document.createElement("div");
-	node.id = EVENT_BLOCKER_ID;
-	node.style.position = "absolute";
-	node.style.top = "0px";
-	node.style.left = "0px";
-	node.style.width = "100%";
-	node.style.height = "100%";
-
-	for (var i = eventsToIgnore.length; i-- ;)
-	{
-		node.addEventListener(eventsToIgnore[i], ignore, true);
-	}
-
-	return node;
-}
-
-function addEventBlocker(node)
-{
-	if (!document.getElementById(EVENT_BLOCKER_ID))
-	{
-		node.appendChild(initEventBlocker());
-	}
-}
-
-function removeEventBlocker()
-{
-	var blocker = document.getElementById(EVENT_BLOCKER_ID);
-	if (blocker)
-	{
-		blocker.parentNode.removeChild(blocker);
-	}
-}
-
-
 
 // CODE TO SET UP A MODULE FOR DEBUGGING
 
 Elm.fullscreenDebug = function(moduleName, fileName) {
 	var result = initModuleWithDebugState(moduleName);
 
-	document.body.appendChild(createSideBar());
+	var container = document.createElement("div");
+	container.style.width = "100%";
+	container.style.height = "100%";
+	container.style.position = "absolute";
+	container.style.top = 0;
+	container.style.left = 0;
+	document.body.appendChild(container);
 
-	var sideBar = Elm.embed(Elm.SideBar, document.getElementById(SIDE_BAR_BODY_ID), {
+	var overlay = Elm.embed(Elm.Overlay, container, {
 		eventCounter: 0,
 		watches: [],
 		showSwap: true
 	});
 
-	function updateWatches(index)
+	var sideBar = document.getElementById('elm-reactor-side-bar');
+	sideBar.addEventListener("click", blockClicks);
+	function blockClicks(e)
 	{
-		sideBar.ports.watches.send(watchesAt(index, result.debugState));
+		var event = e || window.event;
+		event.cancelBubble = true;
+		if (event.stopPropagation)
+		{
+			event.stopPropagation();
+		}
 	}
 
-	sideBar.ports.scrubTo.subscribe(function(index) {
+	var eventBlocker = document.getElementById('elm-reactor-event-blocker');
+	for (var i = eventsToIgnore.length; i-- ;)
+	{
+		eventBlocker.addEventListener(eventsToIgnore[i], ignore, true);
+	}
+
+	function updateWatches(index)
+	{
+		overlay.ports.watches.send(watchesAt(index, result.debugState));
+	}
+
+	overlay.ports.scrubTo.subscribe(function(index) {
 		jumpTo(index, result.debugState);
 		updateWatches(index);
 	});
 
-	sideBar.ports.pause.subscribe(function(paused) {
+	overlay.ports.pause.subscribe(function(paused) {
 		if (paused)
 		{
 			pause(result.debugState);
@@ -213,17 +129,17 @@ Elm.fullscreenDebug = function(moduleName, fileName) {
 		}
 	});
 
-	sideBar.ports.restart.subscribe(function() {
+	overlay.ports.restart.subscribe(function() {
 		restart(result.debugState);
 		updateWatches(0);
 	});
 
-	sideBar.ports.permitSwap.subscribe(function(permitSwaps) {
+	overlay.ports.permitSwap.subscribe(function(permitSwaps) {
 		result.debugState.permitSwaps = permitSwaps;
 	});
 
 	result.debugState.onNotify = function(debugState) {
-		sideBar.ports.eventCounter.send(debugState.index);
+		overlay.ports.eventCounter.send(debugState.index);
 		updateWatches(debugState.index);
 	};
 
@@ -351,7 +267,6 @@ function pause(debugState)
 	debugState.paused = true;
 	pauseAsyncCallbacks(debugState);
 	debugState.pausedAtTime = Date.now();
-	addEventBlocker(debugState.node);
 }
 
 function unpause(debugState)
@@ -376,8 +291,6 @@ function unpause(debugState)
 	clearWatchesAfter(debugState.index, debugState);
 
 	unpauseAsyncCallbacks(debugState.asyncCallbacks);
-
-	removeEventBlocker();
 }
 
 function jumpTo(index, debugState)
@@ -456,7 +369,6 @@ function transferState(previousDebugState, debugState)
 		pauseAsyncCallbacks(debugState);
 		debugState.pausedAtTime = previousDebugState.pausedAtTime;
 		debugState.totalTimeLost = previousDebugState.totalTimeLost;
-		addEventBlocker(debugState.node);
 	}
 
 	while (debugState.index < debugState.events.length)

@@ -8,12 +8,18 @@ type Action
     | Pause Bool
     | TotalEvents Int
     | ScrubPosition Int
+    | SidebarVisible Bool
+    | UpdateWatches (List (String, String))
+    | PermitSwap Bool
     | RestartButtonAction Button.Action
     | PlayPauseButtonAction Button.Action
     | NoOp
 
 type alias Model =
-    { paused : Bool
+    { sidebarVisible : Bool
+    , watches : List (String, String)
+    , permitSwap : Bool
+    , paused : Bool
     , totalEvents : Int
     , scrubPosition : Int
     , restartButtonState : Button.Model
@@ -23,7 +29,10 @@ type alias Model =
 
 startModel : Model
 startModel =
-    { paused = False
+    { sidebarVisible = True
+    , watches = []
+    , permitSwap = True
+    , paused = False
     , totalEvents = 0
     , scrubPosition = 0
     , restartButtonState = Button.Up
@@ -57,6 +66,21 @@ update action state =
         { state |
             scrubPosition <- pos,
             paused <- True
+        }
+
+    SidebarVisible visible ->
+        { state |
+            sidebarVisible <- visible
+        }
+
+    UpdateWatches newWatches ->
+        { state |
+            watches <- newWatches
+        }
+
+    PermitSwap permit ->
+        { state |
+            permitSwap <- permit
         }
 
     RestartButtonAction buttonAct ->

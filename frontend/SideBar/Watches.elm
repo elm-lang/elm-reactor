@@ -6,26 +6,30 @@ import Html.Attributes exposing (..)
 import Markdown
 
 import Styles exposing (..)
+import SideBar.Controls as Controls
+
+
+sidePadding =
+  20
 
 
 view : List (String, String) -> Html
 view watches =
-  div viewAttributes <|
-      case watches of
+  div
+    [ style
+        [ "overflow-y" => "auto"
+        , "overflow-x" => "hidden"
+        , "padding" => ("0 " ++ intToPx sidePadding)
+        , "position" => "absolute"
+        , "bottom" => "10px"
+        , "top" => intToPx (Controls.totalHeight + 1)
+        , "width" => intToPx (sidebarWidth - 2*sidePadding)
+        ]
+    ]
+    ( case watches of
         [] -> [noWatches]
         _ -> List.map viewWatch watches
-
-
-viewAttributes : List Attribute
-viewAttributes =
-  [ style
-    [ ("overflow-y", "auto")
-    , ("overflow-x", "hidden")
-    , ("height", "100%")
-    , ("padding", "0 20px")
-    ]
-  ]
-
+    )
 
 
 -- WATCHES
@@ -38,7 +42,8 @@ viewWatch (name, value) =
 watchAttributes : List Attribute
 watchAttributes =
   [ style
-    [ ("color", colorToCss Color.lightGrey)
+    [ "color" => colorToCss Color.lightGrey
+    , "padding" => "10px 0"
     ]
   ]
 
@@ -51,9 +56,9 @@ viewName name =
 nameAttributes : List Attribute
 nameAttributes =
   [ style
-    [ ("margin", "20px 0 10px")
-    , ("font-weight", "bold")
-    , ("font-family", textTypefaces)
+    [ "margin" => "10px 0 10px"
+    , "font-weight" => "bold"
+    , "font-family" => textTypefaces
     ]
   ]
 
@@ -66,7 +71,7 @@ viewValue value =
 valueAttributes : List Attribute
 valueAttributes =
   [ style
-    [ ("margin", "0 0 0 10px")
+    [ "margin" => "0 0 0 10px"
     ]
   ]
 
@@ -78,8 +83,8 @@ noWatches : Html
 noWatches =
   div
     [ style
-        [ ("font-family", textTypefaces)
-        , ("color", "rgb(170, 170, 170)") -- dark grey
+        [ "font-family" => textTypefaces
+        , "color" => "rgb(170, 170, 170)" -- dark grey
         ]
     ]
     [ Markdown.toHtml noWatchText ]

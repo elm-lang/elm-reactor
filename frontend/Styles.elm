@@ -4,6 +4,16 @@ import Color
 import String
 
 
+(=>) = (,)
+
+
+sidebarWidth = 275
+
+
+lightGrey = Color.rgb 228 228 228
+darkGrey = Color.rgb 74 74 74
+
+
 textTypefaces : String
 textTypefaces =
   "Gotham, Futura, 'Lucida Grande', sans-serif"
@@ -16,14 +26,19 @@ colorToCss color =
     record =
       Color.toRgb color
 
-    rgb =
+    colors =
       List.map toString [record.red, record.green, record.blue]
 
     numbers =
-      String.join "," (rgb ++ [toString record.alpha])
+      String.join "," (colors ++ [toString record.alpha])
 
-  in
-    "rgba(" ++ numbers ++ ")"
+    in
+      "rgba(" ++ numbers ++ ")"
+
+
+intToPx : Int -> String
+intToPx x =
+  toString x ++ "px"
 
 
 -- TODO: would be nice to have these in the Color lib

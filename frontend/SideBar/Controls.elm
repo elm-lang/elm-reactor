@@ -1,31 +1,35 @@
 module SideBar.Controls where
 
 import Color
-import Graphics.Element exposing (..)
-import Graphics.Input exposing (..)
 import Html exposing (..)
 import Html.Attributes as Attr exposing (..)
 import Html.Events exposing (..)
 import Json.Decode exposing (..)
-import List
 import String
-import Signal as S exposing (Signal, (<~), (~))
 import FontAwesome
 
 import Button
 import SideBar.Model as Model
 import Styles exposing (..)
 
-
 -- STYLE
 
 buttonIconSize = 20
 buttonSideLength = 40
 buttonBorderRadius = 8
-sideMargin = 20
-textHeight = 20
-panelWidth = 275
+margin = 20
+eventIdxTextHeight = 15
 
+sliderHeight = 20
+sliderPadding = 10
+
+{- Would be nice to have an abstraction for elements that know their height...
+Like Graphics.Element! Unfortunately it doesn't do everything we need
+and we don't want to mix them. -}
+totalHeight : Int
+totalHeight =
+  buttonSideLength + sliderPadding + sliderHeight
+    + 2 * eventIdxTextHeight + 2 * margin + 4
 
 hoverBrightness : Color.Color -> Button.Model -> Color.Color
 hoverBrightness baseColor state =
@@ -50,18 +54,23 @@ restartButtonColor =
   hoverBrightness lightGrey
 
 
+eventNumberTextStyle =
+  [ "color" => colorToCss lightGrey
+  , "font-family" => textTypefaces
+  , "font-size" => "12px"
+  ]
+
+
+swapButtonTextStyle =
+  [ "color" => colorToCss lightGrey
+  , "font-family" => textTypefaces
+  , "font-size" => "14px"
+  ]
+
+
 blue = Color.rgb 28 129 218
 lightGrey = Color.rgb 228 228 228
 darkGrey = Color.rgb 74 74 74
-
-
-(=>) = (,)
-
-
-eventNumberTextStyle =
-  [ "color" => colorToCss lightGrey
-  , "font-face" => textTypefaces
-  ]
 
 
 -- VIEW
@@ -77,13 +86,13 @@ playPauseButton isPlay state =
 
     render state =
       iconButton (playPauseButtonColor state) icon
-  in
+  in 
     Button.view
-      (Signal.forwardTo buttonStateMailbox.address Model.PlayPauseButtonAction)
-      pausedInputMailbox.address
-      (not isPlay)
-      state
-      render
+        (Signal.forwardTo buttonStateMailbox.address Model.PlayPauseButtonAction)
+        pausedInputMailbox.address
+        (not isPlay)
+        state
+        render
 
 
 pausedInputMailbox : Signal.Mailbox Bool
@@ -98,7 +107,7 @@ restartButton state =
       iconButton
         (restartButtonColor st)
         (FontAwesome.undo darkGrey buttonIconSize)
-  in
+  in 
     Button.view
       (Signal.forwardTo buttonStateMailbox.address Model.RestartButtonAction)
       restartMailbox.address
@@ -119,7 +128,6 @@ buttonStateMailbox =
 
 swapButton : Bool -> Html
 swapButton permitSwap =
-  -- TODO: put text "swap" next to it
   input
     [ type' "checkbox"
     , on "change"
@@ -139,7 +147,11 @@ scrubSlider : Int -> Model.Model -> Html
 scrubSlider width state =
   input
     [ type' "range"
-    , style ["width" => intToPx width]
+    , style
+        [ "width" => intToPx width
+        , "height" => intToPx sliderHeight
+        , "margin" => "0"
+        ]
     , Attr.min (toString 0)
     , Attr.max (toString state.totalEvents)
     , Attr.value (toString state.scrubPosition)
@@ -159,7 +171,7 @@ sliderEventText : Int -> Model.Model -> Html
 sliderEventText width state =
   div
     [ style
-        [ "height" => intToPx textHeight
+        [ "height" => intToPx eventIdxTextHeight
         , "position" => "relative"
         ]
     ]
@@ -170,7 +182,7 @@ sliderMinMaxText : Int -> Model.Model -> Html
 sliderMinMaxText width state =
   div
     [ style
-        [ "height" => intToPx textHeight
+        [ "height" => intToPx eventIdxTextHeight
         , "position" => "relative"
         ]
     ]
@@ -182,8 +194,20 @@ sliderMinMaxText width state =
 positionedText : Int -> Int -> Int -> Bool -> Html
 positionedText width frameIdx totalEvents alwaysRight =
   let
-    textWidthOffset =
-      14
+    charWidth =
+      10
+
+    numDigits =
+      if frameIdx == 0 then
+        1
+      else
+        ceiling <| logBase 10 (toFloat frameIdx)
+
+    textWidth =
+      charWidth * numDigits
+
+    sliderOffset =
+      8
 
     xFraction =
       if alwaysRight then
@@ -191,8 +215,14 @@ positionedText width frameIdx totalEvents alwaysRight =
       else
         toFloat frameIdx / toFloat totalEvents
 
+    textCenterpointRange =
+      toFloat width - 2 * sliderOffset + 5
+
+    textCenterpoint =
+      xFraction * textCenterpointRange
+
     xPos =
-      xFraction * (toFloat width - textWidthOffset)
+      textCenterpoint - (toFloat textWidth)/2 + sliderOffset
   in
     div
       [ style <|
@@ -205,79 +235,47 @@ positionedText width frameIdx totalEvents alwaysRight =
       [ text (toString frameIdx) ]
 
 
-view : Bool -> Bool -> Model.Model -> Html
-view showSwap permitSwap state =
+view : Bool -> Model.Model -> Html
+view showSwap state =
   let
     midWidth =
-      panelWidth - sideMargin * 2
+      sidebarWidth - margin * 2
 
-    topSpacerHeight =
-      15
-
-    buttonSliderSpaceHeight =
-      10
-
-    fittedSwapButton =
+    swapWithLabel =
       div
-        [ style <|
-            eventNumberTextStyle ++
-            [ "display" => "inline-block"
-            , "position" => "absolute"
-            , "transform" => "translate(100%, 50%)"
-            ]
-        ]
-        (if showSwap then [ text "swap", swapButton permitSwap ] else [])
+        [ style swapButtonTextStyle ]
+        (if showSwap then [ text "swap", swapButton state.permitSwap ] else [])
 
-    floatButton floatDir button =
-      div
-        [ style
-            [ "display" => "inline-block"
-            , "float" => floatDir
-            ]
-        ]
-        [ button ]
-
-    -- TODO: get these horizontally aligned
     buttonContainer =
       div
-        [ style ["height" => "50px"] ]
-        [ floatButton "left"
-            (restartButton state.restartButtonState)
-        , fittedSwapButton
-        , floatButton "right"
-            (playPauseButton state.paused state.playPauseButtonState)
+        [ style
+            [ "display" => "-webkit-flex"
+            , "-webkit-flex-direction" => "row"
+            , "-webkit-justify-content" => "space-between"
+            , "-webkit-align-items" => "center"
+            ]
+        ]
+        [ restartButton state.restartButtonState
+        , swapWithLabel
+        , playPauseButton state.paused state.playPauseButtonState
         ]
 
     sliderContainer =
       div
-        []
+        [ style
+            [ "padding-top" => intToPx sliderPadding ]
+        ]
         [ sliderEventText midWidth state
         , scrubSlider midWidth state
         , sliderMinMaxText midWidth state
         ]
-
-    controls =
-      div
-        [ style ["margin" => intToPx sideMargin] ]
-        [ buttonContainer
-        , sliderContainer
-        ]
-
-    bar =
-      div
-        [ style
-            [ "height" => "1px"
-            , "width" => intToPx panelWidth
-            , "opacity" => "0.3"
-            , "background-color" => colorToCss Color.lightGrey
-            ]
-        ]
-        []
   in
     div
-      []
-      [ controls
-      , bar
+      [ style
+          [ "padding" => intToPx margin ]
+      ]
+      [ buttonContainer
+      , sliderContainer
       ]
 
 
@@ -298,7 +296,11 @@ iconButton bgColor iconHtml =
           ]
       ]
       [ div
-          [ style ["transform" => translateToCss transPx transPx] ]
+          [ style
+              [ "padding" => intToPx transPx
+              , "display" => "inline-block"
+              ]
+          ]
           [ iconHtml ]
       ]
 
@@ -306,8 +308,3 @@ iconButton bgColor iconHtml =
 translateToCss : Int -> Int -> String
 translateToCss x y =
   "translate(" ++ intToPx x ++ "," ++ intToPx y ++ ")"
-
-
-intToPx : Int -> String
-intToPx x =
-  toString x ++ "px"
