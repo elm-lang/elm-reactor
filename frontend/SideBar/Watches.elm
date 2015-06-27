@@ -9,16 +9,21 @@ import Styles exposing (..)
 import SideBar.Controls as Controls
 
 
+sidePadding =
+  20
+
+
 view : List (String, String) -> Html
 view watches =
   div
     [ style
         [ "overflow-y" => "auto"
         , "overflow-x" => "hidden"
-        , "padding" => "0 20px"
+        , "padding" => ("0 " ++ intToPx sidePadding)
         , "position" => "absolute"
         , "bottom" => "10px"
         , "top" => intToPx (Controls.totalHeight + 1)
+        , "width" => intToPx (sidebarWidth - 2*sidePadding)
         ]
     ]
     ( case watches of
