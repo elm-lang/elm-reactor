@@ -4,7 +4,7 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import Signal
-import Window
+import Color
 
 import Styles exposing (..)
 import SideBar.Model as Model
@@ -12,11 +12,11 @@ import SideBar.Controls as Controls
 import SideBar.Watches as Watches
 
 
-view : Bool -> Int -> Model.Model -> Html
-view showSwap height state =
+view : Bool -> Model.Model -> Html
+view showSwap state =
   div
     []
-    [ sidebar showSwap height state
+    [ sidebar showSwap state
     , eventBlocker state.paused
     ]
 
@@ -27,8 +27,8 @@ eventBlocker visible =
     [ id "elm-reactor-event-blocker"
     , style
         [ "position" => "absolute"
-        , "top" => "0px"
-        , "left" => "0px"
+        , "top" => "0"
+        , "left" => "0"
         , "width" => "100%"
         , "height" => "100%"
         , "display" => if visible then "block" else "none"
@@ -37,15 +37,15 @@ eventBlocker visible =
     []
 
 
-sidebar : Bool -> Int -> Model.Model -> Html
-sidebar showSwap height state =
+sidebar : Bool -> Model.Model -> Html
+sidebar showSwap state =
   let
     constantStyles =
-      [ "background" => colorToCss darkGrey
+      [ "background-color" => colorToCss darkGrey
       , "width" => intToPx sidebarWidth
       , "position" => "absolute"
-      , "top" => "0px"
-      , "right" => "0px"
+      , "top" => "0"
+      , "bottom" => "0"
       , "transition-duration" => "0.3s"
       , "opacity" => "0.97"
       , "z-index" => "1"
@@ -53,29 +53,38 @@ sidebar showSwap height state =
     
     toggleStyles =
       if state.sidebarVisible
-      then [ "right" => "0px"
+      then [ "right" => "0"
            , "width" => intToPx sidebarWidth
            ]
-      else [ "width" => "0px" ]
+      else [ "width" => "0" ]
+
+    dividerBar =
+      div
+        [ style
+            [ "height" => "1px"
+            , "width" => intToPx sidebarWidth
+            , "opacity" => "0.3"
+            , "background-color" => colorToCss Color.lightGrey
+            ]
+        ]
+        []
   in
     div
       [ id "elm-reactor-side-bar"
       -- done in JS: cancelBubble / stopPropagation on this
       , style (constantStyles ++ toggleStyles)
       ]
-      [ sidebarTab state
-      , div
-          [ style [ "height" => "100%" ] ]
-          [ Controls.view showSwap state
-          , Watches.view (height - Controls.controlsHeight) state.watches
-          ]
+      [ toggleTab state
+      , Controls.view showSwap state
+      , dividerBar
+      , Watches.view state.watches
       ]
 
 
 tabWidth = 25
 
-sidebarTab : Model.Model -> Html
-sidebarTab state =
+toggleTab : Model.Model -> Html
+toggleTab state =
   div
     [ style
         [ "position" => "absolute"
@@ -100,7 +109,7 @@ sidebarVisibleMailbox =
 main : Signal Html
 main =
   -- TODO: move showSwap to the #@$ model
-  Signal.map2 (view showSwap) Window.height scene
+  Signal.map (view showSwap) scene
 
 
 scene : Signal Model.Model

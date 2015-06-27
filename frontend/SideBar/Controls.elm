@@ -17,16 +17,19 @@ import Styles exposing (..)
 buttonIconSize = 20
 buttonSideLength = 40
 buttonBorderRadius = 8
-sideMargin = 20
-textHeight = 20
+margin = 20
+eventIdxTextHeight = 15
 
+sliderHeight = 20
+sliderPadding = 10
 
-{- 111 read off of chrome inspector because I can't figure
-out how to make the watches scroll properly without knowing
-the height of everything.
--}
-controlsHeight = 111 + 2 * sideMargin
-
+{- Would be nice to have an abstraction for elements that know their height...
+Like Graphics.Element! Unfortunately it doesn't do everything we need
+and we don't want to mix them. -}
+totalHeight : Int
+totalHeight =
+  buttonSideLength + sliderPadding + sliderHeight
+    + 2 * eventIdxTextHeight + 2 * margin + 4
 
 hoverBrightness : Color.Color -> Button.Model -> Color.Color
 hoverBrightness baseColor state =
@@ -146,6 +149,7 @@ scrubSlider width state =
     [ type' "range"
     , style
         [ "width" => intToPx width
+        , "height" => intToPx sliderHeight
         , "margin" => "0"
         ]
     , Attr.min (toString 0)
@@ -167,7 +171,7 @@ sliderEventText : Int -> Model.Model -> Html
 sliderEventText width state =
   div
     [ style
-        [ "height" => intToPx textHeight
+        [ "height" => intToPx eventIdxTextHeight
         , "position" => "relative"
         ]
     ]
@@ -178,7 +182,7 @@ sliderMinMaxText : Int -> Model.Model -> Html
 sliderMinMaxText width state =
   div
     [ style
-        [ "height" => intToPx textHeight
+        [ "height" => intToPx eventIdxTextHeight
         , "position" => "relative"
         ]
     ]
@@ -235,76 +239,43 @@ view : Bool -> Model.Model -> Html
 view showSwap state =
   let
     midWidth =
-      sidebarWidth - sideMargin * 2
+      sidebarWidth - margin * 2
 
-    fittedSwapButton =
+    swapWithLabel =
       div
-        [ style <|
-            swapButtonTextStyle ++
-            [ "display" => "inline-block"
-            , "position" => "absolute"
-            , "left" => "110px"
-            , "top" => "30px"
-            ]
-        ]
+        [ style swapButtonTextStyle ]
         (if showSwap then [ text "swap", swapButton state.permitSwap ] else [])
 
-    floatButton floatDir button =
-      div
-        [ style
-            [ "display" => "inline-block"
-            , "float" => floatDir
-            ]
-        ]
-        [ button ]
-
-    -- TODO: get these horizontally aligned
     buttonContainer =
       div
         [ style
-            [ "height" => "50px"
-            , "width" => intToPx midWidth
+            [ "display" => "-webkit-flex"
+            , "-webkit-flex-direction" => "row"
+            , "-webkit-justify-content" => "space-between"
+            , "-webkit-align-items" => "center"
             ]
         ]
-        [ floatButton "left"
-            (restartButton state.restartButtonState)
-        , fittedSwapButton
-        , floatButton "right"
-            (playPauseButton state.paused state.playPauseButtonState)
+        [ restartButton state.restartButtonState
+        , swapWithLabel
+        , playPauseButton state.paused state.playPauseButtonState
         ]
 
     sliderContainer =
       div
-        []
+        [ style
+            [ "padding-top" => intToPx sliderPadding ]
+        ]
         [ sliderEventText midWidth state
         , scrubSlider midWidth state
         , sliderMinMaxText midWidth state
         ]
-
-    controls =
-      div
-        [ style
-            [ "margin" => intToPx sideMargin]
-        ]
-        [ buttonContainer
-        , sliderContainer
-        ]
-
-    bar =
-        div
-          [ style
-              [ "height" => "1px"
-              , "width" => intToPx sidebarWidth
-              , "opacity" => "0.3"
-              , "background-color" => colorToCss Color.lightGrey
-              ]
-          ]
-          []
   in
     div
-      []
-      [ controls
-      , bar
+      [ style
+          [ "padding" => intToPx margin ]
+      ]
+      [ buttonContainer
+      , sliderContainer
       ]
 
 
