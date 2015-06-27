@@ -53,10 +53,8 @@ sidebar showSwap state =
     
     toggleStyles =
       if state.sidebarVisible
-      then [ "right" => "0"
-           , "width" => intToPx sidebarWidth
-           ]
-      else [ "width" => "0" ]
+      then [ "right" => "0" ]
+      else [ "right" => intToPx -sidebarWidth ]
 
     dividerBar =
       div
