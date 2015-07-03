@@ -5,13 +5,16 @@ import Array as A
 import Time
 import Task as T
 import Signal
+import Json.Encode as JsEncode
+
+import Button
 
 type alias DebugState =
     { runningState : RunningState
     -- , totalTimeLost : ?
     , events : A.Array Event
     , snapshots : A.Array Snapshot
-    , timeStarted : Time
+    , timeStarted : Time.Time
     -- async callbacks?
     -- traces : ?
     , permitSwaps : Bool
@@ -34,8 +37,8 @@ type Action
     | NoOp
 
 type RunningState
-    = Running Time
-    | Paused Time FrameIndex
+    = Running Time.Time
+    | Paused Time.Time FrameIndex
 
 type alias FrameIndex = Int
 
@@ -46,9 +49,13 @@ type alias FrameIndex = Int
 type alias Event =
     { id : SGNodeId
     , value : ElmValue
-    , time : Time
-    , watchUpdates : Dict WatchId ElmValue
+    , time : Time.Time
     }
+
+type alias SGNodeId = Int
+
+type alias ElmValue =
+    JsEncode.Value
 
 -- SNAPSHOTS
 
@@ -59,24 +66,19 @@ type alias Snapshot =
 
 -- signal graph
 
-type alias SGSnapshot = Dict SGNodeId SignalValue
-
-type alias SGNodeId = Int
-
-type alias SignalValue =
-    { id : Int
-    , value : ElmValue
-    }
+type alias SGSnapshot =
+    JsEncode.Value -- no need to decode these from JS
 
 emptySnapshot : Snapshot
 emptySnapshot =
-  { signalGraph = D.emtpy
+  { signalGraph = JsEncode.null -- TODO: array?
   , watches = D.empty
   }
 
 -- WATCHES
 
-type alias WatchSnapshot = Dict WatchId ElmValue
+type alias WatchSnapshot =
+    D.Dict WatchId ElmValue
 
 type alias WatchId = String
 
@@ -84,7 +86,7 @@ type alias WatchId = String
 
 update : Action -> DebugState -> DebugState
 update action state =
-  ...
+  state -- TODO
 
 -- incoming
 
@@ -98,18 +100,18 @@ port watchUpdates : Signal (String, String)
 
 captureSnapshotMailbox : Signal.Mailbox (T.Task String ())
 captureSnapshotMailbox =
-  Signal.mailbox T.succeed
+  Signal.mailbox <| T.succeed ()
 
 port captureSnapshot : Signal (T.Task String ())
 port captureSnapshot =
   captureSnapshotMailbox.signal
 
 
-setToSnapshotMailbox : Signal.Mailbox Snapshot
+setToSnapshotMailbox : Signal.Mailbox SGSnapshot
 setToSnapshotMailbox =
-  Signal.mailbox emptySnapshot
+  Signal.mailbox JsEncode.null
 
-port setToSnapshot : Signal Snapshot
+port setToSnapshot : Signal SGSnapshot
 port setToSnapshot =
   setToSnapshotMailbox.signal
 
