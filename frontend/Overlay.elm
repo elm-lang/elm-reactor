@@ -7,16 +7,16 @@ import Signal
 import Color
 
 import Styles exposing (..)
-import SideBar.Model as Model
+import Model
 import SideBar.Controls as Controls
 import SideBar.Watches as Watches
 
 
-view : Bool -> Model.Model -> Html
-view showSwap state =
+view : Signal.Address Model.Action -> Model.Model -> Html
+view addr state =
   div
     []
-    [ sidebar showSwap state
+    [ sidebar addr showSwap state
     , eventBlocker state.paused
     ]
 
@@ -37,8 +37,8 @@ eventBlocker visible =
     []
 
 
-sidebar : Bool -> Model.Model -> Html
-sidebar showSwap state =
+sidebar : Signal.Address Model.Action -> Model.Model -> Html
+sidebar addr state =
   let
     constantStyles =
       [ "background-color" => colorToCss darkGrey
@@ -73,7 +73,7 @@ sidebar showSwap state =
       , style (constantStyles ++ toggleStyles)
       ]
       [ toggleTab state
-      , Controls.view showSwap state
+      , Controls.view addr state
       , dividerBar
       , Watches.view state.watches
       ]
@@ -81,7 +81,7 @@ sidebar showSwap state =
 
 tabWidth = 25
 
-toggleTab : Model.Model -> Html
+toggleTab : Signal.Address Model.Action -> Model.Model -> Html
 toggleTab state =
   div
     [ style
@@ -94,7 +94,9 @@ toggleTab state =
         , "border-bottom-left-radius" => "3px"
         , "background" => colorToCss darkGrey
         ]
-    , onClick sidebarVisibleMailbox.address (not state.sidebarVisible)
+    , onClick
+        sidebarVisibleMailbox.address
+        (SidebarVisible <| not state.sidebarVisible)
     ]
     []
 
@@ -115,62 +117,3 @@ scene =
   Signal.foldp Model.update Model.startModel aggregateUpdates
 
 
-aggregateUpdates : Signal Model.Action
-aggregateUpdates =
-  Signal.mergeMany
-    [ Signal.map (always Model.Restart) restartMailbox.signal
-    , Signal.map Model.Pause pausedInputMailbox.signal
-    , Signal.map Model.TotalEvents eventCounter
-    , Signal.map Model.ScrubPosition scrubMailbox.signal
-    , Signal.map Model.UpdateWatches watches
-    , Signal.map Model.PermitSwap permitSwapMailbox.signal
-    , Signal.map Model.SidebarVisible sidebarVisibleMailbox.signal
-    , buttonStateMailbox.signal
-    ]
-
--- CONTROL MAILBOXES
-
-permitSwapMailbox =
-  Controls.permitSwapMailbox
-
-restartMailbox =
-  Controls.restartMailbox
-
-pausedInputMailbox =
-  Controls.pausedInputMailbox
-
-scrubMailbox =
-  Controls.scrubMailbox
-
-buttonStateMailbox =
-  Controls.buttonStateMailbox
-
--- INCOMING PORTS
-
-port eventCounter : Signal Int
-
-port watches : Signal (List (String, String))
-
-port showSwap : Bool
-
-
--- OUTGOING PORTS
-
-port scrubTo : Signal Int
-port scrubTo =
-    scrubMailbox.signal
-
-
-port pause : Signal Bool
-port pause =
-    pausedInputMailbox.signal
-
-
-port restart : Signal Int
-port restart =
-    Signal.map (always 0) restartMailbox.signal
-
-
-port permitSwap : Signal Bool
-port permitSwap =
-    permitSwapMailbox.signal

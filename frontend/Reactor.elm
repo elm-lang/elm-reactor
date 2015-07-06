@@ -1,114 +1,42 @@
 module Reactor where
 
-import Dict as D
-import Array as A
-import Time
-import Task as T
 import Signal
-import Json.Encode as JsEncode
+import Time
+import Array as A
+import Dict as D
+import Task as T
 import Maybe as M
-import Debug
+import Html exposing (..)
 
-import Button
+import Overlay
+import Model exposing (..)
 
-type alias DebugState =
-    { runningState : RunningState
-    -- , totalTimeLost : ?
-    , events : A.Array Event
-    , snapshots : A.Array Snapshot
-    , timeStarted : Time.Time
-    -- async callbacks?
-    -- traces : ?
-    , permitSwap : Bool
-    -- TODO: move into sidebar model?
-    , sidebarVisible : Bool
-    , restartButtonState : Button.Model
-    , playPauseButtonState : Button.Model
-    }
 
-initState : SGSnapshot -> Time.Time -> DebugState
-initState snapshot timeStarted =
-  { runningState = Running 0
-  -- , totalTimeLost = ?
-  , events = A.empty
-  , snapshots = A.fromList [emptySnapshot]
-  , timeStarted = timeStarted
-  -- async callbacks?
-  -- traces = ?
-  , permitSwap = True
-  -- TODO: move into sidebar model?
-  , sidebarVisible = True
-  , restartButtonState = Button.Up
-  , playPauseButtonState = Button.Up
-  }
+main : Signal Html
+main =
+  Signal.map (Overlay.view uiActions.address) state
 
-type Action
-    -- UI actions
-    = Restart Time.Time
-    | Pause Bool Time.Time -- will be playing
-    | ScrubPosition FrameIndex Time.Time
-    | SidebarVisible Bool
-    | PermitSwap Bool
-    | RestartButtonAction Button.Action
-    | PlayPauseButtonAction Button.Action
-    -- events from RTS
-    | NewEvent Event
-    | NewSnapshot Snapshot
-    | NoOp
 
-type RunningState
-    = Running Time.Time -- delay
-    | Paused Time.Time FrameIndex -- paused at time & idx
+state : Signal Model
+state =
+  Signal.foldp update allActions 
 
-type alias FrameIndex = Int
 
-type alias SnapshotIndex = Int
+uiActions : Signal.Mailbox Action
+uiActions =
+  Signal.mailbox NoOp
 
--- EVENTS
 
--- TODO: add trace updates
-
-type alias Event =
-    { id : SGNodeId
-    , value : ElmValue
-    , time : Time.Time
-    , watchUpdates : List (String, String)
-    }
-
-type alias SGNodeId = Int
-
-type alias ElmValue =
-    JsEncode.Value
-
--- SNAPSHOTS
-
-type alias Snapshot =
-    { signalGraph : SGSnapshot
-    , watches : WatchSnapshot
-    }
-
--- signal graph
-
-type alias SGSnapshot =
-    JsEncode.Value -- no need to decode these from JS
-
-emptySnapshot : Snapshot
-emptySnapshot =
-  { signalGraph = JsEncode.null -- TODO: array?
-  , watches = D.empty
-  }
-
--- WATCHES
-
-type alias WatchSnapshot =
-    D.Dict WatchId ElmValue
-
-type alias WatchId = String
-
--- Update
+allActions : Signal Action
+allActions =
+  Signal.mergeMany
+    [ uiActions.signal
+    , events
+    , snapshots
+    ]
 
 -- don't forget about applying the watch updates that come with events!
-update : Action -> DebugState -> (DebugState, Maybe (T.Task x ()))
+update : Action -> Model -> (Model, Maybe (T.Task x ()))
 update action state =
   case action of
     Restart now ->
@@ -152,7 +80,7 @@ update action state =
         , Just <| delayTask `T.andThen` (always initSnapshotTask)
         )
 
-    Pause willBePlaying now ->
+    PlayPause willBePlaying now ->
       let
         (newState, maybeDelay) =
           pausePlay state willBePlaying now
@@ -248,7 +176,7 @@ update action state =
       ( { state |
             permitSwap <- permit
         }
-      , Nothing
+      , Signal.send permitSwapMailbox.address permit
       )
 
     RestartButtonAction buttonAct ->
@@ -269,98 +197,11 @@ update action state =
       ( state, Nothing )
 
 
-curFrameIdx : DebugState -> FrameIndex
-curFrameIdx state =
-  case state.runningState of
-    Running _ ->
-      numFrames state
-
-    Paused _ idx ->
-      idx
-
-
-numFrames : DebugState -> Int
-numFrames state =
-  A.length state.events + 1
-
-
-eventsPerSnapshot : Int
-eventsPerSnapshot =
-  100
-
-
-closestSnapshotBefore : FrameIndex -> SnapshotIndex
-closestSnapshotBefore idx =
-  floor <| (toFloat idx) / (toFloat eventsPerSnapshot)
-
-
-snapshotAtIdx : SnapshotIndex -> DebugState -> Snapshot
-snapshotAtIdx idx state =
-  state.snapshots
-    |> A.get idx
-    |> getOrCrash ("no snapshot at index " ++ (toString idx))
-
-
-pausePlay : DebugState -> Bool -> Time.Time -> (DebugState, Maybe Time.Time)
-pausePlay state willBePlaying now =
-  case state.runningState of
-    Running delay ->
-      if willBePlaying then
-        Debug.crash "already playing"
-      else
-        ( { state |
-              runningState <- Paused now (numFrames state)
-          }
-        , Nothing
-        )
-
-    Paused pausedAtTime idx ->
-      if willBePlaying then
-        let
-          lastEvtTime =
-            if curFrameIdx state == idx then
-              pausedAtTime
-            else if idx == 0 then
-              state.timeStarted
-            else
-              state.events
-                |> A.get (idx - 1)
-                |> getOrCrash "no event at index"
-                |> .time
-
-          delay =
-            now - lastEvtTime
-        in
-          -- discard events and snapshots after where we're unpausing
-          ( { state 
-                | runningState <- Running delay
-                , events <- state.events |> A.slice 0 idx
-                , snapshots <- state.snapshots |> A.slice 0 (closestSnapshotBefore idx)
-            }
-          , Just delay
-          )
-
-      else
-        Debug.crash "already paused"
-
-
-getOrCrash : String -> Maybe a -> a
-getOrCrash msg maybe =
-  case maybe of
-    Just x ->
-      x
-
-    Nothing ->
-      Debug.crash msg
-
-
 -- incoming
 
 port events : Signal Event
 
 port snapshots : Signal SGSnapshot
-
-port watchUpdates : Signal (String, String)
 
 -- outgoing
 
@@ -400,3 +241,17 @@ delayUpdateMailbox =
 port delayUpdates : Signal Time.Time
 port delayUpdates =
   delayUpdateMailbox.signal
+
+
+port permitSwap : Signal Bool
+port permitSwap =
+  let
+    fun act =
+      case act of
+        PermitSwap permit ->
+          Just permit
+
+        _ ->
+          Nothing
+  in
+    Signal.filterMap fun True uiActions

@@ -7,9 +7,10 @@ import Html.Events exposing (..)
 import Json.Decode exposing (..)
 import String
 import FontAwesome
+import Signal
 
 import Button
-import SideBar.Model as Model
+import Model
 import Styles exposing (..)
 
 -- STYLE
@@ -75,8 +76,8 @@ darkGrey = Color.rgb 74 74 74
 
 -- VIEW
 
-playPauseButton : Bool -> Button.Model -> Html
-playPauseButton isPlay state =
+playPauseButton : Signal.Address Model.Action -> Bool -> Button.Model -> Html
+playPauseButton addr isPlay state =
   let
     icon =
       if isPlay then
@@ -88,20 +89,15 @@ playPauseButton isPlay state =
       iconButton (playPauseButtonColor state) icon
   in 
     Button.view
-        (Signal.forwardTo buttonStateMailbox.address Model.PlayPauseButtonAction)
-        pausedInputMailbox.address
-        (not isPlay)
+        (Signal.forwardTo addr Model.PlayPauseButtonAction)
+        addr
+        (Model.PlayPause (not isPlay)) -- TODO: time
         state
         render
 
 
-pausedInputMailbox : Signal.Mailbox Bool
-pausedInputMailbox =
-  Signal.mailbox False
-
-
-restartButton : Button.Model -> Html
-restartButton state =
+restartButton : Signal.Address Model.Action -> Button.Model -> Html
+restartButton addr state =
   let
     render st =
       iconButton
@@ -109,42 +105,27 @@ restartButton state =
         (FontAwesome.undo darkGrey buttonIconSize)
   in 
     Button.view
-      (Signal.forwardTo buttonStateMailbox.address Model.RestartButtonAction)
-      restartMailbox.address
-      ()
+      (Signal.forwardTo addr Model.RestartButtonAction)
+      addr
+      Model.Restart -- TODO: time
       state
       render
 
 
-restartMailbox : Signal.Mailbox ()
-restartMailbox =
-  Signal.mailbox ()
-
-
-buttonStateMailbox : Signal.Mailbox Model.Action
-buttonStateMailbox =
-  Signal.mailbox Model.NoOp
-
-
-swapButton : Bool -> Html
-swapButton permitSwap =
+swapButton : Signal.Address Model.Action -> Bool -> Html
+swapButton addr permitSwap =
   input
     [ type' "checkbox"
     , on "change"
         targetChecked
-        (Signal.message permitSwapMailbox.address)
+        (\permit -> Signal.message addr (Model.PermitSwap permit))
     , checked permitSwap
     ]
     []
 
 
-permitSwapMailbox : Signal.Mailbox Bool
-permitSwapMailbox =
-  Signal.mailbox True
-
-
-scrubSlider : Int -> Model.Model -> Html
-scrubSlider width state =
+scrubSlider : Signal.Address Model.Action -> Int -> Model.Model -> Html
+scrubSlider addr width state =
   input
     [ type' "range"
     , style
@@ -157,14 +138,9 @@ scrubSlider width state =
     , Attr.value (toString state.scrubPosition)
     , on "input"
         (at ["target","value"] (customDecoder string String.toInt))
-        (Signal.message scrubMailbox.address)
+        (\idx -> Signal.message addr (Model.ScrubPosition idx)) -- TODO time
     ]
     []
-
-
-scrubMailbox : Signal.Mailbox Int
-scrubMailbox =
-  Signal.mailbox 0
 
 
 sliderEventText : Int -> Model.Model -> Html
@@ -175,20 +151,29 @@ sliderEventText width state =
         , "position" => "relative"
         ]
     ]
-    [ positionedText width state.scrubPosition state.totalEvents False ]
+    [ positionedText
+        width
+        (Model.curFrameIdx state)
+        (Model.numFrames state)
+        False
+    ]
 
 
 sliderMinMaxText : Int -> Model.Model -> Html
 sliderMinMaxText width state =
-  div
-    [ style
-        [ "height" => intToPx eventIdxTextHeight
-        , "position" => "relative"
-        ]
-    ]
-    [ positionedText width 0 state.totalEvents False
-    , positionedText width state.totalEvents state.totalEvents True
-    ]
+  let
+    totalFrames =
+      Model.numFrames state
+  in 
+    div
+      [ style
+          [ "height" => intToPx eventIdxTextHeight
+          , "position" => "relative"
+          ]
+      ]
+      [ positionedText width 0 totalFrames False
+      , positionedText width totalFrames totalFrames True
+      ]
 
 
 positionedText : Int -> Int -> Int -> Bool -> Html
@@ -235,8 +220,8 @@ positionedText width frameIdx totalEvents alwaysRight =
       [ text (toString frameIdx) ]
 
 
-view : Bool -> Model.Model -> Html
-view showSwap state =
+view : Signal.Address Model.Action -> Model.Model -> Html
+view addr state =
   let
     midWidth =
       sidebarWidth - margin * 2
@@ -244,7 +229,9 @@ view showSwap state =
     swapWithLabel =
       div
         [ style swapButtonTextStyle ]
-        (if showSwap then [ text "swap", swapButton state.permitSwap ] else [])
+        [ text "swap"
+        , swapButton addr state.permitSwap
+        ]
 
     containerStyle =
       node
@@ -255,9 +242,9 @@ view showSwap state =
     buttonContainer =
       div
         [ id "elm-reactor-button-container" ]
-        [ restartButton state.restartButtonState
+        [ restartButton addr state.restartButtonState
         , swapWithLabel
-        , playPauseButton state.paused state.playPauseButtonState
+        , playPauseButton addr (Model.isPaused state) state.playPauseButtonState
         ]
 
     sliderContainer =
@@ -266,7 +253,7 @@ view showSwap state =
             [ "padding-top" => intToPx sliderPadding ]
         ]
         [ sliderEventText midWidth state
-        , scrubSlider midWidth state
+        , scrubSlider addr midWidth state
         , sliderMinMaxText midWidth state
         ]
   in
