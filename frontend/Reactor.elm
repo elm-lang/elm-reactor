@@ -29,17 +29,18 @@ uiActions =
 
 allActions : Signal Action
 allActions =
-  Signal.mergeMany
-    [ uiActions.signal
-    , events
-    , snapshots
-    ]
+  Time.timestamp <|
+    Signal.mergeMany
+      [ uiActions.signal
+      , events
+      , snapshots
+      ]
 
 -- don't forget about applying the watch updates that come with events!
-update : Action -> Model -> (Model, Maybe (T.Task x ()))
-update action state =
+update : (Time.Time, Action) -> Model -> (Model, Maybe (T.Task x ()))
+update (now, action) state =
   case action of
-    Restart now ->
+    Restart ->
       let
         (newRunningState, maybeDelay) =
           case state.runningState of
@@ -80,7 +81,7 @@ update action state =
         , Just <| delayTask `T.andThen` (always initSnapshotTask)
         )
 
-    PlayPause willBePlaying now ->
+    PlayPause willBePlaying ->
       let
         (newState, maybeDelay) =
           pausePlay state willBePlaying now
@@ -91,10 +92,10 @@ update action state =
       in
         (newState, maybeDelayTask)
 
-    ScrubPosition newFrameIdx time ->
+    ScrubPosition newFrameIdx ->
       let
         newRunningState =
-          Paused time newFrameIdx
+          Paused now newFrameIdx
 
         curSnapshot =
           closestSnapshotBefore (curFrameIdx state)

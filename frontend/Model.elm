@@ -42,9 +42,9 @@ initState snapshot timeStarted =
 
 type Action
     -- UI actions
-    = Restart Time.Time
-    | PlayPause Bool Time.Time -- will be playing
-    | ScrubPosition FrameIndex Time.Time
+    = Restart
+    | PlayPause Bool -- will be playing
+    | ScrubPosition FrameIndex
     | SidebarVisible Bool
     | PermitSwap Bool
     | RestartButtonAction Button.Action

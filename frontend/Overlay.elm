@@ -16,8 +16,8 @@ view : Signal.Address Model.Action -> Model.Model -> Html
 view addr state =
   div
     []
-    [ sidebar addr showSwap state
-    , eventBlocker state.paused
+    [ sidebar addr state
+    , eventBlocker (Model.isPaused state)
     ]
 
 
@@ -72,7 +72,7 @@ sidebar addr state =
       -- done in JS: cancelBubble / stopPropagation on this
       , style (constantStyles ++ toggleStyles)
       ]
-      [ toggleTab state
+      [ toggleTab addr state
       , Controls.view addr state
       , dividerBar
       , Watches.view state.watches
@@ -82,7 +82,7 @@ sidebar addr state =
 tabWidth = 25
 
 toggleTab : Signal.Address Model.Action -> Model.Model -> Html
-toggleTab state =
+toggleTab addr state =
   div
     [ style
         [ "position" => "absolute"
@@ -95,25 +95,7 @@ toggleTab state =
         , "background" => colorToCss darkGrey
         ]
     , onClick
-        sidebarVisibleMailbox.address
-        (SidebarVisible <| not state.sidebarVisible)
+        addr
+        (Model.SidebarVisible <| not state.sidebarVisible)
     ]
     []
-
-sidebarVisibleMailbox : Signal.Mailbox Bool
-sidebarVisibleMailbox =
-  Signal.mailbox True
-
--- SIGNALS    
-
-main : Signal Html
-main =
-  -- TODO: move showSwap to the #@$ model
-  Signal.map (view showSwap) scene
-
-
-scene : Signal Model.Model
-scene =
-  Signal.foldp Model.update Model.startModel aggregateUpdates
-
-

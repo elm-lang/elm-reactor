@@ -133,9 +133,9 @@ scrubSlider addr width state =
         , "height" => intToPx sliderHeight
         , "margin" => "0"
         ]
-    , Attr.min (toString 0)
-    , Attr.max (toString state.totalEvents)
-    , Attr.value (toString state.scrubPosition)
+    , Attr.min <| toString 0
+    , Attr.max <| toString <| Model.numFrames state
+    , Attr.value <| toString <| Model.curFrameIdx <| state
     , on "input"
         (at ["target","value"] (customDecoder string String.toInt))
         (\idx -> Signal.message addr (Model.ScrubPosition idx)) -- TODO time
