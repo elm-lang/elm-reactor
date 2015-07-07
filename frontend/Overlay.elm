@@ -75,7 +75,7 @@ sidebar addr state =
       [ toggleTab addr state
       , Controls.view addr state
       , dividerBar
-      , Watches.view state.watches
+      , Watches.view state.currentWatches
       ]
 
 

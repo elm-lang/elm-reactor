@@ -1,5 +1,6 @@
 module SideBar.Watches where
 
+import Dict as D
 import Color
 import Html exposing (..)
 import Html.Attributes exposing (..)
@@ -13,7 +14,7 @@ sidePadding =
   20
 
 
-view : List (String, String) -> Html
+view : D.Dict String String -> Html
 view watches =
   div
     [ style
@@ -26,9 +27,10 @@ view watches =
         , "width" => intToPx (sidebarWidth - 2*sidePadding)
         ]
     ]
-    ( case watches of
-        [] -> [noWatches]
-        _ -> List.map viewWatch watches
+    ( if D.isEmpty watches then
+        [noWatches]
+      else
+        watches |> D.toList |> List.map viewWatch
     )
 
 

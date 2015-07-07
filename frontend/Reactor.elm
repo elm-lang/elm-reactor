@@ -7,38 +7,47 @@ import Dict as D
 import Task as T
 import Maybe as M
 import Html exposing (..)
+import Json.Encode as JsEncode
+import Debug
 
+import Button
 import Overlay
 import Model exposing (..)
 
 
 main : Signal Html
 main =
-  Signal.map (Overlay.view uiActions.address) state
+  Signal.map (Overlay.view uiActionsMailbox.address) (Signal.map fst stateAndTasks)
 
 
-state : Signal Model
-state =
-  Signal.foldp update allActions 
+stateAndTasks : Signal (Model, Maybe (T.Task String ()))
+stateAndTasks =
+  let
+    initModel =
+      initState initSnapshot timeStarted
+  in
+    Signal.foldp update (initModel, Just <| T.succeed ()) allActions
 
 
-uiActions : Signal.Mailbox Action
-uiActions =
+uiActionsMailbox : Signal.Mailbox Action
+uiActionsMailbox =
   Signal.mailbox NoOp
 
 
-allActions : Signal Action
+allActions : Signal (Time.Time, Action)
 allActions =
   Time.timestamp <|
     Signal.mergeMany
-      [ uiActions.signal
-      , events
-      , snapshots
+      [ uiActionsMailbox.signal
+      , Signal.map NewEvent events
+      , Signal.map NewSnapshot snapshots
       ]
 
 -- don't forget about applying the watch updates that come with events!
-update : (Time.Time, Action) -> Model -> (Model, Maybe (T.Task x ()))
-update (now, action) state =
+-- TODO: second param should be just model
+-- foldp shouldn't really be holding on to tasks...
+update : (Time.Time, Action) -> (Model, Maybe (T.Task String ())) -> (Model, Maybe (T.Task String ()))
+update (now, action) (state, _) =
   case action of
     Restart ->
       let
@@ -77,6 +86,7 @@ update (now, action) state =
               | runningState <- newRunningState
               , events <- A.empty
               , snapshots <- state.snapshots |> A.slice 0 1
+              , currentWatches <- D.empty
           }
         , Just <| delayTask `T.andThen` (always initSnapshotTask)
         )
@@ -130,9 +140,20 @@ update (now, action) state =
 
         eventsTask =
           Signal.send processEventsMailbox.address events
+
+        baseWatches =
+          case snapshot of
+            Just ss ->
+              ss.watches
+            Nothing ->
+              state.currentWatches
+
+        watches =
+          A.foldl applyWatchUpdate baseWatches (A.map .watchUpdate events)
       in
-        ( { state |
-              runningState <- newRunningState
+        ( { state
+              | runningState <- newRunningState
+              , currentWatches <- watches
           }
         , Just <| snapshotTask `T.andThen` (always eventsTask)
         )
@@ -146,23 +167,33 @@ update (now, action) state =
                 Just <| Signal.send captureSnapshotMailbox.address ()
               else
                 Nothing
+
+            newWatches =
+              applyWatchUpdate evt.watchUpdate state.currentWatches
           in
-            ( { state |
-                  events <- A.push evt state.events
+            ( { state
+                  | events <- A.push evt state.events
+                  , currentWatches <- newWatches
               }
-            , Nothing -- TODO: send a "take snapshot" command? XXX
+            , task
             )
         _ ->
           Debug.crash "new event while paused"
 
-    NewSnapshot snapshot ->
+    NewSnapshot sgSnapshot ->
       case state.runningState of
         Running _ ->
-          ( { state |
-                snapshots <- A.push snapshot state.snapshots
-            }
-          , Nothing
-          )
+          let
+            snapshot =
+              { signalGraph = sgSnapshot
+              , watches = state.currentWatches
+              }
+          in
+            ( { state |
+                  snapshots <- A.push snapshot state.snapshots
+              }
+            , Nothing
+            )
         _ ->
           Debug.crash "new snapshot while paused"
 
@@ -177,7 +208,7 @@ update (now, action) state =
       ( { state |
             permitSwap <- permit
         }
-      , Signal.send permitSwapMailbox.address permit
+      , Nothing
       )
 
     RestartButtonAction buttonAct ->
@@ -199,6 +230,10 @@ update (now, action) state =
 
 
 -- incoming
+
+port initSnapshot : SGSnapshot
+
+port timeStarted : Time.Time
 
 port events : Signal Event
 
@@ -255,4 +290,9 @@ port permitSwap =
         _ ->
           Nothing
   in
-    Signal.filterMap fun True uiActions
+    Signal.filterMap fun True uiActionsMailbox.signal
+
+
+port tasks : Signal (T.Task String ())
+port tasks =
+  Signal.filterMap snd (T.succeed ()) stateAndTasks

@@ -15,6 +15,7 @@ type alias Model =
     { runningState : RunningState
     , events : A.Array Event
     , snapshots : A.Array Snapshot
+    , currentWatches : WatchSnapshot
     , timeStarted : Time.Time
     -- async callbacks?
     -- traces : ?
@@ -30,6 +31,7 @@ initState snapshot timeStarted =
   { runningState = Running 0
   , events = A.empty
   , snapshots = A.fromList [emptySnapshot]
+  , currentWatches = D.empty
   , timeStarted = timeStarted
   -- async callbacks?
   -- traces = ?
@@ -51,7 +53,7 @@ type Action
     | PlayPauseButtonAction Button.Action
     -- events from RTS
     | NewEvent Event
-    | NewSnapshot Snapshot
+    | NewSnapshot SGSnapshot
     | NoOp
 
 type RunningState
@@ -70,7 +72,7 @@ type alias Event =
     { id : SGNodeId
     , value : ElmValue
     , time : Time.Time
-    , watchUpdates : List (String, String)
+    , watchUpdate : WatchUpdate
     }
 
 type alias SGNodeId = Int
@@ -98,8 +100,11 @@ emptySnapshot =
 
 -- WATCHES
 
+type alias WatchUpdate =
+    List (WatchId, String)
+
 type alias WatchSnapshot =
-    D.Dict WatchId ElmValue
+    D.Dict WatchId String
 
 type alias WatchId = String
 
@@ -188,6 +193,13 @@ pausePlay state willBePlaying now =
       else
         Debug.crash "already paused"
 
+
+applyWatchUpdate : WatchUpdate -> WatchSnapshot -> WatchSnapshot
+applyWatchUpdate update snapshot =
+  D.union (D.fromList update) snapshot
+
+
+-- Util
 
 getOrCrash : String -> Maybe a -> a
 getOrCrash msg maybe =
