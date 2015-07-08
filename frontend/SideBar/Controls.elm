@@ -91,7 +91,7 @@ playPauseButton addr isPlay state =
     Button.view
         (Signal.forwardTo addr Model.PlayPauseButtonAction)
         addr
-        (Model.PlayPause (not isPlay)) -- TODO: time
+        (Model.PlayPause isPlay)
         state
         render
 
@@ -107,7 +107,7 @@ restartButton addr state =
     Button.view
       (Signal.forwardTo addr Model.RestartButtonAction)
       addr
-      Model.Restart -- TODO: time
+      Model.Restart
       state
       render
 
@@ -138,7 +138,7 @@ scrubSlider addr width state =
     , Attr.value <| toString <| Model.curFrameIdx <| state
     , on "input"
         (at ["target","value"] (customDecoder string String.toInt))
-        (\idx -> Signal.message addr (Model.ScrubPosition idx)) -- TODO time
+        (\idx -> Signal.message addr (Model.ScrubPosition idx))
     ]
     []
 
