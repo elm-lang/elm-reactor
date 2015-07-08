@@ -9,6 +9,7 @@ import Maybe as M
 import Html exposing (..)
 import Json.Encode as JsEncode
 import Debug
+import StartApp
 
 import Button
 import Overlay
@@ -17,38 +18,42 @@ import Model exposing (..)
 
 main : Signal Html
 main =
-  Signal.map (Overlay.view uiActionsMailbox.address) (Signal.map fst stateAndTasks)
+  fst viewAndTasks
 
 
-stateAndTasks : Signal (Model, Maybe (T.Task String ()))
-stateAndTasks =
-  let
-    initModel =
-      initState initSnapshot timeStarted
-  in
-    Signal.foldp update (initModel, Just <| T.succeed ()) allActions
+port tasks : Signal (T.Task String ())
+port tasks =
+  snd viewAndTasks
 
 
-uiActionsMailbox : Signal.Mailbox Action
-uiActionsMailbox =
-  Signal.mailbox NoOp
+viewAndTasks : (Signal Html, Signal (T.Task String ()))
+viewAndTasks =
+  StartApp.start
+    { initialState = Model.initState initSnapshot timeStarted
+    , view = Overlay.view
+    , update = update
+    , noOp = Model.NoOp
+    }
+    externalActions
 
 
-allActions : Signal (Time.Time, Action)
-allActions =
-  Time.timestamp <|
-    Signal.mergeMany
-      [ uiActionsMailbox.signal
-      , Signal.map NewEvent events
-      , Signal.map NewSnapshot snapshots
-      ]
+externalActions : Signal Action
+externalActions =
+  Signal.mergeMany
+    [ Signal.map NewEvent events
+    , Signal.map NewSnapshot snapshots
+    ]
 
 -- don't forget about applying the watch updates that come with events!
 -- TODO: second param should be just model
 -- foldp shouldn't really be holding on to tasks...
-update : (Time.Time, Action) -> (Model, Maybe (T.Task String ())) -> (Model, Maybe (T.Task String ()))
-update (now, action) (state, _) =
-  case action of
+update : StartApp.LoopbackFun String Action
+      -> Time.Time
+      -> Action
+      -> Model
+      -> (Model, Maybe (T.Task String ()))
+update loopback now action state =
+  case Debug.log "action" action of
     Restart ->
       let
         (newRunningState, maybeDelay) =
@@ -178,7 +183,8 @@ update (now, action) (state, _) =
             , task
             )
         _ ->
-          Debug.crash "new event while paused"
+          --Debug.crash "new event while paused"
+          (state, Nothing)
 
     NewSnapshot sgSnapshot ->
       case state.runningState of
@@ -281,18 +287,14 @@ port delayUpdate =
 
 port permitSwap : Signal Bool
 port permitSwap =
-  let
-    fun act =
-      case act of
-        PermitSwap permit ->
-          Just permit
+  --let
+  --  fun act =
+  --    case act of
+  --      PermitSwap permit ->
+  --        Just permit
 
-        _ ->
-          Nothing
-  in
-    Signal.filterMap fun True uiActionsMailbox.signal
-
-
-port tasks : Signal (T.Task String ())
-port tasks =
-  Signal.filterMap snd (T.succeed ()) stateAndTasks
+  --      _ ->
+  --        Nothing
+  --in
+  --  Signal.filterMap fun True uiActionsMailbox.signal
+  Signal.constant True -- TODO !!
