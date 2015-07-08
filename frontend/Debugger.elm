@@ -32,7 +32,6 @@ viewAndTasks =
     { initialState = Model.initState initSnapshot timeStarted
     , view = Overlay.view
     , update = update
-    , noOp = Model.NoOp
     }
     externalActions
 
@@ -230,9 +229,6 @@ update loopback now action state =
         }
       , Nothing
       )
-
-    NoOp ->
-      ( state, Nothing )
 
 
 -- incoming

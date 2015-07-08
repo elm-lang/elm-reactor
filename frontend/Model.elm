@@ -54,7 +54,6 @@ type Action
     -- events from RTS
     | NewEvent Event
     | NewSnapshot SGSnapshot
-    | NoOp
 
 type RunningState
     = Running Time.Time -- delay
