@@ -121,125 +121,116 @@ DebugSession.prototype.takeSnapshot = function() {
 }
 
 DebugSession.prototype.attachOutputs = function() {
+	var _this = this;
 	var ports = this.debuggerModule.ports;
-	ports.captureSnapshot.subscribe(this.handleCaptureSnapshot);
-	ports.setToSnapshot.subscribe(this.handleSetToSnapshot);
-	ports.processEvents.subscribe(this.handleProcessEvents);
-	ports.delayUpdate.subscribe(this.handleDelayUpdate);
-	ports.permitSwap.subscribe(this.handlePermitSwap);
+	
+	ports.captureSnapshot.subscribe(function(_) {
+		var snapshot = _this.takeSnapshot();
+		_this.debuggerModule.ports.snapshots.send(snapshot);
+	});
+	
+	ports.setToSnapshot.subscribe(function(snapshot) {
+		for (var i = _this.signalGraphNodes.length; i-- ; )
+		{
+		  _this.signalGraphNodes[i].value = snapshot[i].value;
+		}
+	});
+	
+	ports.processEvents.subscribe(function(events) {
+		for(var i=0; i < events.length; i++)
+		{
+			var event = events[i];
+			_this.runtime.notify(event.id, event.value);
+		}
+	});
+	
+	ports.delayUpdate.subscribe(function(delay) {
+		_this.delay = delay;
+	});
+	
+	ports.permitSwap.subscribe(function(permit) {
+		_this.permitSwap = permit;
+	});
 }
 
-DebugSession.prototype.handleCaptureSnapshot = function(_) {
-	var snapshot = this.takeSnapshot();
-	this.debuggerModule.ports.newSnapshots.send(snapshot);
-}
-
-DebugSession.prototype.handleSetToSnapshot = function(snapshot) {
-	for (var i = this.signalGraphNodes.length; i-- ; )
-	{
-	  this.signalGraphNodes[i].value = snapshot[i].value;
-	}
-}
-
-DebugSession.prototype.handleProcessEvents = function(events) {
-	for(var i=0; i < events.length; i++)
-	{
-		this.runtime.notify(event.id, event.value);
-	}
-}
-
-DebugSession.prototype.handleDelayUpdate = function(delay) {
-	this.delay = delay;
-}
-
-DebugSession.prototype.handlePermitSwap = function(permit) {
-	this.permitSwap = permit;
-}
 
 DebugSession.prototype.attachInputs = function() {
-	this.runtime.notify = this.notifyWrapper;
-	this.runtime.setTimeout = this.setTimeoutWrapper;
-}
+	var _this = this;
+	var originalNotify = this.runtime.notify;
+	this.runtime.notify = function(id, value) {
+		// TODO: ignore events that come in while paused
+		// what events would this be? events from the UI are blocked
+		// but I suppose it could be other stuff
+		// currently this code doesn't know when we're paused; may have to change that
+		// if (debugState.paused)
+		// {
+		// 	return false;
+		// }
 
-DebugSession.prototype.notifyWrapper = function(id, value) {
-	// TODO: ignore events that come in while paused
-	// what events would this be? events from the UI are blocked
-	// but I suppose it could be other stuff
-	// currently this code doesn't know when we're paused; may have to change that
-	// if (debugState.paused)
-	// {
-	// 	return false;
-	// }
+		// Record the event
 
-	// Record the event
+		_this.debuggerModule.ports.events.send({
+			id: id,
+			value: value,
+			time: _this.runtime.timer.now(),
+			watchUpdate: _this.watchUpdates
+		});
 
-	debuggerModule.ports.events.push({
-		id: id,
-		value: value,
-		time: runtime.timer.now(),
-		watchUpdate: this.watchUpdates
-	});
+		_this.watchUpdates = [];
 
-	this.watchUpdates = [];
+		var changed = originalNotify(id, value);
 
-	var changed = this.runtime.notify(id, value);
+		// TODO: add traces
 
-	// TODO: add traces
-
-	return changed;
-}
-
-DebugSession.prototype.setTimeoutWrapper = function(thunk, delay) {
-	// again, currently we don't know when we're paused. may have to change that.
-	// if (debugState.paused)
-	// {
-	// 	return 0;
-	// }
-
-	var callback = {
-		thunk: thunk,
-		id: 0,
-		executed: false
+		return changed;
 	};
 
-	callback.id = setTimeout(function() {
-		callback.executed = true;
-		thunk();
-	}, delay);
+	this.runtime.setTimeout = function(thunk, delay) {
+		// again, currently we don't know when we're paused. may have to change that.
+		// if (debugState.paused)
+		// {
+		// 	return 0;
+		// }
 
-	// TODO: this isn't fully hooked up yet
-	this.asyncCallbacks.push(callback);
-	return callback.id;
+		var callback = {
+			thunk: thunk,
+			id: 0,
+			executed: false
+		};
+
+		callback.id = setTimeout(function() {
+			callback.executed = true;
+			thunk();
+		}, delay);
+
+		// TODO: this isn't fully hooked up yet
+		_this.asyncCallbacks.push(callback);
+		return callback.id;
+	};
 }
 
 DebugSession.prototype.attachFunctions = function() {
-	this.runtime.timer.now = this.now;
-	this.runtime.debug = {
-		watch: this.watch,
-		trace: this.trace
+	var _this = this;
+	this.runtime.timer.now = function() {
+		// if (debugState.paused || debugState.swapInProgress)
+		// {
+		// 	var event = debugState.events[debugState.index];
+		// 	return event.time;
+		// }
+		// return Date.now() - debugState.totalTimeLost;
+		return Date.now() - _this.delay;
+	};
+	this.runtime.debug = {};
+	this.runtime.debug.watch = function(tag, value) {
+		// if (debugState.paused && !debugState.swapInProgress)
+		// {
+		// 	return;
+		// }
+		this.watchUpdates.push([tag, value]);
 	}
-}
-
-DebugSession.prototype.now = function() {
-	// if (debugState.paused || debugState.swapInProgress)
-	// {
-	// 	var event = debugState.events[debugState.index];
-	// 	return event.time;
-	// }
-	// return Date.now() - debugState.totalTimeLost;
-	return Date.now() - this.delay;
-}
-
-DebugSession.prototype.watch = function(tag, value) {
-	// if (debugState.paused && !debugState.swapInProgress)
-	// {
-	// 	return;
-	// }
-	this.watchUpdates.push([tag, value]);
-}
-
-DebugSession.prototype.trace = function(tag, form) {
-	return replace([['trace', tag]], form);
+	this.runtime.debug.trace = function(tag, form) {
+		return replace([['trace', tag]], form);
+	}
 }
 
 // returns nothing
@@ -247,11 +238,11 @@ DebugSession.prototype.trace = function(tag, form) {
 // debugger and module being debugged
 // also disposes module being debugged
 DebugSession.prototype.dispose = function() {
-	ports.captureSnapshot.unsubscribe(this.handleCaptureSnapshot);
-	ports.setToSnapshot.unsubscribe(this.handleSetToSnapshot);
-	ports.processEvents.unsubscribe(this.handleProcessEvents);
-	ports.delayUpdate.unsubscribe(this.handleDelayUpdate);
-	ports.permitSwap.unsubscribe(this.handlePermitSwap);
+	// ports.captureSnapshot.unsubscribe(this.handleCaptureSnapshot);
+	// ports.setToSnapshot.unsubscribe(this.handleSetToSnapshot);
+	// ports.processEvents.unsubscribe(this.handleProcessEvents);
+	// ports.delayUpdate.unsubscribe(this.handleDelayUpdate);
+	// ports.permitSwap.unsubscribe(this.handlePermitSwap);
 	this.moduleBeingDebugged.dispose();
 }
 
