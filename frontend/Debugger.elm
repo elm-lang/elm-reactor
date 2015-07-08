@@ -1,4 +1,4 @@
-module Reactor where
+module Debugger where
 
 import Signal
 import Time
@@ -56,7 +56,7 @@ update (now, action) (state, _) =
             Running _ ->
               let
                 delay = now - state.timeStarted
-              in 
+              in
                 ( Running delay
                 , Just delay
                 )
@@ -77,7 +77,7 @@ update (now, action) (state, _) =
         initSnapshot =
           state.snapshots
             |> A.get 0
-            |> getOrCrash "initial snapshot gone"
+            |> getOrCrash "initial snapshot gone!!"
 
         initSnapshotTask =
           Signal.send setToSnapshotMailbox.address initSnapshot.signalGraph
@@ -274,8 +274,8 @@ delayUpdateMailbox : Signal.Mailbox Time.Time
 delayUpdateMailbox =
   Signal.mailbox 0
 
-port delayUpdates : Signal Time.Time
-port delayUpdates =
+port delayUpdate : Signal Time.Time
+port delayUpdate =
   delayUpdateMailbox.signal
 
 
