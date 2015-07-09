@@ -74,10 +74,13 @@ function DebugSession(debuggerModule, moduleBeingDebugged, runtime) {
 	this.debuggerModule = debuggerModule;
 	this.moduleBeingDebugged = moduleBeingDebugged;
 	this.runtime = runtime;
+	this.originalNotify = this.runtime.notify;
 	this.node = this.runtime.node;
 
 	this.signalGraphNodes = this.flattenSignalGraph();
 	this.permitSwap = true;
+	this.paused = false;
+	this.swapInProgress = false; // TODO: move to elm side
 	this.delay = 0;
 	this.asyncCallbacks = []; // TODO: think this through; rename to timeouts (?)
 	
@@ -88,6 +91,8 @@ function DebugSession(debuggerModule, moduleBeingDebugged, runtime) {
 	this.attachFunctions();
 
 	this.watchUpdates = [];
+
+	this.debuggerModule.ports.attachments.send(this.takeSnapshot());
 }
 
 // returns list of node references
@@ -130,6 +135,7 @@ DebugSession.prototype.attachOutputs = function() {
 	});
 	
 	ports.setToSnapshot.subscribe(function(snapshot) {
+		console.log('SNAPSHOT', snapshot);
 		for (var i = _this.signalGraphNodes.length; i-- ; )
 		{
 		  _this.signalGraphNodes[i].value = snapshot[i].value;
@@ -137,10 +143,11 @@ DebugSession.prototype.attachOutputs = function() {
 	});
 	
 	ports.processEvents.subscribe(function(events) {
+		console.log('EVENTS', events);
 		for(var i=0; i < events.length; i++)
 		{
 			var event = events[i];
-			_this.runtime.notify(event.id, event.value);
+			_this.originalNotify(event.id, event.value);
 		}
 	});
 	
@@ -151,21 +158,21 @@ DebugSession.prototype.attachOutputs = function() {
 	ports.permitSwap.subscribe(function(permit) {
 		_this.permitSwap = permit;
 	});
+
+	ports.paused.subscribe(function(paused) {
+		_this.paused = paused;
+		console.log('PAUSE', paused)
+	});
 }
 
 
 DebugSession.prototype.attachInputs = function() {
 	var _this = this;
-	var originalNotify = this.runtime.notify;
 	this.runtime.notify = function(id, value) {
-		// TODO: ignore events that come in while paused
-		// what events would this be? events from the UI are blocked
-		// but I suppose it could be other stuff
-		// currently this code doesn't know when we're paused; may have to change that
-		// if (debugState.paused)
-		// {
-		// 	return false;
-		// }
+		if (_this.paused)
+		{
+			return false;
+		}
 
 		// Record the event
 
@@ -178,7 +185,7 @@ DebugSession.prototype.attachInputs = function() {
 
 		_this.watchUpdates = [];
 
-		var changed = originalNotify(id, value);
+		var changed = _this.originalNotify(id, value);
 
 		// TODO: add traces
 
@@ -186,11 +193,10 @@ DebugSession.prototype.attachInputs = function() {
 	};
 
 	this.runtime.setTimeout = function(thunk, delay) {
-		// again, currently we don't know when we're paused. may have to change that.
-		// if (debugState.paused)
-		// {
-		// 	return 0;
-		// }
+		if (_this.paused)
+		{
+			return 0;
+		}
 
 		var callback = {
 			thunk: thunk,
@@ -212,20 +218,20 @@ DebugSession.prototype.attachInputs = function() {
 DebugSession.prototype.attachFunctions = function() {
 	var _this = this;
 	this.runtime.timer.now = function() {
+		// TODO: not sure how to get last event
 		// if (debugState.paused || debugState.swapInProgress)
 		// {
 		// 	var event = debugState.events[debugState.index];
 		// 	return event.time;
 		// }
-		// return Date.now() - debugState.totalTimeLost;
 		return Date.now() - _this.delay;
 	};
 	this.runtime.debug = {
 		watch: function(tag, value) {
-			// if (debugState.paused && !debugState.swapInProgress)
-			// {
-			// 	return;
-			// }
+			if (_this.paused && !_this.swapInProgress)
+			{
+				return;
+			}
 			_this.watchUpdates.push([tag, prettyPrint(value, "  ")]);
 		},
 		trace: function(tag, form) {
@@ -239,6 +245,7 @@ DebugSession.prototype.attachFunctions = function() {
 // debugger and module being debugged
 // also disposes module being debugged
 DebugSession.prototype.dispose = function() {
+	// TODO: figure out how to unsubscribe all the ports
 	// ports.captureSnapshot.unsubscribe(this.handleCaptureSnapshot);
 	// ports.setToSnapshot.unsubscribe(this.handleSetToSnapshot);
 	// ports.processEvents.unsubscribe(this.handleProcessEvents);
@@ -267,10 +274,12 @@ Elm.fullscreenDebug = function(moduleName, fileName) {
 	var container = document.createElement("div");
 	document.body.appendChild(container);
 
-	// "debugger" causes chrome JS execution to pause
 	var debuggerModule = Elm.embed(Elm.Debugger, container, {
-		initSnapshot: [], // TODO: get actual snapshot somehow
-		snapshots: [], // TODO: above
+		// NB: these aren't captured on Elm side
+		// these should really be streams, not signals
+		// initial values are meaningless
+		attachments: [],
+		snapshots: [],
 		events: {id: 0, value: null, time: 0, watchUpdate: []}
 	});
 

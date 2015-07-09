@@ -13,6 +13,7 @@ import StartApp
 
 import Button
 import Overlay
+import OverlayModel
 import Model exposing (..)
 
 
@@ -39,7 +40,8 @@ viewAndTasks =
 externalActions : Signal Action
 externalActions =
   Signal.mergeMany
-    [ Signal.map NewEvent events
+    [ Signal.map Attach attachments
+    , Signal.map NewEvent events
     , Signal.map NewSnapshot snapshots
     ]
 
@@ -68,6 +70,13 @@ update loopback now action state =
             , []
             )
 
+        OverlayAction act ->
+          ( { state |
+                overlayModel <- OverlayModel.update act state.overlayModel
+            }
+          , []
+          )
+
         _ ->
           Debug.crash <|
             "unexpected action in Uninitialized state: " ++ (toString action)
@@ -87,12 +96,19 @@ update loopback now action state =
             , []
             )
 
+        OverlayAction act ->
+          ( { state |
+                overlayModel <- OverlayModel.update act state.overlayModel
+            }
+          , []
+          )
+
         _ ->
           Debug.crash <|
             "unexpected action in Swapping state: " ++ (toString action)
 
     Connected connectedAttrs ->
-      case Debug.log "action" action of
+      case action of
         Restart ->
           let
             (newRunningState, maybeDelay) =
@@ -175,7 +191,7 @@ update loopback now action state =
                             , events <- state.events |> A.slice 0 idx
                             , attachmentState <-
                                 connectedAttrs
-                                  |> updateSnapshots (A.slice 0 (closestSnapshotBefore idx))
+                                  |> updateSnapshots (A.slice 0 (closestSnapshotBefore idx + 1))
                         }
                       , Just delay
                       )
@@ -186,8 +202,12 @@ update loopback now action state =
             maybeDelayTask =
               maybeDelay `M.andThen`
                 (\delay -> Just <| Signal.send delayUpdateMailbox.address delay)
+                |> maybeToList
+
+            pauseTask =
+              Signal.send pausedMailbox.address (not willBePlaying)
           in
-            (state, maybeDelayTask |> maybeToList)
+            (newState, [pauseTask] ++ maybeDelayTask)
 
         ScrubPosition newFrameIdx ->
           let
@@ -218,20 +238,18 @@ update loopback now action state =
                   T.succeed ()
 
             events =
-              if (curFrameIdx state) == newFrameIdx then
-                Debug.log "empty" A.empty
-              else if snapshotNeeded then
-                let
-                  a = Debug.log "SNAPSHOT" (newFrameIdx, A.length state.events, newSnapshot * eventsPerSnapshot, newFrameIdx)
-                in
-                  state.events
-                    |> A.slice (newSnapshot * eventsPerSnapshot) newFrameIdx
+              -- equality checks are working around array bug
+              -- https://github.com/elm-lang/elm-compiler/issues/815
+              if snapshotNeeded then
+                if (newSnapshot * eventsPerSnapshot) == newFrameIdx then
+                  A.empty
+                else state.events
+                  |> A.slice (newSnapshot * eventsPerSnapshot) newFrameIdx
               else
-                let
-                  a = Debug.log "NO SNAPSHOT" (newFrameIdx, A.length state.events, (curFrameIdx state), newFrameIdx)
-                in
-                  state.events
-                    |> A.slice (curFrameIdx state) newFrameIdx
+                if (curFrameIdx state) == newFrameIdx then
+                  A.empty
+                else state.events
+                  |> A.slice (curFrameIdx state) newFrameIdx
 
             eventsTask =
               Signal.send processEventsMailbox.address events
@@ -302,17 +320,25 @@ update loopback now action state =
           ( { state |
                 permitSwap <- permit
             }
+          , [ Signal.send permitSwapMailbox.address permit ]
+          )
+
+        OverlayAction act ->
+          ( { state |
+                overlayModel <- OverlayModel.update act state.overlayModel
+            }
           , []
           )
 
 
 -- incoming
 
-port initSnapshot : SGSnapshot
+port attachments : Signal SGSnapshot
 
 port events : Signal Event
 
 port snapshots : Signal SGSnapshot
+
 
 -- outgoing
 
@@ -354,19 +380,25 @@ port delayUpdate =
   delayUpdateMailbox.signal
 
 
+permitSwapMailbox : Signal.Mailbox Bool
+permitSwapMailbox =
+  Signal.mailbox True
+
 port permitSwap : Signal Bool
 port permitSwap =
-  --let
-  --  fun act =
-  --    case act of
-  --      PermitSwap permit ->
-  --        Just permit
+  permitSwapMailbox.signal
 
-  --      _ ->
-  --        Nothing
-  --in
-  --  Signal.filterMap fun True uiActionsMailbox.signal
-  Signal.constant True -- TODO !!
+
+pausedMailbox : Signal.Mailbox Bool
+pausedMailbox =
+  Signal.mailbox False
+
+port paused : Signal Bool
+port paused =
+  pausedMailbox.signal
+
+
+-- Util
 
 maybeToList : Maybe a -> List a
 maybeToList maybe =

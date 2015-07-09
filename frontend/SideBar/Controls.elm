@@ -199,7 +199,7 @@ scrubSlider addr width state =
         , "margin" => "0"
         ]
     , Attr.min <| toString 0
-    , Attr.max <| toString <| Model.numFrames state
+    , Attr.max <| toString <| Model.numFrames state - 1
     , Attr.value <| toString <| Model.curFrameIdx <| state
     , on "input"
         (at ["target","value"] (customDecoder string String.toInt))
@@ -219,7 +219,7 @@ sliderEventText width state =
     [ positionedText
         width
         (Model.curFrameIdx state)
-        (Model.numFrames state)
+        (Model.numFrames state - 1)
         False
     ]
 
@@ -228,7 +228,7 @@ sliderMinMaxText : Int -> Model.Model -> Html
 sliderMinMaxText width state =
   let
     totalFrames =
-      Model.numFrames state
+      Model.numFrames state - 1
   in 
     div
       [ style

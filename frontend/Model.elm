@@ -119,8 +119,8 @@ emptyWatchSnapshot =
 
 
 isPaused : Model -> Bool
-isPaused model =
-  case model.runningState of
+isPaused state =
+  case state.runningState of
     Running _ ->
       False
 
@@ -132,7 +132,7 @@ curFrameIdx : Model -> FrameIndex
 curFrameIdx state =
   case state.runningState of
     Running _ ->
-      numFrames state
+      numFrames state - 1
 
     Paused _ idx ->
       idx
