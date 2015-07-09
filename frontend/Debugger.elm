@@ -52,7 +52,7 @@ update : StartApp.LoopbackFun String Action
       -> Model
       -> (Model, List (T.Task String ()))
 update loopback now action state =
-  case action of
+  case Debug.log "action" action of
     Restart ->
       let
         (newRunningState, maybeDelay) =

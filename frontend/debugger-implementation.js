@@ -220,17 +220,18 @@ DebugSession.prototype.attachFunctions = function() {
 		// return Date.now() - debugState.totalTimeLost;
 		return Date.now() - _this.delay;
 	};
-	this.runtime.debug = {};
-	this.runtime.debug.watch = function(tag, value) {
-		// if (debugState.paused && !debugState.swapInProgress)
-		// {
-		// 	return;
-		// }
-		this.watchUpdates.push([tag, value]);
-	}
-	this.runtime.debug.trace = function(tag, form) {
-		return replace([['trace', tag]], form);
-	}
+	this.runtime.debug = {
+		watch: function(tag, value) {
+			// if (debugState.paused && !debugState.swapInProgress)
+			// {
+			// 	return;
+			// }
+			_this.watchUpdates.push([tag, prettyPrint(value, "  ")]);
+		},
+		trace: function(tag, form) {
+			return replace([['trace', tag]], form);
+		}
+	};
 }
 
 // returns nothing
