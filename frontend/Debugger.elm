@@ -50,9 +50,9 @@ update : StartApp.LoopbackFun String Action
       -> Time.Time
       -> Action
       -> Model
-      -> (Model, Maybe (T.Task String ()))
+      -> (Model, List (T.Task String ()))
 update loopback now action state =
-  case Debug.log "action" action of
+  case action of
     Restart ->
       let
         (newRunningState, maybeDelay) =
@@ -92,7 +92,7 @@ update loopback now action state =
               , snapshots <- state.snapshots |> A.slice 0 1
               , currentWatches <- D.empty
           }
-        , Just <| delayTask `T.andThen` (always initSnapshotTask)
+        , [delayTask, initSnapshotTask]
         )
 
     PlayPause willBePlaying ->
@@ -102,9 +102,9 @@ update loopback now action state =
 
         maybeDelayTask =
           maybeDelay `M.andThen`
-            \delay -> Just <| Signal.send delayUpdateMailbox.address delay
+            (\delay -> Just <| Signal.send delayUpdateMailbox.address delay)
       in
-        (newState, maybeDelayTask)
+        (state, maybeDelayTask |> maybeToList)
 
     ScrubPosition newFrameIdx ->
       let
@@ -135,12 +135,20 @@ update loopback now action state =
               T.succeed ()
 
         events =
-          if snapshotNeeded then
-            state.events
-              |> A.slice (newSnapshot * eventsPerSnapshot) newFrameIdx
+          if (curFrameIdx state) == newFrameIdx then
+            Debug.log "empty" A.empty
+          else if snapshotNeeded then
+            let
+              a = Debug.log "SNAPSHOT" (newFrameIdx, A.length state.events, newSnapshot * eventsPerSnapshot, newFrameIdx)
+            in
+              state.events
+                |> A.slice (newSnapshot * eventsPerSnapshot) newFrameIdx
           else
-            state.events
-              |> A.slice (curFrameIdx state) newFrameIdx
+            let
+              a = Debug.log "NO SNAPSHOT" (newFrameIdx, A.length state.events, (curFrameIdx state), newFrameIdx)
+            in
+              state.events
+                |> A.slice (curFrameIdx state) newFrameIdx
 
         eventsTask =
           Signal.send processEventsMailbox.address events
@@ -159,7 +167,7 @@ update loopback now action state =
               | runningState <- newRunningState
               , currentWatches <- watches
           }
-        , Just <| snapshotTask `T.andThen` (always eventsTask)
+        , [snapshotTask, eventsTask]
         )
 
     NewEvent evt ->
@@ -168,9 +176,9 @@ update loopback now action state =
           let
             task =
               if (curFrameIdx state) % eventsPerSnapshot == 0 then
-                Just <| Signal.send captureSnapshotMailbox.address ()
+                [Signal.send captureSnapshotMailbox.address ()]
               else
-                Nothing
+                []
 
             newWatches =
               applyWatchUpdate evt.watchUpdate state.currentWatches
@@ -183,7 +191,7 @@ update loopback now action state =
             )
         _ ->
           --Debug.crash "new event while paused"
-          (state, Nothing)
+          (state, [])
 
     NewSnapshot sgSnapshot ->
       case state.runningState of
@@ -197,7 +205,7 @@ update loopback now action state =
             ( { state |
                   snapshots <- A.push snapshot state.snapshots
               }
-            , Nothing
+            , []
             )
         _ ->
           Debug.crash "new snapshot while paused"
@@ -206,28 +214,28 @@ update loopback now action state =
       ( { state |
             sidebarVisible <- visible
         }
-      , Nothing
+      , []
       )
 
     PermitSwap permit ->
       ( { state |
             permitSwap <- permit
         }
-      , Nothing
+      , []
       )
 
     RestartButtonAction buttonAct ->
       ( { state |
             restartButtonState <- Button.update buttonAct state.restartButtonState
         }
-      , Nothing
+      , []
       )
 
     PlayPauseButtonAction buttonAct ->
       ( { state |
             playPauseButtonState <- Button.update buttonAct state.restartButtonState
         }
-      , Nothing
+      , []
       )
 
 
@@ -294,3 +302,12 @@ port permitSwap =
   --in
   --  Signal.filterMap fun True uiActionsMailbox.signal
   Signal.constant True -- TODO !!
+
+maybeToList : Maybe a -> List a
+maybeToList maybe =
+  case maybe of
+    Just x ->
+      [x]
+
+    Nothing ->
+      []
