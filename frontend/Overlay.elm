@@ -6,8 +6,10 @@ import Html.Events exposing (..)
 import Signal
 import Color
 
+import Button
 import Styles exposing (..)
 import Model
+import OverlayModel
 import SideBar.Controls as Controls
 import SideBar.Watches as Watches
 
@@ -19,6 +21,9 @@ view addr state =
     [ sidebar addr state
     , eventBlocker (Model.isPaused state)
     ]
+
+
+-- TODO: errors!
 
 
 eventBlocker : Bool -> Html
@@ -52,7 +57,7 @@ sidebar addr state =
       ]
     
     toggleStyles =
-      if state.sidebarVisible
+      if state.overlayModel.sidebarVisible
       then [ "right" => "0" ]
       else [ "right" => intToPx -sidebarWidth ]
 
@@ -66,22 +71,39 @@ sidebar addr state =
             ]
         ]
         []
+
+    overlayActions =
+      Signal.forwardTo addr Model.OverlayAction
+
+    contents =
+      case state.attachmentState of
+        -- TODO: prettify
+        Model.Uninitialized ->
+          [ text "Uninitialized" ]
+
+        Model.Swapping _ ->
+          [ text "Swapping" ]
+
+        Model.Connected connectedAttrs ->
+          [ Controls.view addr overlayActions state
+          , dividerBar
+          , Watches.view connectedAttrs.currentWatches
+          ]
+
   in
     div
       [ id "elm-reactor-side-bar"
       -- done in JS: cancelBubble / stopPropagation on this
       , style (constantStyles ++ toggleStyles)
       ]
-      [ toggleTab addr state
-      , Controls.view addr state
-      , dividerBar
-      , Watches.view state.currentWatches
+      [ toggleTab overlayActions state.overlayModel
+      , div [] contents
       ]
 
 
 tabWidth = 25
 
-toggleTab : Signal.Address Model.Action -> Model.Model -> Html
+toggleTab : Signal.Address OverlayModel.Action -> OverlayModel.Model -> Html
 toggleTab addr state =
   div
     [ style
@@ -96,6 +118,6 @@ toggleTab addr state =
         ]
     , onClick
         addr
-        (Model.SidebarVisible <| not state.sidebarVisible)
+        (OverlayModel.SidebarVisible <| not state.sidebarVisible)
     ]
     []

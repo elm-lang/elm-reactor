@@ -11,6 +11,7 @@ import Signal
 
 import Button
 import Model
+import OverlayModel
 import Styles exposing (..)
 
 -- STYLE
@@ -76,8 +77,70 @@ darkGrey = Color.rgb 74 74 74
 
 -- VIEW
 
-playPauseButton : Signal.Address Model.Action -> Bool -> Button.Model -> Html
-playPauseButton addr isPlay state =
+
+view : Signal.Address Model.Action
+    -> Signal.Address OverlayModel.Action
+    -> Model.Model
+    -> Html
+view addr overlayAddr state =
+  let
+    midWidth =
+      sidebarWidth - margin * 2
+
+    swapWithLabel =
+      div
+        [ style swapButtonTextStyle ]
+        [ text "swap"
+        , swapButton addr state.permitSwap
+        ]
+
+    containerStyle =
+      node
+        "style"
+        [ type' "text/css" ]
+        [ text buttonContainerCss ]
+
+    buttonContainer =
+      div
+        [ id "elm-reactor-button-container" ]
+        [ restartButton
+            addr
+            overlayAddr
+            state.overlayModel.restartButtonState
+        , swapWithLabel
+        , playPauseButton
+            addr
+            overlayAddr
+            (Model.isPaused state)
+            state.overlayModel.playPauseButtonState
+        ]
+
+    sliderContainer =
+      div
+        [ style
+            [ "padding-top" => intToPx sliderPadding ]
+        ]
+        [ sliderEventText midWidth state
+        , scrubSlider addr midWidth state
+        , sliderMinMaxText midWidth state
+        ]
+  in
+    div
+      [ style
+          [ "padding" => intToPx margin ]
+      ]
+      [ containerStyle
+      , buttonContainer
+      , sliderContainer
+      ]
+
+
+playPauseButton : Signal.Address Model.Action
+               -> Signal.Address OverlayModel.Action
+               -> Bool
+               -> Button.Model
+               -> Html
+playPauseButton addr overlayAddr isPlay state =
   let
     icon =
       if isPlay then
@@ -89,15 +152,17 @@ playPauseButton addr isPlay state =
       iconButton (playPauseButtonColor state) icon
   in 
     Button.view
-        (Signal.forwardTo addr Model.PlayPauseButtonAction)
+        (Signal.forwardTo overlayAddr OverlayModel.PlayPauseButtonAction)
         addr
         (Model.PlayPause isPlay)
         state
         render
 
 
-restartButton : Signal.Address Model.Action -> Button.Model -> Html
-restartButton addr state =
+restartButton : Signal.Address Model.Action
+             -> Signal.Address OverlayModel.Action
+             -> Button.Model -> Html
+restartButton addr overlayAddr state =
   let
     render st =
       iconButton
@@ -105,7 +170,7 @@ restartButton addr state =
         (FontAwesome.undo darkGrey buttonIconSize)
   in 
     Button.view
-      (Signal.forwardTo addr Model.RestartButtonAction)
+      (Signal.forwardTo overlayAddr OverlayModel.RestartButtonAction)
       addr
       Model.Restart
       state
@@ -218,53 +283,6 @@ positionedText width frameIdx totalEvents alwaysRight =
           ]
       ]
       [ text (toString frameIdx) ]
-
-
-view : Signal.Address Model.Action -> Model.Model -> Html
-view addr state =
-  let
-    midWidth =
-      sidebarWidth - margin * 2
-
-    swapWithLabel =
-      div
-        [ style swapButtonTextStyle ]
-        [ text "swap"
-        , swapButton addr state.permitSwap
-        ]
-
-    containerStyle =
-      node
-        "style"
-        [ type' "text/css" ]
-        [ text buttonContainerCss ]
-
-    buttonContainer =
-      div
-        [ id "elm-reactor-button-container" ]
-        [ restartButton addr state.restartButtonState
-        , swapWithLabel
-        , playPauseButton addr (Model.isPaused state) state.playPauseButtonState
-        ]
-
-    sliderContainer =
-      div
-        [ style
-            [ "padding-top" => intToPx sliderPadding ]
-        ]
-        [ sliderEventText midWidth state
-        , scrubSlider addr midWidth state
-        , sliderMinMaxText midWidth state
-        ]
-  in
-    div
-      [ style
-          [ "padding" => intToPx margin ]
-      ]
-      [ containerStyle
-      , buttonContainer
-      , sliderContainer
-      ]
 
 
 -- UTILITIES

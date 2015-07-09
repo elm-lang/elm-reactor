@@ -270,7 +270,6 @@ Elm.fullscreenDebug = function(moduleName, fileName) {
 	// "debugger" causes chrome JS execution to pause
 	var debuggerModule = Elm.embed(Elm.Debugger, container, {
 		initSnapshot: [], // TODO: get actual snapshot somehow
-		timeStarted: Date.now(),
 		snapshots: [], // TODO: above
 		events: {id: 0, value: null, time: 0, watchUpdate: []}
 	});
