@@ -122,20 +122,22 @@ DebugSession.prototype.takeSnapshot = function() {
 		nodeValues.push({ value: node.value, id: node.id });
 	});
 
+	console.log('TAKESNAP', this.prettyPrintSnapshot(nodeValues));
+
 	return nodeValues;
 }
 
 DebugSession.prototype.attachOutputs = function() {
 	var _this = this;
 	var ports = this.debuggerModule.ports;
-	
+
 	ports.captureSnapshot.subscribe(function(_) {
 		var snapshot = _this.takeSnapshot();
 		_this.debuggerModule.ports.snapshots.send(snapshot);
 	});
 	
 	ports.setToSnapshot.subscribe(function(snapshot) {
-		console.log('SNAPSHOT', snapshot);
+		console.log('SETSNAP', _this.prettyPrintSnapshot(snapshot));
 		for (var i = _this.signalGraphNodes.length; i-- ; )
 		{
 		  _this.signalGraphNodes[i].value = snapshot[i].value;
@@ -143,7 +145,6 @@ DebugSession.prototype.attachOutputs = function() {
 	});
 	
 	ports.processEvents.subscribe(function(events) {
-		console.log('EVENTS', events);
 		for(var i=0; i < events.length; i++)
 		{
 			var event = events[i];
@@ -165,6 +166,20 @@ DebugSession.prototype.attachOutputs = function() {
 	});
 }
 
+DebugSession.prototype.prettyPrintSnapshot = function(snapshot) {
+	var output = [];
+	for (var i = this.signalGraphNodes.length; i-- ; )
+	{
+	  var value = snapshot[i].value;
+	  if(value) {
+	  	output.push(prettyPrint(value, "  "));
+	  } else {
+	  	output.push("<<undefined>>");
+	  }
+	}
+	return output;
+}
+
 
 DebugSession.prototype.attachInputs = function() {
 	var _this = this;
@@ -174,6 +189,10 @@ DebugSession.prototype.attachInputs = function() {
 			return false;
 		}
 
+		_this.watchUpdates = [];
+
+		var changed = _this.originalNotify(id, value);
+
 		// Record the event
 
 		_this.debuggerModule.ports.events.send({
@@ -182,10 +201,6 @@ DebugSession.prototype.attachInputs = function() {
 			time: _this.runtime.timer.now(),
 			watchUpdate: _this.watchUpdates
 		});
-
-		_this.watchUpdates = [];
-
-		var changed = _this.originalNotify(id, value);
 
 		// TODO: add traces
 

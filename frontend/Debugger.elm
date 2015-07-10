@@ -163,7 +163,7 @@ update loopback now action state =
                     Debug.crash "already playing"
                   else
                     ( { state |
-                          runningState <- Paused now (numFrames state)
+                          runningState <- Paused now (curFrameIdx state)
                       }
                     , Nothing
                     )
@@ -191,6 +191,7 @@ update loopback now action state =
                             , events <- state.events |> A.slice 0 idx
                             , attachmentState <-
                                 connectedAttrs
+                                  -- TODO +1 prob shouldn't be there
                                   |> updateSnapshots (A.slice 0 (closestSnapshotBefore idx + 1))
                         }
                       , Just delay
@@ -223,33 +224,35 @@ update loopback now action state =
             snapshotNeeded =
               curSnapshot /= newSnapshot || newFrameIdx < (curFrameIdx state)
 
-            snapshot =
+            maybeSnapshotIdx =
               if snapshotNeeded then
-                connectedAttrs |> snapshotAtIdx newSnapshot |> Just
+                Just newSnapshot
               else
                 Nothing
 
+            snapshot =
+              maybeSnapshotIdx
+                |> M.map (\idx -> connectedAttrs |> snapshotAtIdx idx)
+
             snapshotTask =
-              case snapshot of
-                Just ss ->
-                  Signal.send setToSnapshotMailbox.address ss.signalGraph
+              snapshot
+                |> M.map (.signalGraph >>
+                              Signal.send setToSnapshotMailbox.address)
+                |> maybeToList
+
+            (eventsFrom, eventsTo) =
+              case maybeSnapshotIdx of
+                Just snapshotIdx ->
+                  (snapshotIdx * eventsPerSnapshot, newFrameIdx)
 
                 Nothing ->
-                  T.succeed ()
+                  (curFrameIdx state, newFrameIdx)
 
             events =
-              -- equality checks are working around array bug
-              -- https://github.com/elm-lang/elm-compiler/issues/815
-              if snapshotNeeded then
-                if (newSnapshot * eventsPerSnapshot) == newFrameIdx then
-                  A.empty
-                else state.events
-                  |> A.slice (newSnapshot * eventsPerSnapshot) newFrameIdx
+              if eventsFrom == eventsTo then
+                A.empty
               else
-                if (curFrameIdx state) == newFrameIdx then
-                  A.empty
-                else state.events
-                  |> A.slice (curFrameIdx state) newFrameIdx
+                state.events |> A.slice eventsFrom eventsTo
 
             eventsTask =
               Signal.send processEventsMailbox.address events
@@ -263,6 +266,9 @@ update loopback now action state =
 
             newWatches =
               A.foldl applyWatchUpdate baseWatches (A.map .watchUpdate events)
+
+            d =
+              Debug.log "SCRUB" (newFrameIdx, (A.length connectedAttrs.snapshots, maybeSnapshotIdx), (eventsFrom, eventsTo))
           in
             ( { state
                   | runningState <- newRunningState
@@ -270,7 +276,7 @@ update loopback now action state =
                       connectedAttrs
                         |> updateCurrentWatches (always newWatches)
               }
-            , [snapshotTask, eventsTask]
+            , snapshotTask ++ [eventsTask]
             )
 
         NewEvent evt ->
@@ -278,7 +284,7 @@ update loopback now action state =
             Running _ ->
               let
                 task =
-                  if (curFrameIdx state) % eventsPerSnapshot == 0 then
+                  if (curFrameIdx state) % eventsPerSnapshot == 0 && (curFrameIdx state) > 0 then
                     [Signal.send captureSnapshotMailbox.address ()]
                   else
                     []
