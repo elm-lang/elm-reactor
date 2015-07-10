@@ -45,9 +45,7 @@ externalActions =
     , Signal.map NewSnapshot snapshots
     ]
 
--- don't forget about applying the watch updates that come with events!
--- TODO: second param should be just model
--- foldp shouldn't really be holding on to tasks...
+
 update : StartApp.LoopbackFun String Action
       -> Time.Time
       -> Action
@@ -212,6 +210,7 @@ update loopback now action state =
 
         ScrubPosition newFrameIdx ->
           let
+            -- TODO: should take paused time from previous paused state, not now
             newRunningState =
               Paused now newFrameIdx
 
