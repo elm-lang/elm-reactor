@@ -2,3 +2,4 @@ dist
 assets/_reactor/debug.js
 elm-stuff
 cabal.sandbox.config
+.cabal-sandbox/
