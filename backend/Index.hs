@@ -4,6 +4,7 @@
 module Index (elmIndexGenerator) where
 
 
+import           Control.Arrow              ((***))
 import           Control.Monad
 import           Control.Monad.IO.Class
 import qualified Data.ByteString.Char8 as S
@@ -115,11 +116,11 @@ elmIndexGenerator :: MonadSnap m => FilePath -> m ()
 elmIndexGenerator directory = do
   modifyResponse $ setContentType "text/html; charset=utf-8"
 
-  let title =
-        intercalate "/" $
+  let (title, currdir) =
+        intercalate "/" *** intercalate "/" $
         case splitDirectories directory of
-          "." : rest -> "~" : rest
-          path -> path
+          "." : rest -> ("~" : rest, rest)
+          path -> (path, path)
 
   entries <- liftIO $ getDirectoryContents directory
   allDirs <- liftIO $ filterM (doesDirectoryExist . (directory </>)) entries
@@ -135,7 +136,7 @@ elmIndexGenerator directory = do
         Model
         { folders = notDotted
         , files = allFiles
-        , currentFolder = directory
+        , currentFolder = currdir
         , currpackage = config
         }
 
