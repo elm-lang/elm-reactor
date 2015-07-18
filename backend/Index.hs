@@ -24,6 +24,9 @@ elmConfig :: FilePath
 elmConfig = "elm-package.json"
 
 
+{-|
+  Haskell representation fof the Model record as used by the frontend.
+-}
 data Model = Model
   { currentFolder :: FilePath
   , folders       :: [FilePath]
@@ -32,6 +35,9 @@ data Model = Model
   }
 
 
+{-|
+  Haskell representation of an ElmPackage record as used by the frontend.
+-}
 data ElmPackage = ElmPackage
   { pversion :: String
   , license :: String
@@ -41,6 +47,9 @@ data ElmPackage = ElmPackage
   }
 
 
+{-|
+  Haskell representation of a package Dependency record as used by the frontend.
+-}
 data Dependency = Dependency
   { name    :: String
   , dversion :: String
@@ -48,6 +57,9 @@ data Dependency = Dependency
   }
 
 
+{-|
+  'FromJSON' instance of 'ElmPackage' that parses the elm-package.json format.
+-}
 instance FromJSON ElmPackage where
   parseJSON (Object o) = ElmPackage
     <$> o .: "version"
@@ -67,6 +79,9 @@ instance FromJSON ElmPackage where
   parseJSON _ = mzero
 
 
+{-|
+  Special 'ToJSON' instance that producec json as accepted by the elm-reactor frontend Elm code.
+-}
 instance ToJSON ElmPackage where
   toJSON = object . sequenceA
     [ (.=) "version" . pversion
@@ -77,6 +92,9 @@ instance ToJSON ElmPackage where
     ]
 
 
+{-|
+  Special 'ToJSON' instance that produces
+-}
 instance ToJSON Dependency where
   toJSON = object . sequenceA
     [ (.=) "version" . dversion
@@ -85,6 +103,9 @@ instance ToJSON Dependency where
     ]
 
 
+{-|
+  Special 'ToJSON' instance that producec json as accepted by the elm-reactor frontend Elm code.
+-}
 instance ToJSON Model where
   toJSON model = object
     [ "folders" .= folders model
@@ -94,6 +115,9 @@ instance ToJSON Model where
     ]
 
 
+{-|
+  The webpage template for the reactor.
+-}
 indexPageTemplate :: S.ByteString -> S.ByteString -> S.ByteString
 indexPageTemplate directory projectData = S.intercalate ""
   [ "<head><title>"
@@ -104,10 +128,16 @@ indexPageTemplate directory projectData = S.intercalate ""
   , projectData
   , "</script><style type=\"text/css\">"
   , $(embedFile "embedded/index.css")
-  , "</style></head><body><script type=\"text/javascript\">window.addEventListener(\"DOMContentLoaded\", function (){ Elm.fullscreen(Elm.Index, { modelPort: document.initialModel });})</script></body>"
+  , "</style></head><body><script type=\"text/javascript\">\
+    \window.addEventListener(\"DOMContentLoaded\", function (){ \
+    \Elm.fullscreen(Elm.Index, { modelPort: document.initialModel });})\
+    \</script></body>\n"
   ]
 
 
+{-|
+  Turn a model into the javascript script that provides data to the elm code.
+-}
 dataToJs :: Model -> S.ByteString
 dataToJs model = LBS.toStrict $ "(function(){document.initialModel=" `LBS.append` encode model `LBS.append` "})();"
 
@@ -126,7 +156,7 @@ elmIndexGenerator directory = do
   allDirs <- liftIO $ filterM (doesDirectoryExist . (directory </>)) entries
   let filterFunc = if directory `elem` ["", ".", "./"] then not . (`elem` ["..", "."]) else (/= ".")
   let notDotted = filter filterFunc allDirs
-  allFiles   <- liftIO $ filterM (doesFileExist . (directory </>)) entries
+  allFiles <- liftIO $ filterM (doesFileExist . (directory </>)) entries
   configExists <- liftIO $ doesFileExist $ "." </> elmConfig
   config <- if configExists
     then decodeStrict <$> (liftIO $ S.readFile $ "." </> elmConfig)
