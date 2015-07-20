@@ -16,6 +16,8 @@ Homepage:
 
 License: BSD3
 License-file: LICENSE
+License-files:
+  ICON-LICENSE
 
 Author:     Evan Czaplicki
 Maintainer: info@elm-lang.org
@@ -34,23 +36,7 @@ Data-files:
   favicon.ico
   _reactor/debug.js
   _reactor/index.js
-  _reactor/icons/file-4x.png
-  _reactor/icons/folder-4x.png
-  _reactor/icons/book-4x.png
-  _reactor/icons/home-4x.png
-  _reactor/icons/browser-4x.png
-  _reactor/icons/aperture-4x.png
-  _reactor/icons/code-4x.png
-  _reactor/icons/cog-4x.png
-  _reactor/icons/wrench-4x.png
-  _reactor/icons/document-4x.png
-  _reactor/icons/spreadsheet-4x.png
-  _reactor/icons/key-4x.png
-  _reactor/icons/lock-locked-4x.png
-  _reactor/icons/audio-4x.png
-  _reactor/icons/list-4x.png
-  _reactor/icons/hard-drive-4x.png
-  _reactor/icons/terminal-4x.png
+  _reactor/icons/*.png
   _reactor/debugger/pause-button-up.png
   _reactor/debugger/pause-button-down.png
   _reactor/debugger/pause-button-hover.png
