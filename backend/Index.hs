@@ -12,7 +12,6 @@ import qualified Data.ByteString.Lazy as LBS
 import           Data.List                  (intercalate)
 import           Data.Aeson as Json
 import qualified Data.Map as Map
-import           Data.FileEmbed             (embedFile)
 import           System.Directory           (doesDirectoryExist, doesFileExist,
                                             getDirectoryContents)
 import           System.FilePath            ((</>), splitDirectories)
@@ -22,6 +21,10 @@ import           Utils                      (splitList)
 
 elmConfig :: FilePath
 elmConfig = "elm-package.json"
+
+
+compiledCodeLocation :: S.ByteString
+compiledCodeLocation = "/_reactor/index.js"
 
 
 {-|
@@ -122,13 +125,12 @@ indexPageTemplate :: S.ByteString -> S.ByteString -> S.ByteString
 indexPageTemplate directory projectData = S.intercalate ""
   [ "<head><title>"
   , directory
-  , "</title><script charset=\"utf-8\">"
-  , $(embedFile "embedded/elm.js")
-  , "</script><script type=\"text/javascript\">"
+  , "</title><script charset=\"utf-8\" src=\""
+  , compiledCodeLocation
+  , "\"></script><script type=\"text/javascript\">"
   , projectData
-  , "</script><style type=\"text/css\">"
-  , $(embedFile "embedded/index.css")
-  , "</style></head><body><script type=\"text/javascript\">\
+  , "</script><style>html, body {margin: 0;padding: 0;}</style>\
+    \</head><body><script type=\"text/javascript\">\
     \window.addEventListener(\"DOMContentLoaded\", function (){ \
     \Elm.fullscreen(Elm.Index, { modelPort: document.initialModel });})\
     \</script></body>\n"
@@ -159,7 +161,7 @@ elmIndexGenerator directory = do
   allFiles <- liftIO $ filterM (doesFileExist . (directory </>)) entries
   configExists <- liftIO $ doesFileExist $ "." </> elmConfig
   config <- if configExists
-    then decodeStrict <$> (liftIO $ S.readFile $ "." </> elmConfig)
+    then decodeStrict <$> liftIO (S.readFile $ "." </> elmConfig)
     else return Nothing
 
   let model =

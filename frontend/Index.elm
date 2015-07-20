@@ -7,14 +7,13 @@ import Signal exposing (Signal, Address)
 import String
 import Util exposing (..)
 import Dict exposing (fromList)
-import Maybe.Extra exposing (or)
 
 
 -- CONSTANTS
 
 (=>) = (,)
 
-iconPath = "open-iconic/png"
+iconPath = "/_reactor/icons"
 separatorStyle = style [ "display" => "inline-block", "margin" => "0 5px" ]
 guiDependencySeparator = span [ separatorStyle ] [ text "/" ]
 guiPathSeparator = span [ separatorStyle ] [ text "/" ]
@@ -128,6 +127,13 @@ clearfix =
 
 
 -- UTILITY FUNCTIONS
+
+
+or : Maybe a -> Maybe a -> Maybe a
+or ma mb =
+  case ma of
+    Nothing -> mb
+    _ -> ma
 
 
 packageUrl : Dependency -> String
