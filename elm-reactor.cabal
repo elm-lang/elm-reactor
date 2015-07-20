@@ -77,7 +77,6 @@ Executable elm-reactor
     containers >= 0.3,
     directory >= 1.2,
     elm-compiler >= 0.15.1 && < 0.16,
-    file-embed >= 0.0.8,
     filepath,
     fsnotify >= 0.1.0.2,
     HTTP,
