@@ -41,11 +41,11 @@ data Model = Model
   Haskell representation of an ElmPackage record as used by the frontend.
 -}
 data ElmPackage = ElmPackage
-  { pversion :: String
-  , license :: String
-  , summary :: String
+  { pversion     :: String
+  , license      :: String
+  , summary      :: String
   , dependencies :: [Dependency]
-  , repository :: String
+  , repository   :: String
   }
 
 
@@ -53,9 +53,9 @@ data ElmPackage = ElmPackage
   Haskell representation of a package Dependency record as used by the frontend.
 -}
 data Dependency = Dependency
-  { name    :: String
+  { name     :: String
   , dversion :: String
-  , account :: String
+  , account  :: String
   }
 
 
@@ -73,9 +73,9 @@ instance FromJSON ElmPackage where
       toDependency val cversion =
         case splitList '/' val of
           [cname, caccount] ->
-            return Dependency { account = caccount
+            return Dependency { account  = caccount
                               , dversion = cversion
-                              , name    = cname
+                              , name     = cname
                               }
           _ -> mzero
   parseJSON _ = mzero
@@ -86,11 +86,11 @@ instance FromJSON ElmPackage where
 -}
 instance ToJSON ElmPackage where
   toJSON = object . sequenceA
-    [ (.=) "version" . pversion
-    , (.=) "license" . license
-    , (.=) "summary" . summary
+    [ (.=) "version"      . pversion
+    , (.=) "license"      . license
+    , (.=) "summary"      . summary
     , (.=) "dependencies" . dependencies
-    , (.=) "repository" . repository
+    , (.=) "repository"   . repository
     ]
 
 
@@ -100,7 +100,7 @@ instance ToJSON ElmPackage where
 instance ToJSON Dependency where
   toJSON = object . sequenceA
     [ (.=) "version" . dversion
-    , (.=) "name" . name
+    , (.=) "name"    . name
     , (.=) "account" . account
     ]
 
