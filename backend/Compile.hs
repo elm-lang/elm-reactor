@@ -1,6 +1,6 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# LANGUAGE OverloadedStrings #-}
-module Compile (toHtml, toJson) where
+module Compile (toHtml, toJson, htmlDocument) where
 
 import Control.Applicative ((<$>),(<*>))
 import Control.Monad (when)
