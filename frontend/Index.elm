@@ -359,14 +359,14 @@ dependencyView package =
     div
       [ style <| blockStyles ++ boxItemStyles ]
       [ div
-        [ style <| [ "width" => "70%" ] ++ floatLeft ]
+        [ style floatLeft ]
         [ iconBox "left" packageIcon
         , a [ href <| accountUrl package, style linkStyles ] [ text account ]
         , guiDependencySeparator
         , a [ href <| packageUrl package, style linkStyles ] [ text name ]
         ]
       , div
-        [ style <| [ "width" => "30%" ] ++ floatRight ]
+        [ style floatRight ]
         [ text version ]
       ]
 
