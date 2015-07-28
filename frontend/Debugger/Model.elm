@@ -7,6 +7,7 @@ import Debug
 import Debugger.Reflect as Reflect
 
 import Debugger.RuntimeApi as API
+import DataUtils exposing (..)
 
 
 type Model
@@ -184,26 +185,3 @@ curFrameIdx activeAttrs =
 
     _ ->
       numFrames activeAttrs - 1
-
-
-getLast : List a -> a
-getLast list =
-  case list of
-    [] ->
-      Debug.crash "getLast of empty list"
-
-    [x] ->
-      x
-
-    (x::xs) ->
-      getLast xs
-
-
-getMaybe : String -> Maybe a -> a
-getMaybe msg maybe =
-  case maybe of
-    Just x ->
-      x
-
-    Nothing ->
-      Debug.crash msg

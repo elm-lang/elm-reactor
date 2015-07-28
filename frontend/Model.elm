@@ -1,6 +1,7 @@
 module Model where
 
 import Debugger.Model as DM
+import SideBar.Logs as Logs
 import Button
 
 type alias Model =
@@ -9,6 +10,7 @@ type alias Model =
   , permitSwaps : Bool
   , restartButtonState : Button.Model
   , playPauseButtonState : Button.Model
+  , logsState : Logs.Model
   }
 
 
@@ -19,6 +21,7 @@ initModel =
   , permitSwaps = True
   , restartButtonState = Button.Up
   , playPauseButtonState = Button.Up
+  , logsState = Logs.initModel
   }
 
 
@@ -30,6 +33,7 @@ type Action
   -- TODO: vv get rid of these with new component arch ...? vv
   | PlayPauseButtonAction Button.Action
   | RestartButtonAction Button.Action
+  | LogsAction Logs.Action
 
 
 type alias CompilationErrors =

@@ -19,7 +19,7 @@ import Debugger.RuntimeApi as API
 import Debugger.Model as DM
 import Debugger.Service as Service
 import SideBar.Controls as Controls
-import SideBar.Watches as Watches
+import SideBar.Logs as Logs
 
 
 (html, uiTasks) =
@@ -32,6 +32,7 @@ import SideBar.Watches as Watches
     , view = view
     , update = update
     }
+
 
 main =
   html
@@ -131,10 +132,15 @@ viewSidebar addr state =
         DM.Active activeAttrs ->
           [ Controls.view addr state activeAttrs
           , dividerBar
-          --, Watches.view state.watches
+          , Logs.view
+              (Signal.forwardTo addr LogsAction)
+              Controls.totalHeight
+              state.logsState
+              activeAttrs
           ]
 
         _ ->
+          -- TODO: prettify
           [text "Initialzing..."]
   in
     div
@@ -159,19 +165,32 @@ update loopback now action state =
       )
 
     NewServiceState serviceState ->
-      ( { state | serviceState <- serviceState }
-      , []
-      )
+        ( { state
+              | serviceState <- serviceState
+              , logsState <-
+                  Logs.update (Logs.UpdateLogs serviceState) state.logsState
+          }
+        , []
+        )
 
     PlayPauseButtonAction action ->
-      ( { state | playPauseButtonState <- Button.update action state.playPauseButtonState }
+      ( { state | playPauseButtonState <-
+            Button.update action state.playPauseButtonState
+        }
       , []
       )
 
     RestartButtonAction action ->
-      ( { state | restartButtonState <- Button.update action state.restartButtonState }
+      ( { state | restartButtonState <-
+            Button.update action state.restartButtonState
+        }
       , []
-      )      
+      )
+
+    LogsAction action ->
+      ( { state | logsState <- Logs.update action state.logsState }
+      , []
+      )
 
 -- INPUT PORT: initial module
 

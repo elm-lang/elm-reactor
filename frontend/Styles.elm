@@ -41,6 +41,14 @@ intToPx x =
   toString x ++ "px"
 
 
+unselectable : List (String, String)
+unselectable =
+  [ "-webkit-user-select" => "none"
+  , "-moz-user-select" => "none"
+  , "-ms-user-select" => "none"
+  ]
+
+
 -- TODO: would be nice to have these in the Color lib
 {-| See https://github.com/mbostock/d3/wiki/Colors#rgb_brighter -}
 brighter : Float -> Color.Color -> Color.Color
