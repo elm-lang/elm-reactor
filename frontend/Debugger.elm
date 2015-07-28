@@ -7,38 +7,19 @@ import Signal
 import Task exposing (Task)
 import Json.Decode as JsDec
 import String
+import Color
 
 import FancyStartApp
 import Empty exposing (..)
 
+import Model exposing (..)
+import Styles exposing (..)
+import Button
 import Debugger.RuntimeApi as API
 import Debugger.Model as DM
 import Debugger.Service as Service
-
-type alias Model =
-  { sidebarVisible : Bool
-  , permitSwaps : Bool
-  , serviceState : DM.Model
-  }
-
-
-initModel : Model
-initModel =
-  { sidebarVisible = True
-  , permitSwaps = True
-  , serviceState = DM.Uninitialized
-  }
-
-
-type Action
-  = SidebarVisible Bool
-  | PermitSwaps Bool
-  | NewServiceState DM.Model
-  | CompilationErrors CompilationErrors
-
-
-type alias CompilationErrors =
-  String
+import SideBar.Controls as Controls
+import SideBar.Watches as Watches
 
 
 (html, uiTasks) =
@@ -62,103 +43,106 @@ main =
 view : Signal.Address Action -> Model -> Html
 view addr state =
   let
-    mainVal =
+    (mainVal, isPlaying) =
       case state.serviceState of
         DM.Active activeAttrs ->
-          activeAttrs.mainVal
+          (activeAttrs.mainVal, DM.isPlaying activeAttrs)
 
         _ ->
-          div [] []
+          (div [] [], False)
 
   in
     div []
-      [ div []
-          [ mainVal ]
+      [ mainVal
+      , eventBlocker (not isPlaying)
       , viewSidebar addr state
       ]
+
+
+eventBlocker : Bool -> Html
+eventBlocker visible =
+  div
+    [ id "elm-reactor-event-blocker"
+    , style
+        [ "position" => "absolute"
+        , "top" => "0"
+        , "left" => "0"
+        , "width" => "100%"
+        , "height" => "100%"
+        , "display" => if visible then "block" else "none"
+        ]
+    ]
+    []
+
+
+tabWidth = 25
+
+toggleTab : Signal.Address Action -> Model -> Html
+toggleTab addr state =
+  div
+    [ style
+        [ "position" => "absolute"
+        , "width" => intToPx tabWidth
+        , "height" => "60px"
+        , "top" => "50%"
+        , "left" => intToPx -tabWidth
+        , "border-top-left-radius" => "3px"
+        , "border-bottom-left-radius" => "3px"
+        , "background" => colorToCss darkGrey
+        ]
+    , onClick addr (SidebarVisible <| not state.sidebarVisible)
+    ]
+    []
 
 
 viewSidebar : Signal.Address Action -> Model -> Html
 viewSidebar addr state =
   let
+    constantStyles =
+      [ "background-color" => colorToCss darkGrey
+      , "width" => intToPx sidebarWidth
+      , "position" => "absolute"
+      , "top" => "0"
+      , "bottom" => "0"
+      , "transition-duration" => "0.3s"
+      , "opacity" => "0.97"
+      , "z-index" => "1"
+      ]
+    
+    toggleStyles =
+      if state.sidebarVisible then
+        [ "right" => "0" ]
+      else
+        [ "right" => intToPx -sidebarWidth ]
+
+    dividerBar =
+      div
+        [ style
+            [ "height" => "1px"
+            , "width" => intToPx sidebarWidth
+            , "opacity" => "0.3"
+            , "background-color" => colorToCss Color.lightGrey
+            ]
+        ]
+        []
+
     body =
       case state.serviceState of
         DM.Active activeAttrs ->
-          activeSidebarBody addr activeAttrs
+          [ Controls.view addr state activeAttrs
+          , dividerBar
+          --, Watches.view state.watches
+          ]
 
         _ ->
-          text "Initialzing..."
+          [text "Initialzing..."]
   in
-    -- TODO: event blocker
-    -- TODO: toggle tab
     div
-      [ style
-          [ "position" => "absolute"
-          , "width" => "300px"
-          , "right" => "0px"
-          , "background-color" => "gray"
-          , "color" => "white"
-          , "z-index" => "1"
-          ]
+      [ id "elm-reactor-side-bar"
+      -- done in JS: cancelBubble / stopPropagation on this
+      , style (constantStyles ++ toggleStyles)
       ]
-      [ body ]
-
-
-activeSidebarBody : Signal.Address Action -> DM.ActiveAttrs -> Html
-activeSidebarBody addr activeAttrs =
-  let
-    commandsAddr =
-      (Service.commandsMailbox ()).address
-
-    numFrames =
-      DM.numFrames activeAttrs
-
-    curFrame =
-      DM.curFrameIdx activeAttrs
-  in
-    div []
-      [ div []
-          [ button
-              [ onClick
-                  commandsAddr
-                  (if DM.isPlaying activeAttrs then
-                    DM.Pause
-                  else
-                    DM.ForkFrom curFrame True)
-              ]
-              [ text
-                  (if DM.isPlaying activeAttrs then "Pause" else "Play")
-              ]
-          , button
-              [ onClick commandsAddr <|
-                  DM.ForkFrom 0 (DM.isPlaying activeAttrs)
-              ]
-              [ text "Reset" ]
-          ]
-      , div []
-          [ div []
-          [ text <|
-              "frame idx: "
-              ++ (toString <| curFrame)
-              ++ "; numFrames: " ++ toString numFrames
-          , input
-              [ type' "range"
-              , Attr.min "0"
-              , Attr.max <| toString <| numFrames - 1
-              , Attr.value <| toString <| curFrame
-              , on
-                  "input"
-                  (JsDec.at ["target","value"]
-                    (JsDec.customDecoder JsDec.string String.toInt))
-                  (\idx ->
-                    Signal.message
-                    commandsAddr
-                    (DM.GetNodeState {start=idx, end=idx} [DM.mainId activeAttrs]))
-              ]
-              []
-            ]
-          ]
-      ]
+      ([toggleTab addr state] ++ body)
 
 
 update : FancyStartApp.UpdateFun Model Empty Action
@@ -178,6 +162,16 @@ update loopback now action state =
       ( { state | serviceState <- serviceState }
       , []
       )
+
+    PlayPauseButtonAction action ->
+      ( { state | playPauseButtonState <- Button.update action state.playPauseButtonState }
+      , []
+      )
+
+    RestartButtonAction action ->
+      ( { state | restartButtonState <- Button.update action state.restartButtonState }
+      , []
+      )      
 
 -- INPUT PORT: initial module
 

@@ -15,6 +15,7 @@ type Model
   | Active ActiveAttrs
 
 
+-- TODO: rename?
 type alias ActiveAttrs =
   { session : API.DebugSession
   , sessionState : SessionState
@@ -156,6 +157,9 @@ isPlaying : ActiveAttrs -> Bool
 isPlaying activeAttrs =
   case activeAttrs.sessionState of
     Playing _ ->
+      True
+
+    Pausing ->
       True
 
     _ ->

@@ -8,9 +8,11 @@ import Json.Decode exposing (..)
 import String
 import FontAwesome
 
-import Button
-import SideBar.Model as Model
+import Model
+import Debugger.Model as DM
+import Debugger.Service as Service
 import Styles exposing (..)
+import Button
 
 -- STYLE
 
@@ -75,8 +77,8 @@ darkGrey = Color.rgb 74 74 74
 
 -- VIEW
 
-playPauseButton : Bool -> Button.Model -> Html
-playPauseButton isPlay state =
+playPauseButton : Signal.Address Model.Action -> Bool -> Button.Model -> DM.ActiveAttrs -> Html
+playPauseButton addr isPlay state activeAttrs =
   let
     icon =
       if isPlay then
@@ -86,22 +88,21 @@ playPauseButton isPlay state =
 
     render state =
       iconButton (playPauseButtonColor state) icon
+
+    -- TODO: we shouldn't have to know this here
+    curFrame =
+      DM.curFrameIdx activeAttrs
   in 
     Button.view
-        (Signal.forwardTo buttonStateMailbox.address Model.PlayPauseButtonAction)
-        pausedInputMailbox.address
-        (not isPlay)
-        state
-        render
+      (Signal.forwardTo addr Model.PlayPauseButtonAction)
+      commandsAddr
+      (DM.ForkFrom curFrame isPlay)
+      state
+      render
 
 
-pausedInputMailbox : Signal.Mailbox Bool
-pausedInputMailbox =
-  Signal.mailbox False
-
-
-restartButton : Button.Model -> Html
-restartButton state =
+restartButton : Signal.Address Model.Action -> Button.Model -> DM.ActiveAttrs -> Html
+restartButton addr state activeAttrs =
   let
     render st =
       iconButton
@@ -109,90 +110,95 @@ restartButton state =
         (FontAwesome.undo darkGrey buttonIconSize)
   in 
     Button.view
-      (Signal.forwardTo buttonStateMailbox.address Model.RestartButtonAction)
-      restartMailbox.address
-      ()
+      (Signal.forwardTo addr Model.RestartButtonAction)
+      commandsAddr
+      -- TODO: this should just be a Reset action
+      (DM.ForkFrom 0 <| DM.isPlaying activeAttrs)
       state
       render
 
 
-restartMailbox : Signal.Mailbox ()
-restartMailbox =
-  Signal.mailbox ()
-
-
-buttonStateMailbox : Signal.Mailbox Model.Action
-buttonStateMailbox =
-  Signal.mailbox Model.NoOp
-
-
-swapButton : Bool -> Html
-swapButton permitSwap =
+swapButton : Signal.Address Model.Action -> Bool -> Html
+swapButton addr permitSwap =
   input
     [ type' "checkbox"
     , on "change"
         targetChecked
-        (Signal.message permitSwapMailbox.address)
+        (Signal.message addr << Model.PermitSwaps)
     , checked permitSwap
     ]
     []
 
 
-permitSwapMailbox : Signal.Mailbox Bool
-permitSwapMailbox =
-  Signal.mailbox True
+scrubSlider : Int -> Model.Model -> DM.ActiveAttrs -> Html
+scrubSlider width state activeAttrs =
+  let
+    numFrames =
+      DM.numFrames activeAttrs
+
+    curFrame =
+      DM.curFrameIdx activeAttrs
+  in
+    input
+      [ type' "range"
+      , style
+          [ "width" => intToPx width
+          , "height" => intToPx sliderHeight
+          , "margin" => "0"
+          ]
+      , Attr.min "0"
+      , Attr.max <| toString <| numFrames - 1
+      , Attr.value <| toString <| curFrame
+      , on "input"
+          (at ["target","value"] (customDecoder string String.toInt))
+          (\idx ->
+            Signal.message
+              commandsAddr
+              (DM.GetNodeState {start=idx, end=idx} [DM.mainId activeAttrs]))
+      ]
+      []
 
 
-scrubSlider : Int -> Model.Model -> Html
-scrubSlider width state =
-  input
-    [ type' "range"
-    , style
-        [ "width" => intToPx width
-        , "height" => intToPx sliderHeight
-        , "margin" => "0"
-        ]
-    , Attr.min (toString 0)
-    , Attr.max (toString state.totalEvents)
-    , Attr.value (toString state.scrubPosition)
-    , on "input"
-        (at ["target","value"] (customDecoder string String.toInt))
-        (Signal.message scrubMailbox.address)
-    ]
-    []
+sliderEventText : Int -> DM.ActiveAttrs -> Html
+sliderEventText width activeAttrs =
+  let
+    numFrames =
+      DM.numFrames activeAttrs
+
+    curFrame =
+      DM.curFrameIdx activeAttrs
+  in
+    div
+      [ style
+          [ "height" => intToPx eventIdxTextHeight
+          , "position" => "relative"
+          ]
+      ]
+      [ positionedText width curFrame numFrames False ]
 
 
-scrubMailbox : Signal.Mailbox Int
-scrubMailbox =
-  Signal.mailbox 0
+sliderMinMaxText : Int -> DM.ActiveAttrs -> Html
+sliderMinMaxText width activeAttrs =
+  let
+    numFrames =
+      DM.numFrames activeAttrs
 
-
-sliderEventText : Int -> Model.Model -> Html
-sliderEventText width state =
-  div
-    [ style
-        [ "height" => intToPx eventIdxTextHeight
-        , "position" => "relative"
-        ]
-    ]
-    [ positionedText width state.scrubPosition state.totalEvents False ]
-
-
-sliderMinMaxText : Int -> Model.Model -> Html
-sliderMinMaxText width state =
-  div
-    [ style
-        [ "height" => intToPx eventIdxTextHeight
-        , "position" => "relative"
-        ]
-    ]
-    [ positionedText width 0 state.totalEvents False
-    , positionedText width state.totalEvents state.totalEvents True
-    ]
+    curFrame =
+      DM.curFrameIdx activeAttrs
+  in
+    div
+      [ style
+          [ "height" => intToPx eventIdxTextHeight
+          , "position" => "relative"
+          ]
+      ]
+      [ positionedText width 0 numFrames False
+      , positionedText width (numFrames-1) numFrames True
+      ]
 
 
 positionedText : Int -> Int -> Int -> Bool -> Html
-positionedText width frameIdx totalEvents alwaysRight =
+positionedText width frameIdx numFrames alwaysRight =
   let
     charWidth =
       10
@@ -213,7 +219,7 @@ positionedText width frameIdx totalEvents alwaysRight =
       if alwaysRight then
         1
       else
-        toFloat frameIdx / toFloat totalEvents
+        toFloat frameIdx / toFloat (numFrames-1)
 
     textCenterpointRange =
       toFloat width - 2 * sliderOffset + 5
@@ -235,8 +241,8 @@ positionedText width frameIdx totalEvents alwaysRight =
       [ text (toString frameIdx) ]
 
 
-view : Bool -> Model.Model -> Html
-view showSwap state =
+view : Signal.Address Model.Action -> Model.Model -> DM.ActiveAttrs -> Html
+view addr state activeAttrs =
   let
     midWidth =
       sidebarWidth - margin * 2
@@ -244,7 +250,9 @@ view showSwap state =
     swapWithLabel =
       div
         [ style swapButtonTextStyle ]
-        (if showSwap then [ text "swap", swapButton state.permitSwap ] else [])
+        [ text "swap"
+        , swapButton addr state.permitSwaps
+        ]
 
     buttonContainer =
       div
@@ -255,9 +263,9 @@ view showSwap state =
             , "-webkit-align-items" => "center"
             ]
         ]
-        [ restartButton state.restartButtonState
+        [ restartButton addr state.restartButtonState activeAttrs
         , swapWithLabel
-        , playPauseButton state.paused state.playPauseButtonState
+        , playPauseButton addr (not <| DM.isPlaying activeAttrs) state.playPauseButtonState activeAttrs
         ]
 
     sliderContainer =
@@ -265,9 +273,9 @@ view showSwap state =
         [ style
             [ "padding-top" => intToPx sliderPadding ]
         ]
-        [ sliderEventText midWidth state
-        , scrubSlider midWidth state
-        , sliderMinMaxText midWidth state
+        [ sliderEventText midWidth activeAttrs
+        , scrubSlider midWidth state activeAttrs
+        , sliderMinMaxText midWidth activeAttrs
         ]
   in
     div
@@ -277,6 +285,64 @@ view showSwap state =
       [ buttonContainer
       , sliderContainer
       ]
+
+-- TODO: pass this as an argument from main?
+-- it never changes...
+commandsAddr : Signal.Address DM.Command
+commandsAddr =
+  (Service.commandsMailbox ()).address
+
+
+
+
+--view : Signal.Address Action -> DM.ActiveAttrs -> Html
+--view addr activeAttrs =
+--  let
+--    ....
+--  in
+--    div []
+--      [ div []
+--          [ button
+--              [ onClick
+--                  commandsAddr
+--                  (if DM.isPlaying activeAttrs then
+--                    DM.Pause
+--                  else
+--                    DM.ForkFrom curFrame True)
+--              ]
+--              [ text
+--                  (if DM.isPlaying activeAttrs then "Pause" else "Play")
+--              ]
+--          , button
+--              [ onClick commandsAddr <|
+--                  DM.ForkFrom 0 (DM.isPlaying activeAttrs)
+--              ]
+--              [ text "Reset" ]
+--          ]
+--      , div []
+--          [ div []
+--          [ text <|
+--              "frame idx: "
+--              ++ (toString <| curFrame)
+--              ++ "; numFrames: " ++ toString numFrames
+--          , input
+--              [ type' "range"
+--              , Attr.min "0"
+--              , Attr.max <| toString <| numFrames - 1
+--              , Attr.value <| toString <| curFrame
+--              , on
+--                  "input"
+--                  (JsDec.at ["target","value"]
+--                    (JsDec.customDecoder JsDec.string String.toInt))
+--                  (\idx ->
+--                    Signal.message
+--                    commandsAddr
+--                    (DM.GetNodeState {start=idx, end=idx} [DM.mainId activeAttrs]))
+--              ]
+--              []
+--            ]
+--          ]
+--      ]
 
 
 -- UTILITIES

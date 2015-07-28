@@ -245,8 +245,20 @@ updateActive loopback now action state =
                   , []
                   )
 
+                Command (GetNodeState interval nodes) ->
+                  ( { state |
+                        sessionState <-
+                            Paused pausedIdx (Just <| GettingNodeState interval)
+                    }
+                  , [ API.getNodeState state.session interval nodes
+                        |> Task.mapError (\_ -> Debug.crash "...")
+                        |> Task.map (Response << GotNodeState)
+                        |> loopback
+                    ]
+                  )
+
                 _ ->
-                  Debug.crash "..."
+                  Debug.crash <| "unexpected: " ++ (toString (action))
 
             Subscribing subbing ->
               -- TODO: factor out SUB
@@ -285,8 +297,20 @@ updateActive loopback now action state =
                 ]
               )
 
-            Command (ForkFrom frameIdx playAfter) ->
-              ( {state | sessionState <- Forking frameIdx playAfter }
+            Response (GotNodeState values) ->
+              ( { state
+                    | mainVal <-
+                        getMainValFromLogs state.session values
+                    , sessionState <-
+                        Paused pausedIdx Nothing
+                }
+              , []
+              )
+
+            Command (ForkFrom frameIdx playingAfter) ->
+              -- TODO: need to know whether this is from Reset or Play button.
+              -- revamp these commands, this is ridiculous.
+              ( {state | sessionState <- Forking frameIdx playingAfter }
               , [ API.forkFrom state.session frameIdx
                     |> Task.mapError (\msg -> Debug.crash msg)
                     |> Task.map (\vals -> Response (HasForked vals))
