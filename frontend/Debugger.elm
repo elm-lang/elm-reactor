@@ -8,9 +8,11 @@ import Task exposing (Task)
 import Json.Decode as JsDec
 import String
 import Color
+import Debug
 
 import FancyStartApp
 import Empty exposing (..)
+import WebSocket
 
 import Model exposing (..)
 import Styles exposing (..)
@@ -20,6 +22,7 @@ import Debugger.Model as DM
 import Debugger.Service as Service
 import SideBar.Controls as Controls
 import SideBar.Logs as Logs
+import DataUtils exposing (..)
 
 
 (html, uiTasks) =
@@ -28,7 +31,10 @@ import SideBar.Logs as Logs
     , initialTasks = (\loopback ->
         [Signal.send (Service.commandsMailbox ()).address (DM.Initialize initMod)])
     , externalActions =
-        Signal.map NewServiceState Service.state
+        Signal.mergeMany
+          [ Signal.map NewServiceState Service.state
+          , socketEventsMailbox.signal
+          ]
     , view = view
     , update = update
     }
@@ -141,7 +147,10 @@ viewSidebar addr state =
 
         _ ->
           -- TODO: prettify
-          [text "Initialzing..."]
+          [ div
+              [style [ "color" => "white" ]]
+              [text "Initialzing..."]
+          ]
   in
     div
       [ id "elm-reactor-side-bar"
@@ -192,15 +201,64 @@ update loopback now action state =
       , []
       )
 
+    ConnectSocket maybeSocket ->
+      ( { state | swapSocket <- maybeSocket }
+      , []
+      )
+
+    SwapEvent swapEvent ->
+      case swapEvent of
+        NewModule compiledModule ->
+          Debug.crash compiledModule.code
+
+        CompilationErrors errors ->
+          Debug.crash errors
+
+
+-- Socket stuff
+
+socketEventsMailbox : Signal.Mailbox Action
+socketEventsMailbox =
+  Signal.mailbox NoOp
+
 -- INPUT PORT: initial module
 
 port initMod : API.ElmModule
 
+port fileName : String
+
+-- would be nice to get this from a library
+port windowLocationHost : String
+
 -- TASK PORTS
+
+port connectSocket : Task x ()
+port connectSocket =
+  (WebSocket.create
+    ("ws://" ++ windowLocationHost ++ "/socket?file=" ++ fileName)
+    (Signal.forwardTo
+      socketEventsMailbox.address
+      (\evt ->
+        case evt of
+          WebSocket.Message msg ->
+            msg
+              |> JsDec.decodeString swapEvent
+              |> getResult
+              |> SwapEvent
+
+          WebSocket.Close ->
+            ConnectSocket Nothing
+      )
+    )
+  )
+  `Task.andThen` (\socket ->
+      Signal.send socketEventsMailbox.address (ConnectSocket <| Just socket))
+
 
 port uiTasksPort : Signal (Task Empty ())
 port uiTasksPort =
   uiTasks
+
 
 port debugServiceTasks : Signal (Task Empty ())
 port debugServiceTasks =

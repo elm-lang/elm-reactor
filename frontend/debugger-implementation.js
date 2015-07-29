@@ -74,7 +74,9 @@ function ignore(e)
 
 Elm.fullscreenDebug = function(module, fileName) {
 	Elm.fullscreen(Elm.Debugger, {
-		initMod: module
+		initMod: module,
+		fileName: fileName,
+		windowLocationHost: window.location.host
 	});
 };
 

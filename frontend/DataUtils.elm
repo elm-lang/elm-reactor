@@ -26,3 +26,13 @@ getMaybe msg maybe =
 
     Nothing ->
       Debug.crash msg
+
+
+getResult : Result String r -> r
+getResult res =
+  case res of
+    Ok val ->
+      val
+
+    Err msg ->
+      Debug.crash msg
