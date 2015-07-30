@@ -6,19 +6,24 @@ import Html.Events exposing (..)
 import Signal
 import Color
 
+import Button
 import Styles exposing (..)
-import SideBar.Model as Model
+import Model
+import OverlayModel
 import SideBar.Controls as Controls
 import SideBar.Watches as Watches
 
 
-view : Bool -> Model.Model -> Html
-view showSwap state =
+view : Signal.Address Model.Action -> Model.Model -> Html
+view addr state =
   div
     []
-    [ sidebar showSwap state
-    , eventBlocker state.paused
+    [ sidebar addr state
+    , eventBlocker (Model.isPaused state)
     ]
+
+
+-- TODO: errors!
 
 
 eventBlocker : Bool -> Html
@@ -37,8 +42,8 @@ eventBlocker visible =
     []
 
 
-sidebar : Bool -> Model.Model -> Html
-sidebar showSwap state =
+sidebar : Signal.Address Model.Action -> Model.Model -> Html
+sidebar addr state =
   let
     constantStyles =
       [ "background-color" => colorToCss darkGrey
@@ -52,7 +57,7 @@ sidebar showSwap state =
       ]
     
     toggleStyles =
-      if state.sidebarVisible
+      if state.overlayModel.sidebarVisible
       then [ "right" => "0" ]
       else [ "right" => intToPx -sidebarWidth ]
 
@@ -66,23 +71,40 @@ sidebar showSwap state =
             ]
         ]
         []
+
+    overlayActions =
+      Signal.forwardTo addr Model.OverlayAction
+
+    contents =
+      case state.attachmentState of
+        -- TODO: prettify
+        Model.Uninitialized ->
+          [ text "Uninitialized" ]
+
+        Model.Swapping _ ->
+          [ text "Swapping" ]
+
+        Model.Connected connectedAttrs ->
+          [ Controls.view addr overlayActions state
+          , dividerBar
+          , Watches.view connectedAttrs.currentWatches
+          ]
+
   in
     div
       [ id "elm-reactor-side-bar"
       -- done in JS: cancelBubble / stopPropagation on this
       , style (constantStyles ++ toggleStyles)
       ]
-      [ toggleTab state
-      , Controls.view showSwap state
-      , dividerBar
-      , Watches.view state.watches
+      [ toggleTab overlayActions state.overlayModel
+      , div [] contents
       ]
 
 
 tabWidth = 25
 
-toggleTab : Model.Model -> Html
-toggleTab state =
+toggleTab : Signal.Address OverlayModel.Action -> OverlayModel.Model -> Html
+toggleTab addr state =
   div
     [ style
         [ "position" => "absolute"
@@ -94,83 +116,8 @@ toggleTab state =
         , "border-bottom-left-radius" => "3px"
         , "background" => colorToCss darkGrey
         ]
-    , onClick sidebarVisibleMailbox.address (not state.sidebarVisible)
+    , onClick
+        addr
+        (OverlayModel.SidebarVisible <| not state.sidebarVisible)
     ]
     []
-
-sidebarVisibleMailbox : Signal.Mailbox Bool
-sidebarVisibleMailbox =
-  Signal.mailbox True
-
--- SIGNALS    
-
-main : Signal Html
-main =
-  -- TODO: move showSwap to the #@$ model
-  Signal.map (view showSwap) scene
-
-
-scene : Signal Model.Model
-scene =
-  Signal.foldp Model.update Model.startModel aggregateUpdates
-
-
-aggregateUpdates : Signal Model.Action
-aggregateUpdates =
-  Signal.mergeMany
-    [ Signal.map (always Model.Restart) restartMailbox.signal
-    , Signal.map Model.Pause pausedInputMailbox.signal
-    , Signal.map Model.TotalEvents eventCounter
-    , Signal.map Model.ScrubPosition scrubMailbox.signal
-    , Signal.map Model.UpdateWatches watches
-    , Signal.map Model.PermitSwap permitSwapMailbox.signal
-    , Signal.map Model.SidebarVisible sidebarVisibleMailbox.signal
-    , buttonStateMailbox.signal
-    ]
-
--- CONTROL MAILBOXES
-
-permitSwapMailbox =
-  Controls.permitSwapMailbox
-
-restartMailbox =
-  Controls.restartMailbox
-
-pausedInputMailbox =
-  Controls.pausedInputMailbox
-
-scrubMailbox =
-  Controls.scrubMailbox
-
-buttonStateMailbox =
-  Controls.buttonStateMailbox
-
--- INCOMING PORTS
-
-port eventCounter : Signal Int
-
-port watches : Signal (List (String, String))
-
-port showSwap : Bool
-
-
--- OUTGOING PORTS
-
-port scrubTo : Signal Int
-port scrubTo =
-    scrubMailbox.signal
-
-
-port pause : Signal Bool
-port pause =
-    pausedInputMailbox.signal
-
-
-port restart : Signal Int
-port restart =
-    Signal.map (always 0) restartMailbox.signal
-
-
-port permitSwap : Signal Bool
-port permitSwap =
-    permitSwapMailbox.signal
