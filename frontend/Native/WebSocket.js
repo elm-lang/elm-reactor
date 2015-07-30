@@ -18,10 +18,10 @@ Elm.Native.WebSocket.make = function(localRuntime) {
             socket.addEventListener("message", function(evt) {
                 // TODO: apparently this can be something other than a string
                 // https://developer.mozilla.org/en-US/docs/Web/API/MessageEvent
-                address._0({
+                Task.perform(address._0({
                     ctor: "Message",
                     _0: evt.data
-                });
+                }));
             });
             socket.addEventListener("close", function(evt) {
                 address._0({ctor: "Close"})

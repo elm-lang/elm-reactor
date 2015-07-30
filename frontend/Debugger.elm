@@ -162,7 +162,7 @@ viewSidebar addr state =
 
 update : FancyStartApp.UpdateFun Model Empty Action
 update loopback now action state =
-  case action of
+  case Debug.log "MAIN ACTION" action of
     SidebarVisible visible ->
       ( { state | sidebarVisible <- visible }
       , []
