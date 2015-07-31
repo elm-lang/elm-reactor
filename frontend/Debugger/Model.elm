@@ -19,9 +19,11 @@ type Model
 -- TODO: rename?
 type alias ActiveAttrs =
   { session : API.DebugSession
-  , sessionState : SessionState
+  , runningState : RunningState
+  , swapState : SwapState
   , mainVal : Html
   , exprLogs : Dict.Dict API.ExprTag API.ValueLog
+  -- vv TODO: get inputs for each frame as well
   , nodeLogs : Dict.Dict API.NodeId API.ValueLog
   , subscribedNodes : Set.Set API.NodeId
   }
@@ -30,7 +32,8 @@ type alias ActiveAttrs =
 initialActiveAttrs : API.DebugSession -> Html -> ActiveAttrs
 initialActiveAttrs session mainVal =
   { session = session
-  , sessionState = AlmostPlaying
+  , runningState = Paused
+  , swapState = NotSwapping
   , mainVal = mainVal
   , exprLogs = Dict.empty
   , nodeLogs = Dict.empty
@@ -38,40 +41,15 @@ initialActiveAttrs session mainVal =
   }
 
 
-type SessionState
-  = Playing (Maybe RunningCmd)
-  | Paused Int (Maybe RunningCmd)
-  | Forking API.FrameIndex Bool
-  | AlmostPlaying
-  | Pausing
-  | SwapError SwapError
-
-
-type RunningCmd
+type SwapState
   = Swapping
-  | GettingNodeState API.FrameInterval
-  | Subscribing Bool
+  | NotSwapping
+  | SwapFailed SwapError
 
 
--- maybe don't need to reify these after all
-type Command
-  = Initialize API.ElmModule
-  | Pause
-  | ForkFrom API.FrameIndex Bool
-  | Subscribe API.NodeId Bool
-  | GetNodeState API.FrameInterval (List API.NodeId)
-  | Swap API.ElmModule
-  | NoOpCommand
-
-
-type Response
-  = IsActive API.DebugSession API.ValueSet
-  | IsSubscribed (Maybe API.ValueLog)
-  | HasForked API.ValueSet
-  | IsPlaying
-  | IsPaused (Maybe API.FrameInterval)
-  | SwapResult (Result SwapError (API.DebugSession, API.ValueSet))
-  | GotNodeState (List (API.NodeId, API.ValueLog))
+type RunningState
+  = Playing
+  | Paused Int
 
 
 type alias SwapError =

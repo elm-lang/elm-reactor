@@ -22,6 +22,20 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 		return session.shape;
 	}
 
+	function getModule(session) {
+		return session.module;
+	}
+
+	function getAddress(session) {
+		return session.notificationAddress;
+	}
+
+	function getSubscriptions(session) {
+		return Task.asyncFunction(function(callback) {
+			callback(List.fromArray(session.subscribedNodeIds));
+		});
+	}
+
 	function numFrames(session) {
 		return session.events.length + 1;
 	}
@@ -31,67 +45,53 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 	function getNodeState(session, frameInterval, nodeIds)
 	{
 		return Task.asyncFunction(function(callback) {
-			assertNotDisposed(session);
-			assertPaused(session);
-			nodeIds = List.toArray(nodeIds);
+			assertNotDisposed(session, callback, function() {
+				assertPaused(session, callback, function() {
+					nodeIds = List.toArray(nodeIds);
 
-			jumpTo(session, frameInterval.start);
+					jumpTo(session, frameInterval.start);
 
-			// go through the target range
-			var valueLogs = {};
-			nodeIds.forEach(function(nodeId) {
-				valueLogs[nodeId] = [];
-			});
-			for(var idx = frameInterval.start; idx <= frameInterval.end; idx++)
-			{
-				// get values
-				nodeIds.forEach(function(nodeId) {
-					valueLogs[nodeId].push(Utils.Tuple2(idx, session.sgNodes[nodeId].value));
+					// go through the target range
+					var valueLogs = {};
+					nodeIds.forEach(function(nodeId) {
+						valueLogs[nodeId] = [];
+					});
+					for(var idx = frameInterval.start; idx <= frameInterval.end; idx++)
+					{
+						// get values
+						nodeIds.forEach(function(nodeId) {
+							valueLogs[nodeId].push(Utils.Tuple2(idx, session.sgNodes[nodeId].value));
+						});
+						// push event
+						if(idx < frameInterval.end)
+						{
+							var event = session.events[idx];
+							session.originalNotify(event.nodeId, event.value);
+						}
+					}
+
+					var logs = nodeIds.map(function(nodeId) {
+						return Utils.Tuple2(nodeId, List.fromArray(valueLogs[nodeId]));
+					});
+
+					callback(Task.succeed(List.fromArray(logs)));
 				});
-				// push event
-				if(idx < frameInterval.end)
-				{
-					var event = session.events[idx];
-					session.originalNotify(event.nodeId, event.value);
-				}
-			}
-
-			var logs = nodeIds.map(function(nodeId) {
-				return Utils.Tuple2(nodeId, List.fromArray(valueLogs[nodeId]));
 			});
-
-			callback(Task.succeed(List.fromArray(logs)));
 		});
 	}
 
 	function getInputHistory(session)
 	{
 		return Task.asyncFunction(function(callback) {
-			assertNotDisposed(session);
-			var history = []; // List Event, I guess
-			callback(Task.succeed(history));
+			callback(Task.succeed(session.events));
 		});
 	}
 
-	var emptyInputHistory =
-		{
-			events: [],
-			snapshots: []
-		}; // TODO
+	var emptyInputHistory = [];
 
-	function forkFrom(session, frameIdx)
+	function splitInputHistory(frameIdx, history)
 	{
-		return Task.asyncFunction(function(callback) {
-			assertNotDisposed(session);
-			// TODO: I don't *think* we need to pause here.
-			jumpTo(session, frameIdx);
-			session.events.splice(frameIdx);
-			session.snapshots.splice(Math.floor(frameIdx / EVENTS_PER_SAVE) + 1);
-			var nodeVals = session.subscribedNodeIds.map(function(nodeId) {
-				return Utils.Tuple2(nodeId, session.sgNodes[nodeId].value);
-			});
-			callback(Task.succeed(List.fromArray(nodeVals)));
-		});
+		return Utils.Tuple2(history.slice(0, frameIdx), history.slice(frameIdx));
 	}
 
 	function evalModule(compiledModule) {
@@ -125,7 +125,8 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 				? [takeSnapshot(sgNodes)]
 				: inputHistory.snapshots;
 			var session = {
-				module: moduleBeingDebugged,
+				module: module,
+				runningModule: moduleBeingDebugged,
 				runtime: debugeeLocalRuntime,
 				originalNotify: debugeeLocalRuntime.notify,
 				sgNodes: sgNodes,
@@ -134,7 +135,7 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 				asyncCallbacks: [],
 				events: inputHistory.events,
 				snapshots: snapshots,
-				shape: sgShape, // TODO actually get main id
+				shape: sgShape,
 				notificationAddress: notificationAddress,
 				disposed: false,
 				playing: false,
@@ -257,7 +258,6 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 					{
 						return;
 					}
-					// TODO: save actual value; pretty print on 
 					session.flaggedExprValues.push(Utils.Tuple2(tag, value));
 				},
 				trace: function(tag, form) {
@@ -282,7 +282,7 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 	{
 		return Task.asyncFunction(function(callback) {
 			session.disposed = true;
-			session.module.dispose();
+			session.runningModule.dispose();
 			callback(Task.succeed(Utils.Tuple0));
 		});
 	}
@@ -316,24 +316,25 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 	function setSubscribedToNode(session, nodeId, subscribed)
 	{
 		return Task.asyncFunction(function(callback) {
-			assertNotDisposed(session);
-			var idx = session.subscribedNodeIds.indexOf(nodeId);
-			var alreadySubscribed = idx != -1;
-			if(subscribed) {
-				if(alreadySubscribed) {
-					callback(Task.fail(Utils.Tuple0));
+			assertNotDisposed(session, callback, function() {
+				var idx = session.subscribedNodeIds.indexOf(nodeId);
+				var alreadySubscribed = idx != -1;
+				if(subscribed) {
+					if(alreadySubscribed) {
+						callback(Task.fail(Utils.Tuple0));
+					} else {
+						session.subscribedNodeIds.push(nodeId);
+						callback(Task.succeed(Utils.Tuple0));
+					}
 				} else {
-					session.subscribedNodeIds.push(nodeId);
-					callback(Task.succeed(Utils.Tuple0));
+					if(alreadySubscribed) {
+						session.subscribedNodeIds.splice(idx, 1);
+						callback(Task.succeed(Utils.Tuple0));
+					} else {
+						callback(Task.fail(Utils.Tuple0));
+					}
 				}
-			} else {
-				if(alreadySubscribed) {
-					session.subscribedNodeIds.splice(idx, 1);
-					callback(Task.succeed(Utils.Tuple0));
-				} else {
-					callback(Task.fail(Utils.Tuple0));
-				}
-			}
+			});
 		});
 	}
 
@@ -354,8 +355,31 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 		}
 	}
 
+	// Bool -> a -> (Task -> ()) -> (() -> ()) -> ???
+	function assert(bool, err, callback, thunk)
+	{
+		if(!bool) {
+			callback(Task.fail(err));
+		} else {
+			thunk();
+		}
+	}
+
+	function assertNotDisposed(session, callback, thunk)
+	{
+		assert(!session.disposed, {ctor: "IsDisposed"}, callback, thunk);
+	}
+
+	function assertPaused()
+	{
+		assert(!session.disposed, {ctor: "IsPlaying"}, callback, thunk);
+	}
+
 	return localRuntime.Native.Debugger.RuntimeApi.values = {
 		sgShape: sgShape,
+		getModule: getModule,
+		getAddress: getAddress,
+		getSubscriptions: getSubscriptions,
 		numFrames: numFrames,
 		getNodeState: F3(getNodeState),
 		getInputHistory: getInputHistory,
@@ -373,23 +397,6 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 // Utils
 
 var EVENTS_PER_SAVE = 100;
-
-function assert(bool, msg)
-{
-	if(!bool)
-	{
-		throw new Error("Assertion error: " + msg);
-	}
-}
-
-function assertNotDisposed(session)
-{
-	assert(!session.disposed, "attempting to work with disposed session");
-}
-
-function assertPaused(session) {
-	assert(!session.playing, "session needs to be paused");
-}
 
 // returns array of node references, indexed by node id (?)
 function flattenSignalGraph(runtime) {

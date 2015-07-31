@@ -27,6 +27,11 @@ type alias NodeId =
   Int
 
 
+type StateError
+  = IsDisposed
+  | IsPlaying
+
+
 type alias Event =
   { value : JsElmValue
   , nodeId : NodeId
@@ -44,6 +49,21 @@ emptyEvent =
 sgShape : DebugSession -> SGShape
 sgShape =
   Native.Debugger.RuntimeApi.sgShape
+
+
+getModule : DebugSession -> ElmModule
+getModule =
+  Native.Debugger.RuntimeApi.getModule
+
+
+getAddress : DebugSession -> Signal.Address NewFrameNotification
+getAddress =
+  Native.Debugger.RuntimeApi.getAddress
+
+
+getSubscriptions : DebugSession -> Task x (List NodeId)
+getSubscriptions =
+  Native.Debugger.RuntimeApi.getSubscriptions
 
 
 numFrames : DebugSession -> Int
@@ -93,7 +113,7 @@ getNodeStateSingle session frameIdx nodes =
             (id, List.head log |> getMaybe "head of empty" |> snd)))
 
 
-getInputHistory : DebugSession -> InputHistory
+getInputHistory : DebugSession -> Task x InputHistory
 getInputHistory =
   Native.Debugger.RuntimeApi.getInputHistory
 
@@ -103,14 +123,9 @@ emptyInputHistory =
   Native.Debugger.RuntimeApi.emptyInputHistory
 
 
-{-|
-- Forgets all frames after given frame index
-- Returns values of subscribed nodes at given frame index
-- Module plays from given frame index
--}
-forkFrom : DebugSession -> FrameIndex -> Task x ValueSet
-forkFrom =
-  Native.Debugger.RuntimeApi.forkFrom
+splitInputHistory : FrameIndex -> InputHistory -> (InputHistory, InputHistory)
+splitInputHistory =
+  Native.Debugger.RuntimeApi.splitInputHistory
 
 
 {-| Interpreted as inclusive -}
@@ -149,38 +164,73 @@ dispose =
 
 validate : InputHistory -> SGShape -> SGShape -> Maybe SwapError
 validate inputHistory oldShape newShape =
+  -- TODO: filter out things from mailboxes
   Nothing
 
 
 swap : DebugSession
     -> ElmModule
-    -> Signal.Address NewFrameNotification
     -> (SGShape -> List NodeId)
-    -> FrameIndex
-    -> Task SwapError (DebugSession, ValueSet)
-swap session newMod addr initialNodesFun frameIdx =
-  let
-    history =
-      getInputHistory session
-  in
-    ((dispose session)
-    `Task.andThen` (\_ ->
-      initializeFullscreen newMod history addr initialNodesFun))
-    `Task.andThen` (\(newSession, _) ->
-      let
-        nodes =
-          initialNodesFun (sgShape newSession)
+    -> Task SwapError DebugSession
+swap session newMod initialNodesFun =
+  (((dispose session)
+  `Task.andThen` (\_ ->
+    getInputHistory session
+  ))
+  `Task.andThen` (\history ->
+    initializeFullscreen
+      newMod
+      history
+      (getAddress session)
+      initialNodesFun
+    |> Task.map (\(newSession, _) -> (newSession, history))
+  ))
+  `Task.andThen` (\(newSession, history) ->
+    let
+      nodes =
+        initialNodesFun (sgShape newSession)
 
-        valid =
-          validate history (sgShape session) (sgShape newSession)
-      in
-        case valid of
-          Just swapErr ->
-            Task.fail swapErr
+      valid =
+        validate history (sgShape session) (sgShape newSession)
+    in
+      case valid of
+        Just swapErr ->
+          Task.fail swapErr
 
-          Nothing ->
-            getNodeStateSingle newSession frameIdx nodes
-              |> Task.map (\valueSet -> (newSession, valueSet)))
+        Nothing ->
+          Task.succeed newSession
+  )
+
+
+forkFrom : DebugSession
+        -> FrameIndex
+        -> Task x (DebugSession, ValueSet)
+forkFrom session frameIdx =
+  (((getSubscriptions session)
+  `Task.andThen` (\subs ->
+    getInputHistory session
+     |> Task.map (\history ->
+          ( history |> splitInputHistory frameIdx |> fst
+          , subs
+          )
+        )
+  ))
+  `Task.andThen` (\(historyUpTo, subs) ->
+    initializeFullscreen
+      (getModule session)
+      historyUpTo
+      (getAddress session)
+      (always subs)
+    |> Task.map (\(session, values) -> (session, values, subs))
+  ))
+  `Task.andThen` (\(newSession, values, subs) ->
+    getNodeStateSingle
+      newSession
+      frameIdx
+      subs
+    |> Task.map (\vals -> (newSession, vals))
+  )
+    
 
 
 -- how is the previous session killed?
