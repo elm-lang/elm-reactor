@@ -173,32 +173,32 @@ swap : DebugSession
     -> (SGShape -> List NodeId)
     -> Task SwapError DebugSession
 swap session newMod initialNodesFun =
-  (((dispose session)
+  (dispose session)
   `Task.andThen` (\_ ->
-    getInputHistory session
-  ))
-  `Task.andThen` (\history ->
-    initializeFullscreen
-      newMod
-      history
-      (getAddress session)
-      initialNodesFun
-    |> Task.map (\(newSession, _) -> (newSession, history))
-  ))
-  `Task.andThen` (\(newSession, history) ->
-    let
-      nodes =
-        initialNodesFun (sgShape newSession)
+    (getInputHistory session)
+    `Task.andThen` (\history ->
+      (initializeFullscreen
+        newMod
+        history
+        (getAddress session)
+        initialNodesFun
+      )
+      `Task.andThen` (\(newSession, _) ->
+        let
+          nodes =
+            initialNodesFun (sgShape newSession)
 
-      valid =
-        validate history (sgShape session) (sgShape newSession)
-    in
-      case valid of
-        Just swapErr ->
-          Task.fail swapErr
+          valid =
+            validate history (sgShape session) (sgShape newSession)
+        in
+          case valid of
+            Just swapErr ->
+              Task.fail swapErr
 
-        Nothing ->
-          Task.succeed newSession
+            Nothing ->
+              Task.succeed newSession
+      )
+    )
   )
 
 
@@ -206,29 +206,31 @@ forkFrom : DebugSession
         -> FrameIndex
         -> Task x (DebugSession, ValueSet)
 forkFrom session frameIdx =
-  (((getSubscriptions session)
-  `Task.andThen` (\subs ->
-    getInputHistory session
-     |> Task.map (\history ->
-          ( history |> splitInputHistory frameIdx |> fst
-          , subs
-          )
+  (dispose session)
+  `Task.andThen` (\_ ->
+    (getSubscriptions session)
+    `Task.andThen` (\subs ->
+      (getInputHistory session
+       |> Task.map (\history ->
+            history |> splitInputHistory frameIdx |> fst)
+      )
+      `Task.andThen` (\historyUpTo ->
+        (initializeFullscreen
+          (getModule session)
+          historyUpTo
+          (getAddress session)
+          (always subs)
         )
-  ))
-  `Task.andThen` (\(historyUpTo, subs) ->
-    initializeFullscreen
-      (getModule session)
-      historyUpTo
-      (getAddress session)
-      (always subs)
-    |> Task.map (\(session, values) -> (session, values, subs))
-  ))
-  `Task.andThen` (\(newSession, values, subs) ->
-    getNodeStateSingle
-      newSession
-      frameIdx
-      subs
-    |> Task.map (\vals -> (newSession, vals))
+        `Task.andThen` (\(newSession, _) ->
+          (getNodeStateSingle
+            newSession
+            frameIdx
+            subs
+          )
+          |> Task.map (\values -> (newSession, values))
+        )
+      )
+    )
   )
     
 
