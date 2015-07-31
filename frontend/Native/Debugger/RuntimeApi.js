@@ -73,10 +73,11 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 		});
 	}
 
-	function emptyInputHistory()
-	{
-		return {}; // TODO
-	}
+	var emptyInputHistory =
+		{
+			events: [],
+			snapshots: []
+		}; // TODO
 
 	function forkFrom(session, frameIdx)
 	{
@@ -93,10 +94,10 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 		});
 	}
 
-	function evalModule(compiled) {
+	function evalModule(compiledModule) {
 		window.eval(compiledModule.code);
 		var elmModule = Elm;
-		var names = moduleName.split('.');
+		var names = compiledModule.name.split('.');
 		for (var i = 0; i < names.length; ++i)
 		{
 			elmModule = elmModule[names[i]];
@@ -106,7 +107,7 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 
 	// COMMANDS
 
-	function initialize(module, inputHistory, notificationAddress, initialNodesFun)
+	function initializeFullscreen(module, inputHistory, notificationAddress, initialNodesFun)
 	{
 		return Task.asyncFunction(function(callback) {
 			var debugeeLocalRuntime;
@@ -117,15 +118,12 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 				}
 			}, {}, false);
 
-			/* TODO:
-			  - do some kind of validation: can this input history be replayed
-				 	- over this code?
-				 	- is the signal graph the same? otherwise sub set invalid
-				- replay the input history
-			*/
-			
 			var sgNodes = flattenSignalGraph(debugeeLocalRuntime);
 			var sgShape = getSgShape(sgNodes);
+			var snapshots =
+				inputHistory.snapshots.length == 0
+				? [takeSnapshot(sgNodes)]
+				: inputHistory.snapshots;
 			var session = {
 				module: moduleBeingDebugged,
 				runtime: debugeeLocalRuntime,
@@ -134,12 +132,12 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 				delay: 0, // TODO: think delay stuff through!
 				// TODO: delay, totalTimeLost, asyncCallbacks
 				asyncCallbacks: [],
-				events: [],
-				snapshots: [takeSnapshot(sgNodes)],
+				events: inputHistory.events,
+				snapshots: snapshots,
 				shape: sgShape, // TODO actually get main id
 				notificationAddress: notificationAddress,
 				disposed: false,
-				playing: true,
+				playing: false,
 				subscribedNodeIds: List.toArray(initialNodesFun(sgShape)) 
 			};
 
@@ -280,6 +278,15 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 		});
 	}
 
+	function dispose(session)
+	{
+		return Task.asyncFunction(function(callback) {
+			session.disposed = true;
+			session.module.dispose();
+			callback(Task.succeed(Utils.Tuple0));
+		});
+	}
+
 	function setPlaying(session, playing)
 	{
 		return Task.asyncFunction(function(callback) {
@@ -355,7 +362,8 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 		emptyInputHistory: emptyInputHistory,
 		forkFrom: F2(forkFrom),
 		evalModule: evalModule,
-		initialize: F4(initialize),
+		initializeFullscreen: F4(initializeFullscreen),
+		dispose: dispose,
 		setPlaying: F2(setPlaying),
 		setSubscribedToNode: F3(setSubscribedToNode),
 		prettyPrint: F2(prettyPrint)

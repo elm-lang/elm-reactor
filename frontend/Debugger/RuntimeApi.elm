@@ -4,6 +4,9 @@ import Task exposing (Task)
 import Dict
 import Json.Encode as JsEnc
 import Time
+import Empty exposing (Empty)
+
+import DataUtils exposing (..)
 
 import Native.Debugger.RuntimeApi
 
@@ -77,14 +80,22 @@ a/o just one at a time, because simulating the module forward in the
 specified time interval and gathering the all SG or expr values we're
 interested in at each step is better than simulating it once for each
 point of interest. -}
-getNodeState : DebugSession -> FrameInterval -> List NodeId -> Task String (List (NodeId, ValueLog))
+getNodeState : DebugSession -> FrameInterval -> List NodeId -> Task x (List (NodeId, ValueLog))
 getNodeState =
   Native.Debugger.RuntimeApi.getNodeState
 
 
+getNodeStateSingle : DebugSession -> FrameIndex -> List NodeId -> Task x ValueSet
+getNodeStateSingle session frameIdx nodes =
+  getNodeState session {start=frameIdx, end=frameIdx} nodes
+    |> Task.map (\logs ->
+        logs |> List.map (\(id, log) ->
+            (id, List.head log |> getMaybe "head of empty" |> snd)))
+
+
 getInputHistory : DebugSession -> InputHistory
 getInputHistory =
-  Native.Debugger.RuntimeApi.getHistory
+  Native.Debugger.RuntimeApi.getInputHistory
 
 
 emptyInputHistory : InputHistory
@@ -97,7 +108,7 @@ emptyInputHistory =
 - Returns values of subscribed nodes at given frame index
 - Module plays from given frame index
 -}
-forkFrom : DebugSession -> FrameIndex -> Task String ValueSet
+forkFrom : DebugSession -> FrameIndex -> Task x ValueSet
 forkFrom =
   Native.Debugger.RuntimeApi.forkFrom
 
@@ -119,16 +130,57 @@ type alias ValueSet =
 
 -- COMMANDS
 
-{-| Swap in new module. Starts off playing.
+{-| Swap in new module. Starts off paused.
 Subscribes to the list of nodes returned by the given function (3rd arg),
 and returns their initial values. -}
-initialize : ElmModule
-          -> InputHistory
-          -> Signal.Address NewFrameNotification
-          -> (SGShape -> List NodeId)
-          -> Task SwapError (DebugSession, ValueSet)
-initialize =
-  Native.Debugger.RuntimeApi.initialize
+initializeFullscreen : ElmModule
+                    -> InputHistory
+                    -> Signal.Address NewFrameNotification
+                    -> (SGShape -> List NodeId)
+                    -> Task x (DebugSession, ValueSet)
+initializeFullscreen =
+  Native.Debugger.RuntimeApi.initializeFullscreen
+
+
+dispose : DebugSession -> Task x ()
+dispose =
+  Native.Debugger.RuntimeApi.dispose
+
+
+validate : InputHistory -> SGShape -> SGShape -> Maybe SwapError
+validate inputHistory oldShape newShape =
+  Nothing
+
+
+swap : DebugSession
+    -> ElmModule
+    -> Signal.Address NewFrameNotification
+    -> (SGShape -> List NodeId)
+    -> FrameIndex
+    -> Task SwapError (DebugSession, ValueSet)
+swap session newMod addr initialNodesFun frameIdx =
+  let
+    history =
+      getInputHistory session
+  in
+    ((dispose session)
+    `Task.andThen` (\_ ->
+      initializeFullscreen newMod history addr initialNodesFun))
+    `Task.andThen` (\(newSession, _) ->
+      let
+        nodes =
+          initialNodesFun (sgShape newSession)
+
+        valid =
+          validate history (sgShape session) (sgShape newSession)
+      in
+        case valid of
+          Just swapErr ->
+            Task.fail swapErr
+
+          Nothing ->
+            getNodeStateSingle newSession frameIdx nodes
+              |> Task.map (\valueSet -> (newSession, valueSet)))
 
 
 -- how is the previous session killed?

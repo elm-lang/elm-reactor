@@ -30,7 +30,7 @@ type alias ActiveAttrs =
 initialActiveAttrs : API.DebugSession -> Html -> ActiveAttrs
 initialActiveAttrs session mainVal =
   { session = session
-  , sessionState = Playing Nothing
+  , sessionState = AlmostPlaying
   , mainVal = mainVal
   , exprLogs = Dict.empty
   , nodeLogs = Dict.empty
@@ -70,7 +70,7 @@ type Response
   | HasForked API.ValueSet
   | IsPlaying
   | IsPaused (Maybe API.FrameInterval)
-  | SwapResult (Result SwapError API.ValueSet)
+  | SwapResult (Result SwapError (API.DebugSession, API.ValueSet))
   | GotNodeState (List (API.NodeId, API.ValueLog))
 
 

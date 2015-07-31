@@ -25,6 +25,11 @@ tasks =
   snd stateAndTasks
 
 
+justMain : API.SGShape -> List API.NodeId
+justMain shape =
+  [shape.mainId]
+
+
 stateAndTasks =
   FancyStartApp.start
     { initialState = Uninitialized
@@ -67,11 +72,11 @@ update loopback now action state =
       case action of
         Command (Initialize mod) ->
           ( Initializing
-          , [ API.initialize
+          , [ API.initializeFullscreen
                 mod
                 API.emptyInputHistory
                 (Signal.forwardTo notificationsMailbox.address NewFrame)
-                (\shape -> [shape.mainId])
+                justMain
               |> Task.map (\(session, values) -> Response <| IsActive session values)
               |> Task.mapError (\swapErr -> Debug.crash swapErr)
               |> loopback
@@ -85,7 +90,11 @@ update loopback now action state =
       case action of
         Response (IsActive session values) ->
           ( Active <| initialActiveAttrs session (getMainVal session values)
-          , []
+          , [ API.setPlaying session True
+                |> Task.mapError (\_ -> Debug.crash "already in that state")
+                |> Task.map (always (Response <| IsPlaying))
+                |> loopback
+            ]
           )
 
         _ ->
@@ -108,18 +117,7 @@ updateActive loopback now action state =
             Swapping ->
               case action of
                 Response (SwapResult res) ->
-                  case res of
-                    Ok values ->
-                      ( { state | mainVal <- getMainVal state.session values
-                                , sessionState <- Playing Nothing
-                        }
-                      , []
-                      )
-
-                    Err swapErr ->
-                      ( { state | sessionState <- SwapError swapErr }
-                      , []
-                      )
+                  Debug.crash "swapping while playing not yet implemented"
 
                 _ ->
                   Debug.crash "..."
@@ -180,7 +178,7 @@ updateActive loopback now action state =
             Command Pause ->
               ( { state | sessionState <- Pausing }
               , [ API.setPlaying state.session False
-                    |> Task.mapError (\_ -> Debug.crash "sup")
+                    |> Task.mapError (\_ -> Debug.crash "already in that state")
                     |> Task.map (always (Response <| IsPaused Nothing))
                     |> loopback
                 ]
@@ -202,7 +200,7 @@ updateActive loopback now action state =
                     sessionState <- Pausing
                 }
               , [ (API.setPlaying state.session False
-                    |> Task.mapError (\_ -> Debug.crash "...")
+                    |> Task.mapError (\_ -> Debug.crash "already in that state")
                     |> Task.map (always <| Response <| IsPaused <| Just interval)
                     |> loopback)
                   `Task.andThen` (\_ ->
@@ -216,7 +214,7 @@ updateActive loopback now action state =
               )
 
             Command (Swap mod) ->
-              (state, [])
+              Debug.crash "swapping while playing not yet implemented"
 
             _ ->
               Debug.crash "unexpected action in playing state"
@@ -228,7 +226,19 @@ updateActive loopback now action state =
             Swapping ->
               case action of
                 Response (SwapResult res) ->
-                  (state, [])
+                  case res of
+                    Ok (newSession, values) ->
+                      ( { state | session <- newSession
+                                , mainVal <- getMainVal newSession values
+                                , sessionState <- Paused pausedIdx Nothing
+                        }
+                      , []
+                      )
+
+                    Err swapErr ->
+                      ( { state | sessionState <- SwapError swapErr }
+                      , []
+                      )
 
                 _ ->
                   Debug.crash "..."
@@ -283,7 +293,18 @@ updateActive loopback now action state =
               (state, [])
 
             Command (Swap mod) ->
-              (state, [])
+              ( { state | sessionState <- Playing (Just Swapping) }
+              , [ API.swap
+                    state.session
+                    mod
+                    (Signal.forwardTo notificationsMailbox.address NewFrame)
+                    justMain
+                    (curFrameIdx state)
+                  |> Task.toResult
+                  |> Task.map (Response << SwapResult)
+                  |> loopback
+                ]
+              )
 
             Command (GetNodeState interval nodes) ->
               ( { state |

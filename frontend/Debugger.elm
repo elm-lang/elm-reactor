@@ -209,7 +209,13 @@ update loopback now action state =
     SwapEvent swapEvent ->
       case swapEvent of
         NewModule compiledModule ->
-          Debug.crash compiledModule.code
+          let
+            mod =
+              API.evalModule compiledModule
+          in
+            ( state
+            , [ Signal.send (Service.commandsMailbox ()).address (DM.Swap mod) ]
+            )
 
         CompilationErrors errors ->
           Debug.crash errors

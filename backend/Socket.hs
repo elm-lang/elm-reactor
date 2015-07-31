@@ -19,8 +19,9 @@ fileChangeApp :: FilePath -> WS.ServerApp
 fileChangeApp watchedFile pendingConnection =
   do  connection <- WS.acceptRequest pendingConnection
       Notify.withManager $ \notifyManager ->
-        do  putStrLn "initialize"
+        do  putStrLn $ "swapping initialized for " ++ watchedFile
             _ <- NDevel.treeExtExists notifyManager "." "elm" (sendHotSwap watchedFile connection)
+            -- if we don't keep the thread alive, the above file watcher will die
             loopForever
 
 
@@ -28,6 +29,7 @@ sendHotSwap :: FilePath -> WS.Connection -> FP.FilePath -> IO ()
 sendHotSwap watchedFile connection _ =
   do  result <- liftIO (Compile.toJson watchedFile)
       WS.sendTextData connection (BSC.pack result)
+      putStrLn $ "swapped " ++ watchedFile
 
 
 loopForever :: IO ()
