@@ -1,0 +1,3 @@
+[submodule "elm-components"]
+	path = elm-components
+	url = git@github.com:evancz/elm-components.git

@@ -138,7 +138,7 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 				shape: sgShape,
 				notificationAddress: notificationAddress,
 				disposed: false,
-				playing: false,
+				playing: true,
 				subscribedNodeIds: List.toArray(initialNodesFun(sgShape)) 
 			};
 

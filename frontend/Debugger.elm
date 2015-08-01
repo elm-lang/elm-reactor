@@ -10,7 +10,7 @@ import String
 import Color
 import Debug
 
-import FancyStartApp
+import Components exposing (..)
 import Empty exposing (..)
 import WebSocket
 
@@ -18,44 +18,42 @@ import Model exposing (..)
 import Styles exposing (..)
 import Button
 import Debugger.RuntimeApi as API
-import Debugger.Model as DM
 import Debugger.Service as Service
 import SideBar.Controls as Controls
 import SideBar.Logs as Logs
 import DataUtils exposing (..)
 
 
-(html, uiTasks) =
-  FancyStartApp.start
-    { initialState = initModel
-    , initialTasks = (\loopback ->
-        [Signal.send (Service.commandsMailbox ()).address (DM.Initialize initMod)])
-    , externalActions =
-        Signal.mergeMany
-          [ Signal.map NewServiceState Service.state
-          , socketEventsMailbox.signal
-          ]
+output =
+  start
+    { init =
+        request (task connectSocket) initModel
     , view = view
     , update = update
     }
 
 
 main =
-  html
+  output.html
+
+
+port tasks : Signal (Task Never ())
+port tasks =
+  output.tasks
 
 
 (=>) = (,)
 
 
-view : Signal.Address Action -> Model -> Html
+view : Signal.Address Message -> Model -> Html
 view addr state =
   let
     (mainVal, isPlaying) =
       case state.serviceState of
-        DM.Active activeAttrs ->
+        Just activeAttrs ->
           (activeAttrs.mainVal, DM.isPlaying activeAttrs)
 
-        _ ->
+        Nothing ->
           (div [] [], False)
 
   in
@@ -136,7 +134,10 @@ viewSidebar addr state =
     body =
       case state.serviceState of
         DM.Active activeAttrs ->
-          [ Controls.view addr state activeAttrs
+          [ Controls.view
+              addr
+              state
+              activeAttrs
           , dividerBar
           , Logs.view
               (Signal.forwardTo addr LogsAction)
@@ -160,6 +161,13 @@ viewSidebar addr state =
       ([toggleTab addr state] ++ body)
 
 
+update : Message -> Model -> Transaction Message Model
+update msg model =
+  case msg of
+    _ ->
+      done model
+
+{-
 update : FancyStartApp.UpdateFun Model Empty Action
 update loopback now action state =
   case Debug.log "MAIN ACTION" action of
@@ -219,7 +227,7 @@ update loopback now action state =
 
         CompilationErrors errors ->
           Debug.crash errors
-
+-}
 
 -- Socket stuff
 
@@ -238,8 +246,9 @@ port windowLocationHost : String
 
 -- TASK PORTS
 
-port connectSocket : Task x ()
-port connectSocket =
+-- TODO: external events in Elm Components so we can add this in
+connectSocket : Task Never Message
+connectSocket =
   (WebSocket.create
     ("ws://" ++ windowLocationHost ++ "/socket?file=" ++ fileName)
     (Signal.forwardTo
@@ -257,8 +266,7 @@ port connectSocket =
       )
     )
   )
-  `Task.andThen` (\socket ->
-      Signal.send socketEventsMailbox.address (ConnectSocket <| Just socket))
+  |> Task.map (ConnectSocket << Just)
 
 
 port uiTasksPort : Signal (Task Empty ())
@@ -266,6 +274,6 @@ port uiTasksPort =
   uiTasks
 
 
-port debugServiceTasks : Signal (Task Empty ())
-port debugServiceTasks =
-  Service.tasks
+--port debugServiceTasks : Signal (Task Empty ())
+--port debugServiceTasks =
+--  Service.tasks

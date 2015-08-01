@@ -3,13 +3,13 @@ module Model where
 import Json.Decode exposing (..)
 import WebSocket
 
-import Debugger.Model as DM
+import Debugger.Service as DS
 import SideBar.Logs as Logs
 import Button
 import Debugger.RuntimeApi as API
 
 type alias Model =
-  { serviceState : DM.Model
+  { serviceState : DS.Model
   , sidebarVisible : Bool
   , permitSwaps : Bool
   , restartButtonState : Button.Model
@@ -21,7 +21,7 @@ type alias Model =
 
 initModel : Model
 initModel =
-  { serviceState = DM.Uninitialized
+  { serviceState = Nothing
   , sidebarVisible = True
   , permitSwaps = True
   , restartButtonState = Button.Up
@@ -31,16 +31,17 @@ initModel =
   }
 
 
-type Action
+type Message
   = SidebarVisible Bool
   | PermitSwaps Bool
-  | NewServiceState DM.Model
+  | NewServiceState DS.Model
   -- TODO: vv get rid of these with new component arch ...? vv
-  | PlayPauseButtonAction Button.Action
-  | RestartButtonAction Button.Action
-  | LogsAction Logs.Action
+  | PlayPauseButtonAction Button.Message
+  | RestartButtonAction Button.Message
+  | LogsAction Logs.Message
   | ConnectSocket (Maybe WebSocket.WebSocket)
   | SwapEvent SwapEvent
+  | ServiceMessage Service.Message
   | NoOp
 
 

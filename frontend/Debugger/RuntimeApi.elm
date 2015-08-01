@@ -51,6 +51,11 @@ sgShape =
   Native.Debugger.RuntimeApi.sgShape
 
 
+justMain : SGShape -> List NodeId
+justMain shape =
+  [shape.mainId]
+
+
 getModule : DebugSession -> ElmModule
 getModule =
   Native.Debugger.RuntimeApi.getModule
@@ -145,7 +150,7 @@ type alias ValueSet =
 
 -- COMMANDS
 
-{-| Swap in new module. Starts off paused.
+{-| Swap in new module. Starts off playing.
 Subscribes to the list of nodes returned by the given function (3rd arg),
 and returns their initial values. -}
 initializeFullscreen : ElmModule

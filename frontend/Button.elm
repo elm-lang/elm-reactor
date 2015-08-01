@@ -1,5 +1,7 @@
 module Button where
 
+import Components exposing (..)
+
 import Signal
 import Html exposing (..)
 import Html.Attributes exposing (..)
@@ -8,34 +10,37 @@ import Html.Lazy exposing (..)
 
 
 type Model
-    = Up
-    | Down
-    | Hover
+  = Up
+  | Down
+  | Hover
 
 
-type Action
-    = MouseUpdate Model
+type Message a
+  = MouseUpdate Model
+  | Click a
 
 
-update : Action -> Model -> Model
-update action state =
-  case action of
+update : Message a -> Model -> Transaction (Message a) (Model, Maybe a)
+update msg state =
+  case msg of
     MouseUpdate newState ->
-      newState
+      done (newState, Nothing)
+
+    Click clickMsg ->
+      done (state, Just clickMsg)
 
 
-view : Signal.Address Action
-    -> Signal.Address a
+view : Signal.Address (Message a)
     -> a
     -> Model
     -> (Model -> Html)
     -> Html
-view buttonStateAddr actionAddr action state render =
+view addr clickMsg state render =
   div
-    [ onMouseOver buttonStateAddr (MouseUpdate Hover)
-    , onMouseDown buttonStateAddr (MouseUpdate Down)
-    , onMouseUp buttonStateAddr (MouseUpdate Hover)
-    , onMouseLeave buttonStateAddr (MouseUpdate Up)
-    , onClick actionAddr action
+    [ onMouseOver addr (MouseUpdate Hover)
+    , onMouseDown addr (MouseUpdate Down)
+    , onMouseUp addr (MouseUpdate Hover)
+    , onMouseLeave addr (MouseUpdate Up)
+    , onClick addr (Click clickMsg)
     ]
     [ lazy render state ]

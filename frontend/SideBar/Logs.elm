@@ -11,7 +11,8 @@ import Html.Attributes as Attr exposing (..)
 import Html.Events exposing (..)
 
 import Styles exposing (..)
-import Debugger.Model as DM
+import Debugger.Service as DS
+import Debugger.Active as Active
 import Debugger.RuntimeApi as API
 import DataUtils exposing (..)
 
@@ -29,9 +30,9 @@ initModel =
   }
 
 
-type Action
+type Message
   = CollapseLog LogId Bool
-  | UpdateLogs DM.Model
+  | UpdateLogs DS.Model
 
 
 type LogId
@@ -39,9 +40,9 @@ type LogId
   | ExprLog API.ExprTag
 
 
-update : Action -> Model -> Model
-update action state =
-  case action of
+update : Message -> Model -> Model
+update msg state =
+  case msg of
     CollapseLog logId collapsed ->
       case logId of
         NodeLog nodeId ->
@@ -56,20 +57,20 @@ update action state =
 
     UpdateLogs serviceState ->
       case serviceState of
-        DM.Active activeAttrs ->
+        Just activeModel ->
           { state
               | exprExpansion <-
-                  updateExpansion state.exprExpansion activeAttrs.exprLogs
+                  updateExpansion state.exprExpansion activeModel.exprLogs
               , nodeExpansion <-
-                  updateExpansion state.nodeExpansion activeAttrs.nodeLogs
+                  updateExpansion state.nodeExpansion activeModel.nodeLogs
           }
 
         _ ->
           state
 
 
-view : Signal.Address Action -> Int -> Model -> DM.ActiveAttrs -> Html
-view addr controlsHeight state activeAttrs =
+view : Signal.Address Message -> Int -> Model -> Active.Model -> Html
+view addr controlsHeight state activeState =
   div
     [ style
         [ "overflow-y" => "auto"
@@ -81,7 +82,7 @@ view addr controlsHeight state activeAttrs =
         , "width" => intToPx (sidebarWidth - 2*sidePadding)
         ]
     ]
-    ( if Dict.isEmpty activeAttrs.exprLogs then
+    ( if Dict.isEmpty activeState.exprLogs then
         [noLogs]
       else
         [ ul
@@ -91,7 +92,7 @@ view addr controlsHeight state activeAttrs =
                 , "color" => "white"
                 ]
             ]
-            (activeAttrs.exprLogs
+            (activeState.exprLogs
               |> Dict.toList
               |> List.map (\(tag, log) ->
                     viewExprLog
@@ -107,7 +108,7 @@ sidePadding =
   20
 
 
-viewExprLog : Signal.Address Action -> Bool -> LogId -> API.ValueLog -> Html
+viewExprLog : Signal.Address Message -> Bool -> LogId -> API.ValueLog -> Html
 viewExprLog addr collapsed logId log =
   let
     colButton =
