@@ -32,7 +32,7 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 
 	function getSubscriptions(session) {
 		return Task.asyncFunction(function(callback) {
-			callback(List.fromArray(session.subscribedNodeIds));
+			callback(Task.succeed(List.fromArray(session.subscribedNodeIds)));
 		});
 	}
 
@@ -135,7 +135,8 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 				notificationAddress: notificationAddress,
 				disposed: false,
 				playing: true,
-				subscribedNodeIds: List.toArray(initialNodesFun(sgShape)) 
+				subscribedNodeIds: List.toArray(initialNodesFun(sgShape)),
+				flaggedExprValues: []
 			};
 
 			function getSgShape(nodes) {
@@ -286,26 +287,27 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 	function setPlaying(session, playing)
 	{
 		return Task.asyncFunction(function(callback) {
-			assertNotDisposed(session);
-			if(session.playing) {
-				if(!playing) {
-					// PAUSE
-					// TODO asyncCallback stuff for timers
-					session.playing = playing;
-					callback(Task.succeed(Utils.Tuple0));
+			assertNotDisposed(session, callback, function() {
+				if(session.playing) {
+					if(!playing) {
+						// PAUSE
+						// TODO asyncCallback stuff for timers
+						session.playing = playing;
+						callback(Task.succeed(Utils.Tuple0));
+					} else {
+						callback(Task.fail(Utils.Tuple0));
+					}
 				} else {
-					callback(Task.fail(Utils.Tuple0));
+					if(playing) {
+						// PLAY
+						session.playing = playing;
+						callback(Task.succeed(Utils.Tuple0));
+					} else {
+						callback(Task.fail(Utils.Tuple0));
+					}
 				}
-			} else {
-				if(playing) {
-					// PLAY
-					session.playing = playing;
-					callback(Task.succeed(Utils.Tuple0));
-				} else {
-					callback(Task.fail(Utils.Tuple0));
-				}
-			}
-			callback(Task.succeed(Utils.Tuple0));
+				callback(Task.succeed(Utils.Tuple0));
+			});
 		});
 	}
 
@@ -366,7 +368,7 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 		assert(!session.disposed, {ctor: "IsDisposed"}, callback, thunk);
 	}
 
-	function assertPaused()
+	function assertPaused(session, callback, thunk)
 	{
 		assert(!session.disposed, {ctor: "IsPlaying"}, callback, thunk);
 	}

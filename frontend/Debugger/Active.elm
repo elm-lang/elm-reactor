@@ -6,6 +6,7 @@ import Set
 import Html exposing (Html)
 import Debugger.Reflect as Reflect
 import Debug
+import Task
 
 import Debugger.RuntimeApi as API
 import DataUtils exposing (..)
@@ -54,6 +55,8 @@ type alias SwapError =
 type Message
   = Command Command
   | Notification Notification
+  | Response Response
+  | NoOp
 
 
 type Command
@@ -70,22 +73,81 @@ type Notification
   | NoOpNot
 
 
+type Response
+  = ScrubResponse Html
+  | ForkResponse API.DebugSession Html
+
 update : Message -> Model -> Transaction Message Model
 update msg state =
   case msg of
     Command cmd ->
       case cmd of
         Play ->
-          Debug.crash "Play not implemented yet"
+          case state.runningState of
+            Paused pausedIdx ->
+              let
+                fork =
+                  API.forkFrom state.session pausedIdx
+                    |> Task.map (\(sesh, values) ->
+                          Response <| ForkResponse sesh (getMainVal state.session values))
+              in
+                request
+                  (fork |> task)
+                  { state | runningState <- Playing }
+
+            Playing ->
+              Debug.crash "already playing"
 
         Pause ->
-          Debug.crash "Pause not implemented yet"
+          request
+            (API.setPlaying state.session False
+              |> Task.map (always NoOp)
+              |> Task.mapError (\_ -> Debug.crash "already in that state")
+              |> task)
+            { state | runningState <- Paused (numFrames state - 1) }
 
         ScrubTo frameIdx ->
-          Debug.crash "ScrubTo not implemented yet"
+          let
+            pause =
+              case state.runningState of
+                Playing ->
+                  API.setPlaying state.session False
+                    |> Task.map (always NoOp)
+                    |> Task.mapError (\_ -> Debug.crash "already in that state")
+
+                Paused _ ->
+                  Task.succeed NoOp
+
+            getState =
+              API.getNodeStateSingle
+                state.session
+                frameIdx
+                [(API.sgShape state.session).mainId]
+              |> Task.map (Response << ScrubResponse << getMainVal state.session)
+
+            sequenced =
+              pause `Task.andThen` (always getState)
+          in
+            request
+              (sequenced |> task)
+              { state | runningState <- Paused frameIdx }
 
         Reset ->
-          Debug.crash "Reset not implemented yet"
+          request
+            (API.forkFrom state.session 0
+              |> Task.map (\(sesh, values) ->
+                    Response <| ForkResponse sesh (getMainVal state.session values))
+              |> task
+            )
+            { state |
+                runningState <-
+                  case state.runningState of
+                    Playing ->
+                      Playing
+
+                    Paused _ ->
+                      Paused 0
+            }
 
     Notification not ->
       case not of
@@ -100,6 +162,21 @@ update msg state =
 
         NoOpNot ->
           done state
+
+    Response resp ->
+      case resp of
+        ScrubResponse html ->
+          done { state | mainVal <- html }
+
+        ForkResponse newSesh html ->
+          done
+            { state
+                | session <- newSesh
+                , mainVal <- html
+            }
+
+    NoOp ->
+      done state
 
 
 getMainValFromLogs : API.DebugSession -> List (Int, API.ValueLog) -> Html
