@@ -6,6 +6,7 @@ import Html.Attributes exposing (..)
 import Markdown
 import Signal
 import Dict exposing (Dict)
+import Maybe
 import Html exposing (..)
 import Html.Attributes as Attr exposing (..)
 import Html.Events exposing (..)
@@ -112,7 +113,7 @@ view addr controlsHeight state activeState =
                         addr
                         (Dict.get tag state.exprExpansion |> getMaybe "log not found")
                         (ExprLog tag)
-                        (curFrame - 1)
+                        curFrame
                         log)
               )
           ]
@@ -144,7 +145,7 @@ viewExprLog addr collapsed logId frameIdx log =
         , code []
             [ text <|
                 API.prettyPrint
-                  (log |> getAtIdx frameIdx |> getMaybe "idx out of range" |> snd)
+                  (log |> getAtIdx frameIdx |> getMaybe "idx out of range")
             ]
         ]
     else
@@ -152,13 +153,14 @@ viewExprLog addr collapsed logId frameIdx log =
         [ colButton
         , text <| logLabel logId
         , ul []
-            (List.map viewLogItem log)
+            (log |> List.map (\(idx, val) -> viewLogItem (frameIdx == idx) idx val))
         ]
 
 
-viewLogItem : (API.FrameIndex, API.JsElmValue) -> Html
-viewLogItem (idx, val) =
-  li []
+viewLogItem : Bool -> API.FrameIndex -> API.JsElmValue -> Html
+viewLogItem highlighted idx val =
+  li
+    [ style <| if highlighted then ["color" => "yellow"] else [] ]
     [ text <| (toString idx) ++ ": "
     , code [] [ text <| API.prettyPrint val ]
     ]
@@ -253,6 +255,14 @@ summary or subvalue of any value. </span><br>
 type could be extended to model the expansion state of the whole tree.) -}
 type alias ExpansionModel comparable =
   Dict comparable Bool
+
+
+getAtIdx : API.FrameIndex -> API.ValueLog -> Maybe API.JsElmValue
+getAtIdx idx log =
+  log
+    |> List.filter (\(itemIdx, val) -> itemIdx <= idx)
+    |> getLast
+    |> Maybe.map snd
 
 
 emptyExpansionModel : ExpansionModel comparable

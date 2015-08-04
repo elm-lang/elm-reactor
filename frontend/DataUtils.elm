@@ -5,30 +5,17 @@ import Debug
 {-| Would call this Utils except I don't want conflicts with the module
 being debugged (this is a problem for all modules in the debugger) -}
 
-getLast : List a -> a
+getLast : List a -> Maybe a
 getLast list =
   case list of
     [] ->
-      Debug.crash "getLast of empty list"
+      Nothing
 
     [x] ->
-      x
+      Just x
 
     (x::xs) ->
       getLast xs
-
-
-getAtIdx : Int -> List a -> Maybe a
-getAtIdx idx list =
-  case (idx, list) of
-    (0, x::xs) ->
-      Just x
-
-    (n, []) ->
-      Nothing
-
-    (n, x::xs) ->
-      getAtIdx (n-1) xs
 
 
 getMaybe : String -> Maybe a -> a
