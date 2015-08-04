@@ -36,3 +36,12 @@ getResult res =
 
     Err msg ->
       Debug.crash msg
+
+maybeToList : Maybe a -> List a
+maybeToList maybe =
+  case maybe of
+    Just x ->
+      [x]
+
+    Nothing ->
+      []

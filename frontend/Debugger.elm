@@ -8,6 +8,7 @@ import Task exposing (Task)
 import Json.Decode as JsDec
 import String
 import Color
+import Maybe
 import Debug
 
 import Components exposing (..)
@@ -73,12 +74,19 @@ view addr state =
         Nothing ->
           (div [] [], False)
 
+    errorOverlay =
+      state.compilationErrors
+        |> Maybe.map (\errs -> viewErrors errs)
+        |> maybeToList
+
   in
     div []
-      [ mainVal
-      , eventBlocker (not isPlaying)
-      , viewSidebar addr state
-      ]
+      ( [ mainVal
+        , eventBlocker (not isPlaying)
+        ]
+        ++ errorOverlay
+        ++ [ viewSidebar addr state ]
+      )
 
 
 eventBlocker : Bool -> Html
@@ -115,6 +123,24 @@ toggleTab addr state =
     , onClick addr (SidebarVisible <| not state.sidebarVisible)
     ]
     []
+
+
+viewErrors : CompilationErrors -> Html
+viewErrors errors =
+  pre
+    [ style
+        [ "z-index" => "1"
+        , "position" => "absolute"
+        , "top" => "0"
+        , "left" => "0"
+        , "color" => colorToCss darkGrey
+        , "background-color" => colorToCss lightGrey
+        , "padding" => "1em"
+        , "margin" => "1em"
+        , "border-radius" => "10px"
+        ]
+    ]
+    [ text errors ]
 
 
 viewSidebar : Signal.Address Message -> Model -> Html
@@ -231,18 +257,21 @@ update msg state =
       done { state | swapSocket <- maybeSocket }
 
     SwapEvent swapEvt ->
-      case swapEvt of
-        NewModule compiledMod ->
-          if state.permitSwaps then
+      if state.permitSwaps then
+        case swapEvt of
+          NewModule compiledMod ->
             request
               (Signal.send
                 (Service.commandsMailbox ()).address
                 (Active.Swap compiledMod)
               |> Task.map (always NoOp)
               |> task)
-              state
-          else
-            done state
+              { state | compilationErrors <- Nothing }
+
+          CompilationErrors errs ->
+            done { state | compilationErrors <- Just errs }
+      else
+        done state
 
     ServiceCommand serviceCmd -> 
       request
