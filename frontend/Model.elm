@@ -41,7 +41,7 @@ type Message
   | NewServiceState Service.Model
   | PlayPauseButtonAction (Button.Message Active.Command)
   | RestartButtonAction (Button.Message Active.Command)
-  | LogsAction Logs.Message
+  | LogsMessage Logs.Message
   | ConnectSocket (Maybe WebSocket.WebSocket)
   | SwapEvent SwapEvent
   | ServiceCommand Active.Command

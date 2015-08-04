@@ -183,7 +183,7 @@ viewSidebar addr state =
               activeAttrs
           , dividerBar
           , Logs.view
-              (Signal.forwardTo addr LogsAction)
+              (Signal.forwardTo addr LogsMessage)
               Controls.totalHeight
               state.logsState
               activeAttrs
@@ -214,7 +214,27 @@ update msg state =
       done { state | permitSwaps <- permit }
 
     NewServiceState serviceState -> 
-      done { state | serviceState <- serviceState }
+      let
+        logMsg =
+          case serviceState of
+            Just active ->
+              Logs.UpdateLogs
+                { newNodeLogs = active.nodeLogs
+                , newExprLogs = active.exprLogs
+                }
+
+            Nothing ->
+              Logs.NoOp
+      in
+        with
+          (tag LogsMessage <| Logs.update logMsg state.logsState)
+          (\newLogsState ->
+            done
+              { state
+                  | serviceState <- serviceState
+                  , logsState <- newLogsState
+              }
+          )
 
     PlayPauseButtonAction buttonMsg ->
       with
@@ -250,8 +270,10 @@ update msg state =
               request (task sendEffect) { state | restartButtonState <- newState }
         )
 
-    LogsAction logMsg -> 
-      Debug.crash "LogsAction not implemented yet"
+    LogsMessage logMsg -> 
+      with
+        (tag LogsMessage <| Logs.update logMsg state.logsState)
+        (\newLogsState -> done { state | logsState <- newLogsState })
 
     ConnectSocket maybeSocket -> 
       done { state | swapSocket <- maybeSocket }

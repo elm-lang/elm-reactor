@@ -12,7 +12,6 @@ import Debugger.RuntimeApi as API
 import DataUtils exposing (..)
 
 
--- TODO: rename?
 type alias Model =
   { session : API.DebugSession
   , runningState : RunningState
@@ -175,9 +174,33 @@ update msg state =
             newMainVal =
               newFrameNot.subscribedNodeValues
                 |> getMainVal state.session
+
+            curFrame =
+              curFrameIdx state
+
+            mainNodeId =
+              mainId state
+
+            newExprLogs =
+              updateLogs
+                curFrame
+                state.exprLogs
+                newFrameNot.flaggedExprValues
+                (always True)
+
+            newNodeLogs =
+              updateLogs
+                curFrame
+                state.nodeLogs
+                newFrameNot.subscribedNodeValues
+                (\id -> id /= mainNodeId)
           in
             done
-              { state | mainVal <- newMainVal }
+              { state
+                  | mainVal <- newMainVal
+                  , exprLogs <- newExprLogs
+                  , nodeLogs <- newNodeLogs
+              }
 
         NoOpNot ->
           done state
@@ -288,7 +311,7 @@ numFrames model =
   API.numFrames model.session
 
 
-curFrameIdx : Model -> Int
+curFrameIdx : Model -> API.FrameIndex
 curFrameIdx model =
   case model.runningState of
     Paused idx ->
