@@ -1,6 +1,5 @@
 module Debugger.Active where
 
-import Signal
 import Components exposing (..)
 import Dict
 import Set
@@ -52,51 +51,55 @@ type alias SwapError =
   String
 
 
+type Message
+  = Command Command
+  | Notification Notification
+
+
+type Command
+  = Play
+  | Pause
+  | ScrubTo API.FrameIndex
+  | Reset
+  | NoOpCommand
+
+
 type Notification
   = NewFrame API.NewFrameNotification
   -- TODO: task update
   | NoOpNot
 
 
-type Message
-  = Play
-  | Pause
-  | ScrubTo
-  | Reset
-
-
--- TODO: there's an error if I make this a value instead of a function. Why?
---commandsMailbox : () -> Signal.Mailbox Message
---commandsMailbox _ =
---    mailbox
-
-
---mailbox =
---  Signal.mailbox NoOpCommand
-
-
-notificationsMailbox : () -> Signal.Mailbox Notification
-notificationsMailbox _ =
-  mailbox
-
-mailbox =
-  Signal.mailbox NoOpNot
-
-
 update : Message -> Model -> Transaction Message Model
-update msg model =
+update msg state =
   case msg of
-    Play ->
-      done model
+    Command cmd ->
+      case cmd of
+        Play ->
+          Debug.crash "Play not implemented yet"
 
-    Pause ->
-      done model
+        Pause ->
+          Debug.crash "Pause not implemented yet"
 
-    ScrubTo ->
-      done model
+        ScrubTo frameIdx ->
+          Debug.crash "ScrubTo not implemented yet"
 
-    Reset ->
-      done model
+        Reset ->
+          Debug.crash "Reset not implemented yet"
+
+    Notification not ->
+      case not of
+        NewFrame newFrameNot ->
+          let
+            newMainVal =
+              newFrameNot.subscribedNodeValues
+                |> getMainVal state.session
+          in
+            done
+              { state | mainVal <- newMainVal }
+
+        NoOpNot ->
+          done state
 
 
 getMainValFromLogs : API.DebugSession -> List (Int, API.ValueLog) -> Html

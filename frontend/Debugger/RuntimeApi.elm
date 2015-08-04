@@ -237,10 +237,7 @@ forkFrom session frameIdx =
       )
     )
   )
-    
 
-
--- how is the previous session killed?
 
 type alias ElmModule =
   JsEnc.Value

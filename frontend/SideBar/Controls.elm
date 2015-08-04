@@ -77,8 +77,62 @@ darkGrey = Color.rgb 74 74 74
 
 -- VIEW
 
-playPauseButton : Signal.Address Model.Message -> Bool -> Button.Model -> Active.Model -> Html
-playPauseButton addr isPlay state activeState =
+view : Signal.Address Model.Message -> Model.Model -> Active.Model -> Html
+view addr state activeState =
+  let
+    midWidth =
+      sidebarWidth - margin * 2
+
+    swapWithLabel =
+      div
+        [ style swapButtonTextStyle ]
+        [ text "swap"
+        , swapButton addr state.permitSwaps
+        ]
+
+    buttonContainer =
+      div
+        [ style
+            [ "display" => "-webkit-flex"
+            , "-webkit-flex-direction" => "row"
+            , "-webkit-justify-content" => "space-between"
+            , "-webkit-align-items" => "center"
+            ]
+        ]
+        [ restartButton
+            (Signal.forwardTo addr Model.RestartButtonAction)
+            state.restartButtonState
+        , swapWithLabel
+        , playPauseButton
+            (Signal.forwardTo addr Model.PlayPauseButtonAction)
+            (not <| Active.isPlaying activeState)
+            state.playPauseButtonState
+        ]
+
+    sliderContainer =
+      div
+        [ style
+            [ "padding-top" => intToPx sliderPadding ]
+        ]
+        [ sliderEventText midWidth activeState
+        , scrubSlider
+            (Signal.forwardTo addr Model.ServiceCommand)
+            midWidth
+            activeState
+        , sliderMinMaxText midWidth activeState
+        ]
+  in
+    div
+      [ style
+          [ "padding" => intToPx margin ]
+      ]
+      [ buttonContainer
+      , sliderContainer
+      ]
+
+
+playPauseButton : Signal.Address (Button.Message Active.Command) -> Bool -> Button.Model -> Html
+playPauseButton addr isPlay state =
   let
     icon =
       if isPlay then
@@ -88,21 +142,16 @@ playPauseButton addr isPlay state activeState =
 
     render state =
       iconButton (playPauseButtonColor state) icon
-
-    -- TODO: we shouldn't have to know this here
-    curFrame =
-      Active.curFrameIdx activeState
   in 
     Button.view
-      (Signal.forwardTo addr Model.PlayPauseButtonAction)
-      commandsAddr
-      (DM.ForkFrom curFrame isPlay)
+      addr
+      (if isPlay then Active.Play else Active.Pause)
       state
       render
 
 
-restartButton : Signal.Address Active.Message -> Button.Model -> Active.Model -> Html
-restartButton addr state activeState =
+restartButton : Signal.Address (Button.Message Active.Command) -> Button.Model -> Html
+restartButton addr state =
   let
     render st =
       iconButton
@@ -110,15 +159,13 @@ restartButton addr state activeState =
         (FontAwesome.undo darkGrey buttonIconSize)
   in 
     Button.view
-      (Signal.forwardTo addr Model.RestartButtonAction)
-      commandsAddr
-      -- TODO: this should just be a Reset action
-      (DM.ForkFrom 0 <| Active.isPlaying activeState)
+      addr
+      Active.Reset
       state
       render
 
 
-swapButton : Signal.Address Active.Message -> Bool -> Html
+swapButton : Signal.Address Model.Message -> Bool -> Html
 swapButton addr permitSwap =
   input
     [ type' "checkbox"
@@ -130,8 +177,8 @@ swapButton addr permitSwap =
     []
 
 
-scrubSlider : Int -> Model.Model -> Active.Model -> Html
-scrubSlider width state activeState =
+scrubSlider : Signal.Address Active.Command -> Int -> Active.Model -> Html
+scrubSlider addr width activeState =
   let
     numFrames =
       Active.numFrames activeState
@@ -153,8 +200,8 @@ scrubSlider width state activeState =
           (at ["target","value"] (customDecoder string String.toInt))
           (\idx ->
             Signal.message
-              commandsAddr
-              (DM.GetNodeState {start=idx, end=idx} [Active.mainId activeState]))
+              addr
+              (Active.ScrubTo idx))
       ]
       []
 
@@ -208,7 +255,7 @@ positionedText width frameIdx numFrames alwaysRight =
       if frameIdx == 0 then
         1
       else
-        ceiling <| logBase 10 (toFloat frameIdx)
+        floor (logBase 10 (toFloat frameIdx)) + 1
 
     textWidth =
       charWidth * numDigits
@@ -240,52 +287,6 @@ positionedText width frameIdx numFrames alwaysRight =
           ]
       ]
       [ text (toString frameIdx) ]
-
-
-view : Signal.Address Active.Message -> Model.Model -> Active.Model -> Html
-view addr state activeState =
-  let
-    midWidth =
-      sidebarWidth - margin * 2
-
-    swapWithLabel =
-      div
-        [ style swapButtonTextStyle ]
-        [ text "swap"
-        , swapButton addr state.permitSwaps
-        ]
-
-    buttonContainer =
-      div
-        [ style
-            [ "display" => "-webkit-flex"
-            , "-webkit-flex-direction" => "row"
-            , "-webkit-justify-content" => "space-between"
-            , "-webkit-align-items" => "center"
-            ]
-        ]
-        [ restartButton addr state.restartButtonState activeState
-        , swapWithLabel
-        , playPauseButton addr (not <| Active.isPlaying activeState) state.playPauseButtonState activeState
-        ]
-
-    sliderContainer =
-      div
-        [ style
-            [ "padding-top" => intToPx sliderPadding ]
-        ]
-        [ sliderEventText midWidth activeState
-        , scrubSlider midWidth state activeState
-        , sliderMinMaxText midWidth activeState
-        ]
-  in
-    div
-      [ style
-          [ "padding" => intToPx margin ]
-      ]
-      [ buttonContainer
-      , sliderContainer
-      ]
 
 
 -- UTILITIES

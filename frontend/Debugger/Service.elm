@@ -5,12 +5,19 @@ import Task
 import Empty exposing (Empty)
 import Components exposing (..)
 import Debug
+import Html exposing (div)
 
 import Debugger.RuntimeApi as API
 import Debugger.Active as Active
 
+
 type alias Model =
   Maybe Active.Model
+
+
+initModel : Model
+initModel =
+  Nothing
 
 
 type Message
@@ -18,30 +25,52 @@ type Message
   | ActiveMessage Active.Message
 
 
-app : API.ElmModule -> App Message Model Model
+app : API.ElmModule -> App Message Model
 app initMod =
   { init =
       let
+        -- would be nice to pipeline this whole thing
         effect =
           API.initializeFullscreen
             initMod
             API.emptyInputHistory
-            (Signal.forwardTo (Active.notificationsMailbox ()).address Active.NewFrame)
+            (Signal.forwardTo notificationsMailbox.address Active.NewFrame)
             API.justMain
           |> Task.map (\(session, values) -> Initialized session values)
           |> task
       in
-        -- would be nice to pipeline this
         request effect Nothing
-  , view = always identity
+  , view = \_ _ -> div [] [] -- would be nice to not do this
   , update = update
-  , externalMessages = Nothing
+  , externalMessages =
+      [ Signal.map
+          (ActiveMessage << Active.Notification)
+          notificationsMailbox.signal
+      , Signal.map
+          (ActiveMessage << Active.Command)
+          (commandsMailbox ()).signal
+      ]
   }
+
+
+-- TODO: there's an error if I make this a value instead of a function. Why?
+commandsMailbox : () -> Signal.Mailbox Active.Command
+commandsMailbox _ =
+  mailbox
+
+
+mailbox =
+  Signal.mailbox Active.NoOpCommand
+
+
+notificationsMailbox : Signal.Mailbox Active.Notification
+notificationsMailbox =
+  Signal.mailbox Active.NoOpNot
 
 
 update : Message -> Model -> Transaction Message Model
 update msg model =
-  case msg of
+  case Debug.log "SERVICE MSG" msg of
     Initialized session initValues ->
       case model of
         Just _ ->

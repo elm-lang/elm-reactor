@@ -18,18 +18,30 @@ import Model exposing (..)
 import Styles exposing (..)
 import Button
 import Debugger.RuntimeApi as API
+import Debugger.Active as Active
 import Debugger.Service as Service
 import SideBar.Controls as Controls
 import SideBar.Logs as Logs
 import DataUtils exposing (..)
 
 
+serviceOutput : Output Service.Model
+serviceOutput =
+  Service.app initMod
+    |> Components.start
+
+
+output : Output Model.Model
 output =
-  start
+  Components.start
     { init =
         request (task connectSocket) initModel
     , view = view
     , update = update
+    , externalMessages =
+        [ Signal.map NewServiceState serviceOutput.model
+        , socketEventsMailbox.signal
+        ]
     }
 
 
@@ -37,9 +49,14 @@ main =
   output.html
 
 
-port tasks : Signal (Task Never ())
-port tasks =
+port uiTasks : Signal (Task Never ())
+port uiTasks =
   output.tasks
+
+
+port serviceTasks : Signal (Task Never ())
+port serviceTasks =
+  serviceOutput.tasks
 
 
 (=>) = (,)
@@ -51,7 +68,7 @@ view addr state =
     (mainVal, isPlaying) =
       case state.serviceState of
         Just activeAttrs ->
-          (activeAttrs.mainVal, DM.isPlaying activeAttrs)
+          (activeAttrs.mainVal, Active.isPlaying activeAttrs)
 
         Nothing ->
           (div [] [], False)
@@ -82,7 +99,7 @@ eventBlocker visible =
 
 tabWidth = 25
 
-toggleTab : Signal.Address Action -> Model -> Html
+toggleTab : Signal.Address Message -> Model -> Html
 toggleTab addr state =
   div
     [ style
@@ -100,7 +117,7 @@ toggleTab addr state =
     []
 
 
-viewSidebar : Signal.Address Action -> Model -> Html
+viewSidebar : Signal.Address Message -> Model -> Html
 viewSidebar addr state =
   let
     constantStyles =
@@ -133,7 +150,7 @@ viewSidebar addr state =
 
     body =
       case state.serviceState of
-        DM.Active activeAttrs ->
+        Just activeAttrs ->
           [ Controls.view
               addr
               state
@@ -146,7 +163,7 @@ viewSidebar addr state =
               activeAttrs
           ]
 
-        _ ->
+        Nothing ->
           -- TODO: prettify
           [ div
               [style [ "color" => "white" ]]
@@ -162,76 +179,74 @@ viewSidebar addr state =
 
 
 update : Message -> Model -> Transaction Message Model
-update msg model =
-  case msg of
-    _ ->
-      done model
+update msg state =
+  case Debug.log "MAIN MSG" msg of
+    SidebarVisible visible -> 
+      Debug.crash "SidebarVisible not implemented yet"
 
-{-
-update : FancyStartApp.UpdateFun Model Empty Action
-update loopback now action state =
-  case Debug.log "MAIN ACTION" action of
-    SidebarVisible visible ->
-      ( { state | sidebarVisible <- visible }
-      , []
-      )
+    PermitSwaps permit -> 
+      Debug.crash "PermitSwaps not implemented yet"
 
-    PermitSwaps permitSwaps ->
-      ( { state | permitSwaps <- permitSwaps }
-      , []
-      )
+    NewServiceState serviceState -> 
+      done { state | serviceState <- serviceState }
 
-    NewServiceState serviceState ->
-        ( { state
-              | serviceState <- serviceState
-              , logsState <-
-                  Logs.update (Logs.UpdateLogs serviceState) state.logsState
-          }
-        , []
+    PlayPauseButtonAction buttonMsg ->
+      with
+        (tag PlayPauseButtonAction <| Button.update buttonMsg state.playPauseButtonState)
+        (\(newState, maybeCommand) ->
+          let
+            sendEffect =
+              case Debug.log "maybeCommand" maybeCommand of
+                Just cmd ->
+                  Signal.send (Service.commandsMailbox ()).address cmd
+                    |> Task.map (always NoOp)
+
+                Nothing ->
+                  Task.succeed NoOp
+            in
+              request (task sendEffect) { state | playPauseButtonState <- newState }
         )
 
-    PlayPauseButtonAction action ->
-      ( { state | playPauseButtonState <-
-            Button.update action state.playPauseButtonState
-        }
-      , []
-      )
-
-    RestartButtonAction action ->
-      ( { state | restartButtonState <-
-            Button.update action state.restartButtonState
-        }
-      , []
-      )
-
-    LogsAction action ->
-      ( { state | logsState <- Logs.update action state.logsState }
-      , []
-      )
-
-    ConnectSocket maybeSocket ->
-      ( { state | swapSocket <- maybeSocket }
-      , []
-      )
-
-    SwapEvent swapEvent ->
-      case swapEvent of
-        NewModule compiledModule ->
+    RestartButtonAction buttonMsg -> 
+      with
+        (tag RestartButtonAction <| Button.update buttonMsg state.restartButtonState)
+        (\(newState, maybeCommand) ->
           let
-            mod =
-              API.evalModule compiledModule
-          in
-            ( state
-            , [ Signal.send (Service.commandsMailbox ()).address (DM.Swap mod) ]
-            )
+            sendEffect =
+              case maybeCommand of
+                Just cmd ->
+                  Signal.send (Service.commandsMailbox ()).address cmd
+                    |> Task.map (always NoOp)
 
-        CompilationErrors errors ->
-          Debug.crash errors
--}
+                Nothing ->
+                  Task.succeed NoOp
+            in
+              request (task sendEffect) { state | restartButtonState <- newState }
+        )
+
+    LogsAction logMsg -> 
+      Debug.crash "LogsAction not implemented yet"
+
+    ConnectSocket maybeSocket -> 
+      done { state | swapSocket <- maybeSocket }
+
+    SwapEvent swapEvt -> 
+      Debug.crash "SwapEvent not implemented yet"
+
+    ServiceCommand serviceCmd -> 
+      request
+        (Signal.send (Service.commandsMailbox ()).address serviceCmd
+          |> Task.map (always NoOp)
+          |> task)
+        state
+
+    NoOp -> 
+     done state
+
 
 -- Socket stuff
 
-socketEventsMailbox : Signal.Mailbox Action
+socketEventsMailbox : Signal.Mailbox Message
 socketEventsMailbox =
   Signal.mailbox NoOp
 
@@ -246,7 +261,6 @@ port windowLocationHost : String
 
 -- TASK PORTS
 
--- TODO: external events in Elm Components so we can add this in
 connectSocket : Task Never Message
 connectSocket =
   (WebSocket.create
@@ -267,13 +281,3 @@ connectSocket =
     )
   )
   |> Task.map (ConnectSocket << Just)
-
-
-port uiTasksPort : Signal (Task Empty ())
-port uiTasksPort =
-  uiTasks
-
-
---port debugServiceTasks : Signal (Task Empty ())
---port debugServiceTasks =
---  Service.tasks

@@ -120,10 +120,6 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 
 			var sgNodes = flattenSignalGraph(debugeeLocalRuntime);
 			var sgShape = getSgShape(sgNodes);
-			var snapshots =
-				inputHistory.snapshots.length == 0
-				? [takeSnapshot(sgNodes)]
-				: inputHistory.snapshots;
 			var session = {
 				module: module,
 				runningModule: moduleBeingDebugged,
@@ -133,8 +129,8 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 				delay: 0, // TODO: think delay stuff through!
 				// TODO: delay, totalTimeLost, asyncCallbacks
 				asyncCallbacks: [],
-				events: inputHistory.events,
-				snapshots: snapshots,
+				events: inputHistory,
+				snapshots: [takeSnapshot(sgNodes)],
 				shape: sgShape,
 				notificationAddress: notificationAddress,
 				disposed: false,
@@ -383,8 +379,8 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 		numFrames: numFrames,
 		getNodeState: F3(getNodeState),
 		getInputHistory: getInputHistory,
+		splitInputHistory: F2(splitInputHistory),
 		emptyInputHistory: emptyInputHistory,
-		forkFrom: F2(forkFrom),
 		evalModule: evalModule,
 		initializeFullscreen: F4(initializeFullscreen),
 		dispose: dispose,

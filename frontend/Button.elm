@@ -37,7 +37,7 @@ view : Signal.Address (Message a)
     -> Html
 view addr clickMsg state render =
   div
-    [ onMouseOver addr (MouseUpdate Hover)
+    [ onMouseEnter addr (MouseUpdate Hover)
     , onMouseDown addr (MouseUpdate Down)
     , onMouseUp addr (MouseUpdate Hover)
     , onMouseLeave addr (MouseUpdate Up)
