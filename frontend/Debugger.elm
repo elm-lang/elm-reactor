@@ -182,10 +182,10 @@ update : Message -> Model -> Transaction Message Model
 update msg state =
   case Debug.log "MAIN MSG" msg of
     SidebarVisible visible -> 
-      Debug.crash "SidebarVisible not implemented yet"
+      done { state | sidebarVisible <- visible }
 
     PermitSwaps permit -> 
-      Debug.crash "PermitSwaps not implemented yet"
+      done { state | permitSwaps <- permit }
 
     NewServiceState serviceState -> 
       done { state | serviceState <- serviceState }
@@ -230,8 +230,19 @@ update msg state =
     ConnectSocket maybeSocket -> 
       done { state | swapSocket <- maybeSocket }
 
-    SwapEvent swapEvt -> 
-      Debug.crash "SwapEvent not implemented yet"
+    SwapEvent swapEvt ->
+      case swapEvt of
+        NewModule compiledMod ->
+          if state.permitSwaps then
+            request
+              (Signal.send
+                (Service.commandsMailbox ()).address
+                (Active.Swap compiledMod)
+              |> Task.map (always NoOp)
+              |> task)
+              state
+          else
+            done state
 
     ServiceCommand serviceCmd -> 
       request

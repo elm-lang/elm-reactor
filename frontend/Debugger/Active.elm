@@ -16,7 +16,6 @@ import DataUtils exposing (..)
 type alias Model =
   { session : API.DebugSession
   , runningState : RunningState
-  , swapState : SwapState
   , mainVal : Html
   , exprLogs : Dict.Dict API.ExprTag API.ValueLog
   -- vv TODO: get inputs for each frame as well
@@ -29,7 +28,6 @@ initModel : API.DebugSession -> Html -> Model
 initModel session mainVal =
   { session = session
   , runningState = Playing
-  , swapState = NotSwapping
   , mainVal = mainVal
   , exprLogs = Dict.empty
   , nodeLogs = Dict.empty
@@ -64,6 +62,7 @@ type Command
   | Pause
   | ScrubTo API.FrameIndex
   | Reset
+  | Swap API.CompiledElmModule
   | NoOpCommand
 
 
@@ -76,6 +75,7 @@ type Notification
 type Response
   = ScrubResponse Html
   | ForkResponse API.DebugSession Html
+  | SwapResponse API.DebugSession Html
 
 update : Message -> Model -> Transaction Message Model
 update msg state =
@@ -149,6 +149,25 @@ update msg state =
                       Paused 0
             }
 
+        Swap compiledMod ->
+          let
+            newMod =
+              API.evalModule compiledMod
+
+            swapTask =
+              (API.swap state.session newMod API.justMain
+                |> Task.mapError (\swapErr -> Debug.crash "TODO"))
+              `Task.andThen` (\newSesh ->
+                API.getNodeStateSingle
+                  newSesh
+                  (curFrameIdx state)
+                  [API.sgShape newSesh |> .mainId]
+                |> Task.map (\values ->
+                      Response <| SwapResponse newSesh (getMainVal newSesh values))
+              )
+          in
+            request (swapTask |> task) state
+
     Notification not ->
       case not of
         NewFrame newFrameNot ->
@@ -169,6 +188,13 @@ update msg state =
           done { state | mainVal <- html }
 
         ForkResponse newSesh html ->
+          done
+            { state
+                | session <- newSesh
+                , mainVal <- html
+            }
+
+        SwapResponse newSesh html ->
           done
             { state
                 | session <- newSesh

@@ -16,6 +16,7 @@ type alias Model =
   , permitSwaps : Bool
   , restartButtonState : Button.Model
   , playPauseButtonState : Button.Model
+  , compileError : Maybe CompilationErrors
   , logsState : Logs.Model
   , swapSocket : Maybe WebSocket.WebSocket
   }
@@ -28,6 +29,7 @@ initModel =
   , permitSwaps = True
   , restartButtonState = Button.Up
   , playPauseButtonState = Button.Up
+  , compileError = Nothing
   , logsState = Logs.initModel
   , swapSocket = Nothing
   }
