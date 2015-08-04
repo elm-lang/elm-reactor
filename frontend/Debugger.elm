@@ -228,7 +228,7 @@ update msg state =
       in
         with
           (tag LogsMessage <| Logs.update logMsg state.logsState)
-          (\newLogsState ->
+          (\(newLogsState, _) ->
             done
               { state
                   | serviceState <- serviceState
@@ -273,7 +273,21 @@ update msg state =
     LogsMessage logMsg -> 
       with
         (tag LogsMessage <| Logs.update logMsg state.logsState)
-        (\newLogsState -> done { state | logsState <- newLogsState })
+        (\(newLogsState, maybeFrame) ->
+          let
+            effect =
+              case maybeFrame of
+                Just frameIdx ->
+                  Signal.send
+                    (Service.commandsMailbox ()).address
+                    (Active.ScrubTo frameIdx)
+                  |> Task.map (always NoOp)
+
+                Nothing ->
+                  Task.succeed NoOp
+          in
+            request (effect |> task) { state | logsState <- newLogsState }
+        )
 
     ConnectSocket maybeSocket -> 
       done { state | swapSocket <- maybeSocket }

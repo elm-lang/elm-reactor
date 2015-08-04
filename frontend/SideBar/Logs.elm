@@ -39,6 +39,7 @@ type Message
       { newExprLogs : Dict API.ExprTag API.ValueLog
       , newNodeLogs : Dict API.NodeId API.ValueLog
       }
+  | ScrubTo API.FrameIndex
   | NoOp
 
 
@@ -47,34 +48,43 @@ type LogId
   | ExprLog API.ExprTag
 
 
-update : Message -> Model -> Transaction Message Model
+update : Message -> Model -> Transaction Message (Model, Maybe API.FrameIndex)
 update msg state =
   case msg of
     CollapseLog logId collapsed ->
       case logId of
         NodeLog nodeId ->
           done
-            { state | nodeExpansion <-
-                collapseLog nodeId collapsed state.nodeExpansion
-            }
+            ( { state | nodeExpansion <-
+                  collapseLog nodeId collapsed state.nodeExpansion
+              }
+            , Nothing
+            )
 
         ExprLog exprTag ->
           done
-            { state | exprExpansion <-
-                collapseLog exprTag collapsed state.exprExpansion
-            }
+            ( { state | exprExpansion <-
+                  collapseLog exprTag collapsed state.exprExpansion
+              }
+            , Nothing
+            )
 
     UpdateLogs {newExprLogs, newNodeLogs} ->
       done
-        { state
-            | exprExpansion <-
-                updateExpansion state.exprExpansion newExprLogs
-            , nodeExpansion <-
-                updateExpansion state.nodeExpansion newNodeLogs
-        }
+        ( { state
+              | exprExpansion <-
+                  updateExpansion state.exprExpansion newExprLogs
+              , nodeExpansion <-
+                  updateExpansion state.nodeExpansion newNodeLogs
+          }
+        , Nothing
+        )
+
+    ScrubTo frameIdx ->
+      done (state, Just frameIdx)
 
     NoOp ->
-      done state
+      done (state, Nothing)
 
 
 view : Signal.Address Message -> Int -> Model -> Active.Model -> Html
@@ -96,8 +106,6 @@ view addr controlsHeight state activeState =
       ]
       ( if Dict.isEmpty activeState.exprLogs then
           [noLogs]
-        else if curFrame == 0 then
-          [ text "logs undefined at frame 0" ]
         else
           [ ul
               [ style
@@ -127,10 +135,14 @@ sidePadding =
 viewExprLog : Signal.Address Message -> Bool -> LogId -> API.FrameIndex -> API.ValueLog -> Html
 viewExprLog addr collapsed logId frameIdx log =
   let
+    clickAttrs =
+      [ onClick addr (CollapseLog logId (not collapsed))
+      , style ["cursor" => "pointer"]
+      ]
+
     colButton =
       span
-        [ onClick addr (CollapseLog logId (not collapsed))
-        , style
+        [ style
             ([ "cursor" => "default"
              , "padding-right" => "5px"  
              , "font-size" => "12px"
@@ -139,28 +151,45 @@ viewExprLog addr collapsed logId frameIdx log =
         [ text <| if collapsed then "▶" else "▼" ]
   in 
     if collapsed then
-      li []
-        [ colButton
-        , text <| logLabel logId ++ ": "
-        , code []
-            [ text <|
-                API.prettyPrint
-                  (log |> getAtIdx frameIdx |> getMaybe "idx out of range")
-            ]
-        ]
+      if frameIdx == 0 then
+        li
+          clickAttrs
+          [ colButton
+          , text <| logLabel logId
+          ]
+      else
+        li
+          clickAttrs
+          [ colButton
+          , text <| logLabel logId ++ ": "
+          , code []
+              [ text <|
+                  API.prettyPrint
+                    (log |> getAtIdx frameIdx |> getMaybe "idx out of range")
+              ]
+          ]
     else
       li []
-        [ colButton
-        , text <| logLabel logId
+        [ span
+            clickAttrs
+            [ colButton
+            , text <| logLabel logId
+            ]
         , ul []
-            (log |> List.map (\(idx, val) -> viewLogItem (frameIdx == idx) idx val))
+            (log |> List.map (\(idx, val) ->
+                viewLogItem addr (frameIdx == idx) idx val))
         ]
 
 
-viewLogItem : Bool -> API.FrameIndex -> API.JsElmValue -> Html
-viewLogItem highlighted idx val =
+viewLogItem : Signal.Address Message -> Bool -> API.FrameIndex -> API.JsElmValue -> Html
+viewLogItem addr highlighted idx val =
   li
-    [ style <| if highlighted then ["color" => "yellow"] else [] ]
+    [ onClick addr (ScrubTo idx)
+    , style
+        ( [ "cursor" => "pointer" ]
+          ++ (if highlighted then ["color" => "yellow"] else [])
+        )
+    ]
     [ text <| (toString idx) ++ ": "
     , code [] [ text <| API.prettyPrint val ]
     ]
@@ -175,49 +204,6 @@ logLabel logId =
     ExprLog tag ->
       tag
 
-
--- WATCHES
-{-
-viewWatch : (String, String) -> Html
-viewWatch (name, value) =
-  div watchAttributes [viewName name, viewValue value]
-
-
-watchAttributes : List Attribute
-watchAttributes =
-  [ style
-    [ "color" => colorToCss Color.lightGrey
-    , "padding" => "10px 0"
-    ]
-  ]
-
-
-viewName : String -> Html
-viewName name =
-  div nameAttributes [ text name ]
-
-
-nameAttributes : List Attribute
-nameAttributes =
-  [ style
-    [ "margin" => "10px 0 10px"
-    , "font-weight" => "bold"
-    , "font-family" => textTypefaces
-    ]
-  ]
-
-
-viewValue : String -> Html
-viewValue value =
-  pre valueAttributes [ text value ]
-
-
-valueAttributes : List Attribute
-valueAttributes =
-  [ style
-    [ "margin" => "0 0 0 10px" ]
-  ]
--}
 
 -- NO WATCHES
 
