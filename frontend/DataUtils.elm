@@ -18,6 +18,19 @@ getLast list =
       getLast xs
 
 
+getAtIdx : Int -> List a -> Maybe a
+getAtIdx idx list =
+  case (idx, list) of
+    (0, x::xs) ->
+      Just x
+
+    (n, []) ->
+      Nothing
+
+    (n, x::xs) ->
+      getAtIdx (n-1) xs
+
+
 getMaybe : String -> Maybe a -> a
 getMaybe msg maybe =
   case maybe of

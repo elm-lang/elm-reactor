@@ -68,8 +68,8 @@ view addr state =
   let
     (mainVal, isPlaying) =
       case state.serviceState of
-        Just activeAttrs ->
-          (activeAttrs.mainVal, Active.isPlaying activeAttrs)
+        Just activeState ->
+          (activeState.mainVal, Active.isPlaying activeState)
 
         Nothing ->
           (div [] [], False)
@@ -176,17 +176,17 @@ viewSidebar addr state =
 
     body =
       case state.serviceState of
-        Just activeAttrs ->
+        Just activeState ->
           [ Controls.view
               addr
               state
-              activeAttrs
+              activeState
           , dividerBar
           , Logs.view
               (Signal.forwardTo addr LogsMessage)
               Controls.totalHeight
               state.logsState
-              activeAttrs
+              activeState
           ]
 
         Nothing ->

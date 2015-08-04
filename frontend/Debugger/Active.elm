@@ -1,8 +1,8 @@
 module Debugger.Active where
 
 import Components exposing (..)
-import Dict
-import Set
+import Dict exposing (Dict)
+import Set exposing (Set)
 import Html exposing (Html)
 import Debugger.Reflect as Reflect
 import Debug
@@ -16,10 +16,10 @@ type alias Model =
   { session : API.DebugSession
   , runningState : RunningState
   , mainVal : Html
-  , exprLogs : Dict.Dict API.ExprTag API.ValueLog
+  , exprLogs : Dict API.ExprTag API.ValueLog
   -- vv TODO: get inputs for each frame as well
-  , nodeLogs : Dict.Dict API.NodeId API.ValueLog
-  , subscribedNodes : Set.Set API.NodeId
+  , nodeLogs : Dict API.NodeId API.ValueLog
+  , subscribedNodes : Set API.NodeId
   }
 
 
@@ -211,11 +211,17 @@ update msg state =
           done { state | mainVal <- html }
 
         ForkResponse newSesh html ->
-          done
-            { state
-                | session <- newSesh
-                , mainVal <- html
-            }
+          let
+            frameIdx =
+              API.numFrames newSesh - 1
+          in
+            done
+              { state
+                  | session <- newSesh
+                  , mainVal <- html
+                  , exprLogs <- truncateLogs frameIdx state.exprLogs
+                  , nodeLogs <- truncateLogs frameIdx state.nodeLogs
+              }
 
         SwapResponse newSesh html ->
           done
@@ -279,16 +285,28 @@ appendToLog curFrame value maybeLog =
 
 
 updateLogs : API.FrameIndex
-          -> Dict.Dict comparable API.ValueLog
+          -> Dict comparable API.ValueLog
           -> List (comparable, API.JsElmValue)
           -> (comparable -> Bool)
-          -> Dict.Dict comparable API.ValueLog
+          -> Dict comparable API.ValueLog
 updateLogs curFrame logs updates idPred =
   List.foldl
     (\(tag, value) logs ->
       Dict.update tag (appendToLog curFrame value) logs)
     logs
     (List.filter (fst >> idPred) updates)
+
+
+truncateLogs : API.FrameIndex -> Dict comparable API.ValueLog -> Dict comparable API.ValueLog
+truncateLogs frameIdx logs =
+  logs
+    |> Dict.map (\_ log -> truncateLog frameIdx log)
+    |> Dict.filter (\_ log -> not (List.isEmpty log))
+
+
+truncateLog : API.FrameIndex -> API.ValueLog -> API.ValueLog
+truncateLog frameIdx log =
+  List.filter (\(idx, val) -> idx <= frameIdx) log
 
 
 isPlaying : Model -> Bool

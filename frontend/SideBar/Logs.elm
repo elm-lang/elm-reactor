@@ -5,7 +5,7 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Markdown
 import Signal
-import Dict
+import Dict exposing (Dict)
 import Html exposing (..)
 import Html.Attributes as Attr exposing (..)
 import Html.Events exposing (..)
@@ -35,8 +35,8 @@ initModel =
 type Message
   = CollapseLog LogId Bool
   | UpdateLogs
-      { newExprLogs : Dict.Dict API.ExprTag API.ValueLog
-      , newNodeLogs : Dict.Dict API.NodeId API.ValueLog
+      { newExprLogs : Dict API.ExprTag API.ValueLog
+      , newNodeLogs : Dict API.NodeId API.ValueLog
       }
   | NoOp
 
@@ -78,52 +78,60 @@ update msg state =
 
 view : Signal.Address Message -> Int -> Model -> Active.Model -> Html
 view addr controlsHeight state activeState =
-  div
-    [ style
-        [ "overflow-y" => "auto"
-        , "overflow-x" => "hidden"
-        , "padding" => ("0 " ++ intToPx sidePadding)
-        , "position" => "absolute"
-        , "bottom" => "10px"
-        , "top" => intToPx (controlsHeight + 1)
-        , "width" => intToPx (sidebarWidth - 2*sidePadding)
-        ]
-    ]
-    ( if Dict.isEmpty activeState.exprLogs then
-        [noLogs]
-      else
-        [ ul
-            [ style
-                [ "list-style" => "none"
-                , "padding-left" => "0"
-                , "color" => "white"
-                ]
-            ]
-            (activeState.exprLogs
-              |> Dict.toList
-              |> List.map (\(tag, log) ->
-                    viewExprLog
-                      addr
-                      (Dict.get tag state.exprExpansion |> getMaybe "log not found")
-                      (ExprLog tag)
-                      log))
-        ]
-    )
+  let
+    curFrame =
+      Active.curFrameIdx activeState
+  in
+    div
+      [ style
+          [ "overflow-y" => "auto"
+          , "overflow-x" => "hidden"
+          , "padding" => ("0 " ++ intToPx sidePadding)
+          , "position" => "absolute"
+          , "bottom" => "10px"
+          , "top" => intToPx (controlsHeight + 1)
+          , "width" => intToPx (sidebarWidth - 2*sidePadding)
+          ]
+      ]
+      ( if Dict.isEmpty activeState.exprLogs then
+          [noLogs]
+        else if curFrame == 0 then
+          [ text "logs undefined at frame 0" ]
+        else
+          [ ul
+              [ style
+                  [ "list-style" => "none"
+                  , "padding-left" => "0"
+                  , "color" => "white"
+                  ]
+              ]
+              (activeState.exprLogs
+                |> Dict.toList
+                |> List.map (\(tag, log) ->
+                      viewExprLog
+                        addr
+                        (Dict.get tag state.exprExpansion |> getMaybe "log not found")
+                        (ExprLog tag)
+                        (curFrame - 1)
+                        log)
+              )
+          ]
+      )
 
 
 sidePadding =
   20
 
 
-viewExprLog : Signal.Address Message -> Bool -> LogId -> API.ValueLog -> Html
-viewExprLog addr collapsed logId log =
+viewExprLog : Signal.Address Message -> Bool -> LogId -> API.FrameIndex -> API.ValueLog -> Html
+viewExprLog addr collapsed logId frameIdx log =
   let
     colButton =
       span
         [ onClick addr (CollapseLog logId (not collapsed))
         , style
             ([ "cursor" => "default"
-             , "padding-right" => "5px"
+             , "padding-right" => "5px"  
              , "font-size" => "12px"
              ] ++ unselectable)
         ]
@@ -132,7 +140,12 @@ viewExprLog addr collapsed logId log =
     if collapsed then
       li []
         [ colButton
-        , text <| logLabel logId ++ ": " ++ API.prettyPrint (getLast log |> snd)
+        , text <| logLabel logId ++ ": "
+        , code []
+            [ text <|
+                API.prettyPrint
+                  (log |> getAtIdx frameIdx |> getMaybe "idx out of range" |> snd)
+            ]
         ]
     else
       li []
@@ -146,7 +159,9 @@ viewExprLog addr collapsed logId log =
 viewLogItem : (API.FrameIndex, API.JsElmValue) -> Html
 viewLogItem (idx, val) =
   li []
-    [text <| "frame: " ++ (toString idx) ++ "; val: " ++ (API.prettyPrint val)]
+    [ text <| (toString idx) ++ ": "
+    , code [] [ text <| API.prettyPrint val ]
+    ]
 
 
 logLabel : LogId -> String
@@ -237,7 +252,7 @@ summary or subvalue of any value. </span><br>
 (if/when expando-tree views are used to represent elm values, this
 type could be extended to model the expansion state of the whole tree.) -}
 type alias ExpansionModel comparable =
-  Dict.Dict comparable Bool
+  Dict comparable Bool
 
 
 emptyExpansionModel : ExpansionModel comparable
@@ -245,7 +260,7 @@ emptyExpansionModel =
   Dict.empty
 
 
-updateExpansion : ExpansionModel comparable -> Dict.Dict comparable b -> ExpansionModel comparable
+updateExpansion : ExpansionModel comparable -> Dict comparable b -> ExpansionModel comparable
 updateExpansion expansion items =
   Dict.foldl
     (\tag _ newEM ->
