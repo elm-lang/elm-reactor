@@ -12,20 +12,18 @@ Elm.Native.Debugger.Reflect.make = function(localRuntime) {
 		return localRuntime.Native.Debugger.Reflect.values;
 	}
 
-	var Signal = Elm.Native.Signal.make (localRuntime);
-	var Task = Elm.Native.Task.make (localRuntime);
-	var Utils = Elm.Native.Utils.make (localRuntime);
-	var List = Elm.Native.List.make (localRuntime);
-	var Dict = Elm.Dict.make (localRuntime);
+	var VirtualDom = Elm.VirtualDom.make (localRuntime);
 
-	function getHtml(html)
+	function getHtml(mainVal)
 	{
 		// TODO: I hear this is bad (http://webreflection.blogspot.com/2013/03/5-reasons-you-should-avoid-proto.html)
 		// but instanceof didn't work for some reason. find a workaround.
-		if(html.__proto__.type == "VirtualNode" || html.__proto__.type == "VirtualText") {
-			return html;
+		if(mainVal.__proto__.type == "VirtualNode" || mainVal.__proto__.type == "VirtualText") {
+			return mainVal;
+		} else if(mainVal.element && mainVal.props) {
+			return VirtualDom.fromElement(mainVal);
 		} else {
-			throw new Error("not html");
+			throw new Error("not Html or Element");
 		}
 	}
 
