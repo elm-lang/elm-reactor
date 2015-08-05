@@ -1,7 +1,9 @@
 module Model where
 
 import Json.Decode exposing (..)
+
 import WebSocket
+import Html.File
 
 import Debugger.Service as Service
 import Debugger.Active as Active
@@ -45,6 +47,8 @@ type Message
   | ConnectSocket (Maybe WebSocket.WebSocket)
   | SwapEvent SwapEvent
   | ServiceCommand Active.Command
+  | ExportHistory
+  | FilesDropped (List Html.File.File)
   | NoOp
 
 

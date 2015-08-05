@@ -9,11 +9,14 @@ import Json.Decode as JsDec
 import String
 import Color
 import Maybe
+import Result
 import Debug
 
 import Components exposing (..)
 import Empty exposing (..)
 import WebSocket
+import Html.File as File
+import Html.Attributes.DragDropFile as DDF
 
 import Model exposing (..)
 import Styles exposing (..)
@@ -198,8 +201,9 @@ viewSidebar addr state =
   in
     div
       [ id "elm-reactor-side-bar"
-      -- done in JS: cancelBubble / stopPropagation on this
+      -- TODO in JS: cancelBubble / stopPropagation on this
       , style (constantStyles ++ toggleStyles)
+      , DDF.onDrop addr FilesDropped -- TODO: doesn't work
       ]
       ([toggleTab addr state] ++ body)
 
@@ -316,9 +320,55 @@ update msg state =
           |> task)
         state
 
+    ExportHistory ->
+      case state.serviceState of
+        Just active ->
+          request
+            (exportHistory active.session |> Task.map (always NoOp) |> task)
+            state
+
+        Nothing ->
+          Debug.crash "can't export before initialized"
+
+    FilesDropped files ->
+      let
+        fileRes =
+          files
+            |> List.filter (\file -> File.mimeType file == exportMimeType)
+            |> List.head
+            |> Result.fromMaybe NoJsonFile
+            |> Result.map (\file ->
+                  (file
+                    |> File.readAsText
+                    |> Task.mapError (\err -> Debug.crash ("err reading file: " ++ err))
+                    |> Task.map API.parseInputHistory)
+                  `Task.andThen` (\historyRes ->
+                    case historyRes of
+                      Ok history ->
+                        Signal.send (Service.commandsMailbox ()).address (Active.StartWithHistory history)
+                          |> Task.map (always NoOp)
+
+                      Err err ->
+                        Task.fail err
+                  ))
+
+      in
+        case fileRes of
+          Ok startTask ->
+            request (startTask |> Task.mapError (\err -> Debug.crash err) |> task) state
+
+          Err err ->
+            -- TDOO
+            Debug.crash (toString err)
+
     NoOp -> 
      done state
 
+
+type UploadErr
+  = NoJsonFile
+  | JsonParseError
+  | InvalidJson
 
 -- Socket stuff
 
@@ -335,7 +385,6 @@ port fileName : String
 -- would be nice to get this from a library
 port windowLocationHost : String
 
--- TASK PORTS
 
 connectSocket : Task Never Message
 connectSocket =
@@ -357,3 +406,14 @@ connectSocket =
     )
   )
   |> Task.map (ConnectSocket << Just)
+
+
+exportMimeType =
+  "application/json"
+
+
+exportHistory : API.DebugSession -> Task x ()
+exportHistory session =
+  (API.getInputHistory session |> Task.map API.serializeInputHistory)
+  `Task.andThen` (\contents ->
+    File.download contents exportMimeType "reactor-history.json")

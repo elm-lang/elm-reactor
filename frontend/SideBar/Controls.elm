@@ -6,7 +6,10 @@ import Html.Attributes as Attr exposing (..)
 import Html.Events exposing (..)
 import Json.Decode exposing (..)
 import String
+import Debug
+
 import FontAwesome
+import Html.File as File
 
 import Model
 import Debugger.Service as Service
@@ -86,8 +89,20 @@ view addr state activeState =
     swapWithLabel =
       div
         [ style swapButtonTextStyle ]
-        [ text "swap"
-        , swapButton addr state.permitSwaps
+        [
+        -- text "swap"
+        --, swapButton addr state.permitSwaps
+         span
+            [ onClick addr Model.ExportHistory ]
+            [ text "download" ]
+        , input
+            [ on
+                "change"
+                (at ["target", "files"] <| File.domList File.file)
+                (\files -> Debug.log "FILES" <| Signal.message addr (Model.FilesDropped files))
+            , type' "file"
+            ]
+            []
         ]
 
     buttonContainer =

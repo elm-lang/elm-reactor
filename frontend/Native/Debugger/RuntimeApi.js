@@ -94,6 +94,24 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 		return Utils.Tuple2(history.slice(0, frameIdx), history.slice(frameIdx));
 	}
 
+	function serializeInputHistory(inputHistory) {
+		return JSON.stringify(inputHistory);
+	}
+
+	function parseInputHistory(str) {
+		try {
+			return {
+				ctor: 'Ok',
+				_0: JSON.parse(str)
+			}
+		} catch(err) {
+			return {
+				ctor: 'Err',
+				_0: err.message
+			}
+		}
+	}
+
 	function evalModule(compiledModule) {
 		window.eval(compiledModule.code);
 		var elmModule = Elm;
@@ -383,6 +401,8 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 		getInputHistory: getInputHistory,
 		splitInputHistory: F2(splitInputHistory),
 		emptyInputHistory: emptyInputHistory,
+		serializeInputHistory: serializeInputHistory,
+		parseInputHistory: parseInputHistory,
 		evalModule: evalModule,
 		initializeFullscreen: F4(initializeFullscreen),
 		dispose: dispose,

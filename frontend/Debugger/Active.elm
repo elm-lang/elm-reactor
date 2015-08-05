@@ -62,6 +62,7 @@ type Command
   | ScrubTo API.FrameIndex
   | Reset
   | Swap API.CompiledElmModule
+  | StartWithHistory API.InputHistory
   | NoOpCommand
 
 
@@ -75,6 +76,8 @@ type Response
   = ScrubResponse Html
   | ForkResponse API.DebugSession Html
   | SwapResponse API.DebugSession Html
+  | StartWithHistoryResponse API.DebugSession API.ValueSet
+
 
 update : Message -> Model -> Transaction Message Model
 update msg state =
@@ -167,6 +170,19 @@ update msg state =
           in
             request (swapTask |> task) state
 
+        StartWithHistory hist ->
+          let
+            initTask =
+              API.initializeFullscreen
+                (API.getModule state.session)
+                hist
+                (API.getAddress state.session)
+                (API.justMain)
+              |> Task.map (\(newSesh, vals) ->
+                Response (StartWithHistoryResponse newSesh vals))
+          in
+            request (initTask |> task) state
+
     Notification not ->
       case not of
         NewFrame newFrameNot ->
@@ -228,6 +244,13 @@ update msg state =
             { state
                 | session <- newSesh
                 , mainVal <- html
+            }
+
+        StartWithHistoryResponse newSesh vals ->
+          done
+            { state
+                | session <- newSesh
+                , mainVal <- getMainVal newSesh vals
             }
 
     NoOp ->

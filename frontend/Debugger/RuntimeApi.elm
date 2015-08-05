@@ -133,6 +133,16 @@ splitInputHistory =
   Native.Debugger.RuntimeApi.splitInputHistory
 
 
+serializeInputHistory : InputHistory -> String
+serializeInputHistory =
+  Native.Debugger.RuntimeApi.serializeInputHistory
+
+
+parseInputHistory : String -> Result String InputHistory
+parseInputHistory =
+  Native.Debugger.RuntimeApi.parseInputHistory
+
+
 {-| Interpreted as inclusive -}
 type alias FrameInterval =
   { start : FrameIndex
