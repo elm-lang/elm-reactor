@@ -11,7 +11,7 @@ import Html exposing (..)
 import Html.Attributes as Attr exposing (..)
 import Html.Events exposing (..)
 
-import Components exposing (..)
+import Transaction exposing (..)
 
 import Styles exposing (..)
 import Debugger.Service as DS

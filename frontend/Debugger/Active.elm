@@ -1,15 +1,16 @@
 module Debugger.Active where
 
-import Components exposing (..)
 import Dict exposing (Dict)
 import Set exposing (Set)
 import Html exposing (Html)
-import Debugger.Reflect as Reflect
 import Debug
 import Task
 
+import Transaction exposing (..)
+
 import Debugger.RuntimeApi as API
 import DataUtils exposing (..)
+import Debugger.Reflect as Reflect
 
 
 type alias Model =

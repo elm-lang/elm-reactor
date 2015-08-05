@@ -1,12 +1,12 @@
 module Button where
 
-import Components exposing (..)
-
 import Signal
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import Html.Lazy exposing (..)
+
+import Transaction exposing (..)
 
 
 type Model

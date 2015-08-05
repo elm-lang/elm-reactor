@@ -2,10 +2,11 @@ module Debugger.Service where
 
 import Signal
 import Task
-import Empty exposing (Empty)
-import Components exposing (..)
 import Debug
 import Html exposing (div)
+
+import Transaction exposing (..)
+import Start
 
 import Debugger.RuntimeApi as API
 import Debugger.Active as Active
@@ -25,7 +26,7 @@ type Message
   | ActiveMessage Active.Message
 
 
-app : API.ElmModule -> App Message Model
+app : API.ElmModule -> Start.Config Message Model
 app initMod =
   { init =
       let
@@ -42,7 +43,7 @@ app initMod =
         request effect Nothing
   , view = \_ _ -> div [] [] -- would be nice to not do this
   , update = update
-  , externalMessages =
+  , inputs =
       [ Signal.map
           (ActiveMessage << Active.Notification)
           notificationsMailbox.signal

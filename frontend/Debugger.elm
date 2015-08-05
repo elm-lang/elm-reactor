@@ -12,8 +12,8 @@ import Maybe
 import Result
 import Debug
 
-import Components exposing (..)
-import Empty exposing (..)
+import Transaction exposing (..)
+import Start
 import WebSocket
 import Html.File as File
 import Html.Attributes.DragDropFile as DDF
@@ -29,20 +29,19 @@ import SideBar.Logs as Logs
 import DataUtils exposing (..)
 
 
-serviceOutput : Output Service.Model
+serviceOutput : Start.App Service.Model
 serviceOutput =
-  Service.app initMod
-    |> Components.start
+  Start.start <| Service.app initMod
 
 
-output : Output Model.Model
+output : Start.App Model.Model
 output =
-  Components.start
+  Start.start
     { init =
         request (task connectSocket) initModel
     , view = view
     , update = update
-    , externalMessages =
+    , inputs =
         [ Signal.map NewServiceState serviceOutput.model
         , socketEventsMailbox.signal
         ]

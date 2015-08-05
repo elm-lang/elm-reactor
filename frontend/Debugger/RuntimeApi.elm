@@ -4,7 +4,6 @@ import Task exposing (Task)
 import Dict
 import Json.Encode as JsEnc
 import Time
-import Empty exposing (Empty)
 
 import DataUtils exposing (..)
 
