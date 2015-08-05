@@ -89,20 +89,11 @@ view addr state activeState =
     swapWithLabel =
       div
         [ style swapButtonTextStyle ]
-        [
-        -- text "swap"
-        --, swapButton addr state.permitSwaps
-         span
+        [ text "swap"
+        , swapButton addr state.permitSwaps
+        , span
             [ onClick addr Model.ExportHistory ]
             [ text "download" ]
-        , input
-            [ on
-                "change"
-                (at ["target", "files"] <| File.domList File.file)
-                (\files -> Debug.log "FILES" <| Signal.message addr (Model.FilesDropped files))
-            , type' "file"
-            ]
-            []
         ]
 
     buttonContainer =
@@ -141,7 +132,15 @@ view addr state activeState =
       [ style
           [ "padding" => intToPx margin ]
       ]
-      [ buttonContainer
+      [ input
+            [ on
+                "change"
+                (at ["target", "files"] <| File.domList File.file)
+                (\files -> Debug.log "FILES" <| Signal.message addr (Model.FilesDropped files))
+            , type' "file"
+            ]
+            []
+      , buttonContainer
       , sliderContainer
       ]
 
