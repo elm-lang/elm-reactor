@@ -143,8 +143,7 @@ viewExprLog addr collapsed logId frameIdx log =
     colButton =
       span
         [ style
-            ([ "cursor" => "default"
-             , "padding-right" => "5px"  
+            ([ "padding-right" => "5px"  
              , "font-size" => "12px"
              ] ++ unselectable)
         ]
