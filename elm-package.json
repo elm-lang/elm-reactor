@@ -6,7 +6,8 @@
     "source-directories": [
         "frontend",
         "elm-components/src",
-        "elm-html-file"
+        "elm-html-file",
+        "elm-websockets"
     ],
     "exposed-modules": [],
     "native-modules": true,
