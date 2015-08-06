@@ -99,7 +99,7 @@ view addr controlsHeight state activeState =
           , "overflow-x" => "hidden"
           , "padding" => ("0 " ++ intToPx sidePadding)
           , "position" => "absolute"
-          , "bottom" => "10px"
+          , "bottom" => "30px"
           , "top" => intToPx (controlsHeight + 1)
           , "width" => intToPx (sidebarWidth - 2*sidePadding)
           ]

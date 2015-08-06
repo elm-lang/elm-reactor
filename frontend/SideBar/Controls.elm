@@ -9,7 +9,6 @@ import String
 import Debug
 
 import FontAwesome
-import Html.File as File
 
 import Model
 import Debugger.Service as Service
@@ -91,9 +90,6 @@ view addr state activeState =
         [ style swapButtonTextStyle ]
         [ text "swap"
         , swapButton addr state.permitSwaps
-        , span
-            [ onClick addr Model.ExportHistory ]
-            [ text "download" ]
         ]
 
     buttonContainer =
@@ -130,17 +126,11 @@ view addr state activeState =
   in
     div
       [ style
-          [ "padding" => intToPx margin ]
+          [ "padding" => intToPx margin
+          , "border-bottom" => "1px solid lightgrey"
+          ]
       ]
-      [ input
-            [ on
-                "change"
-                (at ["target", "files"] <| File.domList File.file)
-                (\files -> Debug.log "FILES" <| Signal.message addr (Model.FilesDropped files))
-            , type' "file"
-            ]
-            []
-      , buttonContainer
+      [ buttonContainer
       , sliderContainer
       ]
 

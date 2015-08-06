@@ -47,8 +47,9 @@ type Message
   | ConnectSocket (Maybe WebSocket.WebSocket)
   | SwapEvent SwapEvent
   | ServiceCommand Active.Command
-  | ExportHistory
-  | FilesDropped (List Html.File.File)
+  | ExportSession
+  | PickSessionFile
+  | FilesPicked (List Html.File.File)
   | NoOp
 
 

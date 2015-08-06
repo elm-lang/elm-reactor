@@ -16,7 +16,6 @@ import Transaction exposing (..)
 import Start
 import WebSocket
 import Html.File as File
-import Html.Attributes.DragDropFile as DDF
 
 import Model exposing (..)
 import Styles exposing (..)
@@ -183,12 +182,12 @@ viewSidebar addr state =
               addr
               state
               activeState
-          , dividerBar
           , Logs.view
               (Signal.forwardTo addr LogsMessage)
               Controls.totalHeight
               state.logsState
               activeState
+          , exportImport addr
           ]
 
         Nothing ->
@@ -202,9 +201,35 @@ viewSidebar addr state =
       [ id "elm-reactor-side-bar"
       -- TODO in JS: cancelBubble / stopPropagation on this
       , style (constantStyles ++ toggleStyles)
-      , DDF.onDrop addr FilesDropped -- TODO: doesn't work
       ]
       ([toggleTab addr state] ++ body)
+
+
+exportImport : Signal.Address Message -> Html
+exportImport addr =
+  div
+    [ style
+        [ "bottom" => "0"
+        , "position" => "absolute"
+        , "border-top" => "1px solid lightgrey"
+        , "width" => "100%"
+        , "display" => "flex"
+        , "justify-content" => "space-around"
+        , "color" => colorToCss lightGrey
+        , "text-decoration" => "underline"
+        ]
+    ]
+    [ span
+        [ style ["cursor" => "pointer"]
+        , onClick addr ExportSession
+        ]
+        [ text "export session" ]
+    , span
+        [ style ["cursor" => "pointer"]
+        , onClick addr PickSessionFile
+        ]
+        [ text "import session" ]
+    ]
 
 
 update : Message -> Model -> Transaction Message Model
@@ -319,7 +344,7 @@ update msg state =
           |> task)
         state
 
-    ExportHistory ->
+    ExportSession ->
       case state.serviceState of
         Just active ->
           request
@@ -329,7 +354,12 @@ update msg state =
         Nothing ->
           Debug.crash "can't export before initialized"
 
-    FilesDropped files ->
+    PickSessionFile ->
+      requestTask
+        (File.pickFiles |> Task.map FilesPicked)
+        state
+
+    FilesPicked files ->
       let
         fileRes =
           files
@@ -344,8 +374,10 @@ update msg state =
                   `Task.andThen` (\historyRes ->
                     case historyRes of
                       Ok history ->
-                        Signal.send (Service.commandsMailbox ()).address (Active.StartWithHistory history)
-                          |> Task.map (always NoOp)
+                        Signal.send
+                          (Service.commandsMailbox ()).address
+                          (Active.StartWithHistory history)
+                        |> Task.map (always NoOp)
 
                       Err err ->
                         Task.fail err
