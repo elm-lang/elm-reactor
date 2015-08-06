@@ -92,21 +92,19 @@ update msg state =
                 fork =
                   API.forkFrom state.session pausedIdx
                     |> Task.map (\(sesh, values) ->
-                          Response <| ForkResponse sesh (getMainVal state.session values))
+                        Response <|
+                          ForkResponse sesh (getMainVal state.session values))
               in
-                request
-                  (fork |> task)
-                  { state | runningState <- Playing }
+                requestTask fork { state | runningState <- Playing }
 
             Playing ->
               Debug.crash "already playing"
 
         Pause ->
-          request
+          requestTask
             (API.setPlaying state.session False
               |> Task.map (always NoOp)
-              |> Task.mapError (\_ -> Debug.crash "already in that state")
-              |> task)
+              |> Task.mapError (\_ -> Debug.crash "already in that state"))
             { state | runningState <- Paused (numFrames state - 1) }
 
         ScrubTo frameIdx ->
@@ -131,17 +129,14 @@ update msg state =
             sequenced =
               pause `Task.andThen` (always getState)
           in
-            request
-              (sequenced |> task)
-              { state | runningState <- Paused frameIdx }
+            requestTask sequenced { state | runningState <- Paused frameIdx }
 
         Reset ->
-          request
+          requestTask
             (API.forkFrom state.session 0
               |> Task.map (\(sesh, values) ->
-                    Response <| ForkResponse sesh (getMainVal state.session values))
-              |> task
-            )
+                    Response <|
+                      ForkResponse sesh (getMainVal state.session values)))
             { state |
                 runningState <-
                   case state.runningState of
@@ -169,7 +164,7 @@ update msg state =
                       Response <| SwapResponse newSesh (getMainVal newSesh values))
               )
           in
-            request (swapTask |> task) state
+            requestTask swapTask state
 
         StartWithHistory hist ->
           let
@@ -182,7 +177,7 @@ update msg state =
               |> Task.map (\(newSesh, vals) ->
                 Response (StartWithHistoryResponse newSesh vals))
           in
-            request (initTask |> task) state
+            requestTask initTask state
 
     Notification not ->
       case not of

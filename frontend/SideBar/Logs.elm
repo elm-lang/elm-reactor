@@ -1,6 +1,5 @@
 module SideBar.Logs where
 
-import Color
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Markdown
@@ -14,7 +13,6 @@ import Html.Events exposing (..)
 import Transaction exposing (..)
 
 import Styles exposing (..)
-import Debugger.Service as DS
 import Debugger.Active as Active
 import Debugger.RuntimeApi as API
 import DataUtils exposing (..)

@@ -6,7 +6,6 @@ import Html.Events exposing (..)
 import Signal
 import Task exposing (Task)
 import Json.Decode as JsDec
-import String
 import Color
 import Maybe
 import Result
@@ -47,6 +46,7 @@ output =
     }
 
 
+main : Signal Html
 main =
   output.html
 
@@ -224,11 +224,15 @@ exportImport addr =
         , onClick addr ExportSession
         ]
         [ text "export session" ]
-    , span
-        [ style ["cursor" => "pointer"]
-        , onClick addr PickSessionFile
+    , input
+        [ type' "file"
+        , accept "application/json"
+        , on
+            "change"
+            (JsDec.at ["target", "files"] <| File.domList File.file)
+            (\files -> Signal.message addr (ImportSession files))
         ]
-        [ text "import session" ]
+        []
     ]
 
 
@@ -266,7 +270,8 @@ update msg state =
 
     PlayPauseButtonAction buttonMsg ->
       with
-        (tag PlayPauseButtonAction <| Button.update buttonMsg state.playPauseButtonState)
+        (tag PlayPauseButtonAction <|
+          Button.update buttonMsg state.playPauseButtonState)
         (\(newState, maybeCommand) ->
           let
             sendEffect =
@@ -278,12 +283,15 @@ update msg state =
                 Nothing ->
                   Task.succeed NoOp
             in
-              request (task sendEffect) { state | playPauseButtonState <- newState }
+              request
+                (task sendEffect)
+                { state | playPauseButtonState <- newState }
         )
 
     RestartButtonAction buttonMsg -> 
       with
-        (tag RestartButtonAction <| Button.update buttonMsg state.restartButtonState)
+        (tag RestartButtonAction <|
+          Button.update buttonMsg state.restartButtonState)
         (\(newState, maybeCommand) ->
           let
             sendEffect =
@@ -295,7 +303,9 @@ update msg state =
                 Nothing ->
                   Task.succeed NoOp
             in
-              request (task sendEffect) { state | restartButtonState <- newState }
+              request
+                (task sendEffect)
+                { state | restartButtonState <- newState }
         )
 
     LogsMessage logMsg -> 
@@ -303,7 +313,7 @@ update msg state =
         (tag LogsMessage <| Logs.update logMsg state.logsState)
         (\(newLogsState, maybeFrame) ->
           let
-            effect =
+            sendScrubTo =
               case maybeFrame of
                 Just frameIdx ->
                   Signal.send
@@ -314,7 +324,7 @@ update msg state =
                 Nothing ->
                   Task.succeed NoOp
           in
-            request (effect |> task) { state | logsState <- newLogsState }
+            requestTask sendScrubTo { state | logsState <- newLogsState }
         )
 
     ConnectSocket maybeSocket -> 
@@ -324,12 +334,11 @@ update msg state =
       if state.permitSwaps then
         case swapEvt of
           NewModule compiledMod ->
-            request
+            requestTask
               (Signal.send
                 (Service.commandsMailbox ()).address
                 (Active.Swap compiledMod)
-              |> Task.map (always NoOp)
-              |> task)
+              |> Task.map (always NoOp))
               { state | compilationErrors <- Nothing }
 
           CompilationErrors errs ->
@@ -338,28 +347,22 @@ update msg state =
         done state
 
     ServiceCommand serviceCmd -> 
-      request
+      requestTask
         (Signal.send (Service.commandsMailbox ()).address serviceCmd
-          |> Task.map (always NoOp)
-          |> task)
+          |> Task.map (always NoOp))
         state
 
     ExportSession ->
       case state.serviceState of
         Just active ->
-          request
-            (exportHistory active.session |> Task.map (always NoOp) |> task)
+          requestTask
+            (exportHistory active.session |> Task.map (always NoOp))
             state
 
         Nothing ->
           Debug.crash "can't export before initialized"
 
-    PickSessionFile ->
-      requestTask
-        (File.pickFiles |> Task.map FilesPicked)
-        state
-
-    FilesPicked files ->
+    ImportSession files ->
       let
         fileRes =
           files
@@ -369,7 +372,8 @@ update msg state =
             |> Result.map (\file ->
                   (file
                     |> File.readAsText
-                    |> Task.mapError (\err -> Debug.crash ("err reading file: " ++ err))
+                    |> Task.mapError
+                        (\err -> Debug.crash ("err reading file: " ++ err))
                     |> Task.map API.parseInputHistory)
                   `Task.andThen` (\historyRes ->
                     case historyRes of
@@ -386,7 +390,9 @@ update msg state =
       in
         case fileRes of
           Ok startTask ->
-            request (startTask |> Task.mapError (\err -> Debug.crash err) |> task) state
+            requestTask
+              (startTask |> Task.mapError (\err -> Debug.crash err))
+              state
 
           Err err ->
             -- TDOO

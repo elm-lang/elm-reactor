@@ -30,17 +30,15 @@ app : API.ElmModule -> Start.Config Message Model
 app initMod =
   { init =
       let
-        -- would be nice to pipeline this whole thing
-        effect =
+        initTask =
           API.initializeFullscreen
             initMod
             API.emptyInputHistory
             (Signal.forwardTo notificationsMailbox.address Active.NewFrame)
             API.justMain
           |> Task.map (\(session, values) -> Initialized session values)
-          |> task
       in
-        request effect Nothing
+        requestTask initTask Nothing
   , view = \_ _ -> div [] [] -- would be nice to not do this
   , update = update
   , inputs =

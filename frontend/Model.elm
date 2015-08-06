@@ -48,8 +48,7 @@ type Message
   | SwapEvent SwapEvent
   | ServiceCommand Active.Command
   | ExportSession
-  | PickSessionFile
-  | FilesPicked (List Html.File.File)
+  | ImportSession (List Html.File.File)
   | NoOp
 
 
