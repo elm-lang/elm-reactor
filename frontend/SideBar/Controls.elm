@@ -6,12 +6,10 @@ import Html.Attributes as Attr exposing (..)
 import Html.Events exposing (..)
 import Json.Decode exposing (..)
 import String
-import Debug
 
 import FontAwesome
 
 import Model
-import Debugger.Service as Service
 import Debugger.Active as Active
 import Styles exposing (..)
 import Button

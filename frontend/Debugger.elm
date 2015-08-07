@@ -178,7 +178,14 @@ viewSidebar addr state =
     body =
       case state.serviceState of
         Just activeState ->
-          [ Controls.view
+          [ case state.swapSocket of
+              Just _ ->
+                text "socket connected"
+
+              Nothing ->
+                text "socket not connected"
+
+          , Controls.view
               addr
               state
               activeState
@@ -327,7 +334,7 @@ update msg state =
             requestTask sendScrubTo { state | logsState <- newLogsState }
         )
 
-    ConnectSocket maybeSocket -> 
+    ConnectSocket maybeSocket ->
       done { state | swapSocket <- maybeSocket }
 
     SwapEvent swapEvt ->
@@ -364,48 +371,48 @@ update msg state =
 
     ImportSession files ->
       let
-        fileRes =
-          files
-            |> List.filter (\file -> File.mimeType file == exportMimeType)
-            |> List.head
-            |> Result.fromMaybe NoJsonFile
-            |> Result.map (\file ->
-                  (file
-                    |> File.readAsText
-                    |> Task.mapError
-                        (\err -> Debug.crash ("err reading file: " ++ err))
-                    |> Task.map API.parseInputHistory)
-                  `Task.andThen` (\historyRes ->
-                    case historyRes of
-                      Ok history ->
-                        Signal.send
-                          (Service.commandsMailbox ()).address
-                          (Active.StartWithHistory history)
-                        |> Task.map (always NoOp)
+        parseHistory : String -> Result SessionInputError API.InputHistory
+        parseHistory str =
+          API.parseInputHistory str
+            |> Result.formatError ParseError
 
-                      Err err ->
-                        Task.fail err
-                  ))
+        contentsTask : Task x (Result SessionInputError API.InputHistory)
+        contentsTask =
+          files
+            |> List.head
+            |> getMaybe "files list empty"
+            |> File.readAsText
+            |> Task.mapError IoError
+            |> Task.toResult
+            |> Task.map (\res -> res `Result.andThen` parseHistory)
+
+        sendTask : Task x Message
+        sendTask =
+          contentsTask
+          `Task.andThen` (\historyRes ->
+            case historyRes of
+              Ok history ->
+                Signal.send
+                  (Service.commandsMailbox ()).address
+                  (Active.StartWithHistory history)
+                |> Task.map (always NoOp)
+
+              Err err ->
+                -- todo: send error message
+                Debug.crash <| toString err
+            )
 
       in
-        case fileRes of
-          Ok startTask ->
-            requestTask
-              (startTask |> Task.mapError (\err -> Debug.crash err))
-              state
-
-          Err err ->
-            -- TDOO
-            Debug.crash (toString err)
+        requestTask sendTask state
 
     NoOp -> 
      done state
 
 
-type UploadErr
-  = NoJsonFile
-  | JsonParseError
-  | InvalidJson
+type SessionInputError
+  = IoError File.IoError
+  | ParseError API.InputHistoryParseError
+
 
 -- Socket stuff
 

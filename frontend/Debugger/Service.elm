@@ -33,7 +33,6 @@ app initMod =
         initTask =
           API.initializeFullscreen
             initMod
-            API.emptyInputHistory
             (Signal.forwardTo notificationsMailbox.address Active.NewFrame)
             API.justMain
           |> Task.map (\(session, values) -> Initialized session values)

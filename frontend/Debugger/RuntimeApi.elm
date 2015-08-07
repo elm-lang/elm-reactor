@@ -4,6 +4,7 @@ import Task exposing (Task)
 import Dict
 import Json.Encode as JsEnc
 import Time
+import Debug
 
 import DataUtils exposing (..)
 
@@ -19,7 +20,7 @@ type alias JsElmValue =
 
 
 type DebugSession
-  = DebugSession -- opaque
+  = DebugSession
 
 
 type alias NodeId =
@@ -28,7 +29,8 @@ type alias NodeId =
 
 type StateError
   = IsDisposed
-  | IsPlaying
+  | IsPlaying -- TODO: using 2 modules should get rid of this
+  | EventIndexOutOfRange FrameInterval
 
 
 type alias Event =
@@ -70,6 +72,7 @@ getSubscriptions =
   Native.Debugger.RuntimeApi.getSubscriptions
 
 
+-- TODO: this is not pure! should be a task!
 numFrames : DebugSession -> Int
 numFrames =
   Native.Debugger.RuntimeApi.numFrames
@@ -104,17 +107,20 @@ a/o just one at a time, because simulating the module forward in the
 specified time interval and gathering the all SG or expr values we're
 interested in at each step is better than simulating it once for each
 point of interest. -}
-getNodeState : DebugSession -> FrameInterval -> List NodeId -> Task x (List (NodeId, ValueLog))
+getNodeState : DebugSession -> FrameInterval -> List NodeId -> Task StateError (List (NodeId, ValueLog))
 getNodeState =
   Native.Debugger.RuntimeApi.getNodeState
 
 
-getNodeStateSingle : DebugSession -> FrameIndex -> List NodeId -> Task x ValueSet
+getNodeStateSingle : DebugSession -> FrameIndex -> List NodeId -> Task StateError ValueSet
 getNodeStateSingle session frameIdx nodes =
   getNodeState session {start=frameIdx, end=frameIdx} nodes
     |> Task.map (\logs ->
         logs |> List.map (\(id, log) ->
             (id, List.head log |> getMaybe "head of empty" |> snd)))
+
+
+-- INPUT HISTORY (maybe all these should live in a different module?)
 
 
 getInputHistory : DebugSession -> Task x InputHistory
@@ -137,9 +143,14 @@ serializeInputHistory =
   Native.Debugger.RuntimeApi.serializeInputHistory
 
 
-parseInputHistory : String -> Result String InputHistory
+parseInputHistory : String -> Result InputHistoryParseError InputHistory
 parseInputHistory =
   Native.Debugger.RuntimeApi.parseInputHistory
+
+
+type InputHistoryParseError
+  = JsonParseError String
+  | JsonSchemaError
 
 
 {-| Interpreted as inclusive -}
@@ -163,7 +174,6 @@ type alias ValueSet =
 Subscribes to the list of nodes returned by the given function (3rd arg),
 and returns their initial values. -}
 initializeFullscreen : ElmModule
-                    -> InputHistory
                     -> Signal.Address NewFrameNotification
                     -> (SGShape -> List NodeId)
                     -> Task x (DebugSession, ValueSet)
@@ -176,16 +186,35 @@ dispose =
   Native.Debugger.RuntimeApi.dispose
 
 
+{-| Set the module's event history to be the given history and
+regenerate snapshots. Failure means the event history wasn't empty
+(this is intended to be used right after initialization)
+
+Currently returns flagged expr history but not node history. -}
+setInputHistory : DebugSession -> InputHistory -> Task () (List (ExprTag, ValueLog))
+setInputHistory =
+  Native.Debugger.RuntimeApi.setInputHistory
+
+
 validate : InputHistory -> SGShape -> SGShape -> Maybe SwapError
 validate inputHistory oldShape newShape =
   -- TODO: filter out things from mailboxes
   Nothing
 
 
+{-| Given current session and new module:
+
+- kill old module
+- initialize new module
+- check if the old module's event history can be replayed over the new module
+  (failing if no)
+- replay events over old module, saving snapshots along the way
+- return new session and logs for all flagged expressions (`Debug.log`)
+-}
 swap : DebugSession
     -> ElmModule
     -> (SGShape -> List NodeId)
-    -> Task SwapError DebugSession
+    -> Task SwapError (DebugSession, List (ExprTag, ValueLog))
 swap session newMod initialNodesFun =
   (dispose session)
   `Task.andThen` (\_ ->
@@ -193,24 +222,20 @@ swap session newMod initialNodesFun =
     `Task.andThen` (\history ->
       (initializeFullscreen
         newMod
-        history
         (getAddress session)
-        initialNodesFun
-      )
+        initialNodesFun)
       `Task.andThen` (\(newSession, _) ->
-        let
-          nodes =
-            initialNodesFun (sgShape newSession)
-
-          valid =
-            validate history (sgShape session) (sgShape newSession)
+        let valid =
+          validate history (sgShape session) (sgShape newSession)
         in
           case valid of
             Just swapErr ->
               Task.fail swapErr
 
             Nothing ->
-              Task.succeed newSession
+              setInputHistory newSession history
+                |> Task.mapError (\_ -> Debug.crash "session's event list wasn't empty")
+                |> Task.map (\logs -> (newSession, logs))
       )
     )
   )
@@ -226,22 +251,25 @@ forkFrom session frameIdx =
     `Task.andThen` (\subs ->
       (getInputHistory session
        |> Task.map (\history ->
-            history |> splitInputHistory frameIdx |> fst)
-      )
+            history |> splitInputHistory frameIdx |> fst))
       `Task.andThen` (\historyUpTo ->
         (initializeFullscreen
           (getModule session)
-          historyUpTo
           (getAddress session)
-          (always subs)
-        )
+          (always subs))
         `Task.andThen` (\(newSession, _) ->
-          (getNodeStateSingle
+          (setInputHistory
             newSession
-            frameIdx
-            subs
+            historyUpTo
+          |> Task.mapError (\_ -> Debug.crash "session's event list wasn't empty"))
+          `Task.andThen` (\_ ->
+            (getNodeStateSingle
+              newSession
+              frameIdx
+              subs)
+            |> Task.mapError (Debug.crash << toString)
+            |> Task.map (\values -> (newSession, values))
           )
-          |> Task.map (\values -> (newSession, values))
         )
       )
     )

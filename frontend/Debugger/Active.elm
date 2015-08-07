@@ -76,8 +76,14 @@ type Notification
 type Response
   = ScrubResponse Html
   | ForkResponse API.DebugSession Html
-  | SwapResponse API.DebugSession Html
-  | StartWithHistoryResponse API.DebugSession API.ValueSet
+  | SwapResponse
+      API.DebugSession
+      Html
+      (List (API.ExprTag, API.ValueLog))
+  | StartWithHistoryResponse
+      API.DebugSession
+      Html
+      (List (API.ExprTag, API.ValueLog))
 
 
 update : Message -> Model -> Transaction Message Model
@@ -91,9 +97,9 @@ update msg state =
               let
                 fork =
                   API.forkFrom state.session pausedIdx
-                    |> Task.map (\(sesh, values) ->
+                    |> Task.map (\(session, values) ->
                         Response <|
-                          ForkResponse sesh (getMainVal state.session values))
+                          ForkResponse session (getMainVal state.session values))
               in
                 requestTask fork { state | runningState <- Playing }
 
@@ -128,15 +134,16 @@ update msg state =
 
             sequenced =
               pause `Task.andThen` (always getState)
+              |> Task.mapError (Debug.crash << toString)
           in
             requestTask sequenced { state | runningState <- Paused frameIdx }
 
         Reset ->
           requestTask
             (API.forkFrom state.session 0
-              |> Task.map (\(sesh, values) ->
+              |> Task.map (\(session, values) ->
                     Response <|
-                      ForkResponse sesh (getMainVal state.session values)))
+                      ForkResponse session (getMainVal state.session values)))
             { state |
                 runningState <-
                   case state.runningState of
@@ -155,13 +162,18 @@ update msg state =
             swapTask =
               (API.swap state.session newMod API.justMain
                 |> Task.mapError (\swapErr -> Debug.crash "TODO"))
-              `Task.andThen` (\newSesh ->
+              `Task.andThen` (\(newSession, logs) ->
                 API.getNodeStateSingle
-                  newSesh
+                  newSession
                   (curFrameIdx state)
-                  [API.sgShape newSesh |> .mainId]
+                  [API.sgShape newSession |> .mainId]
+                |> Task.mapError (Debug.crash << toString)
                 |> Task.map (\values ->
-                      Response <| SwapResponse newSesh (getMainVal newSesh values))
+                      Response <|
+                        SwapResponse
+                          newSession
+                          (getMainVal newSession values)
+                          logs)
               )
           in
             requestTask swapTask state
@@ -169,15 +181,35 @@ update msg state =
         StartWithHistory hist ->
           let
             initTask =
-              API.initializeFullscreen
-                (API.getModule state.session)
-                hist
-                (API.getAddress state.session)
-                (API.justMain)
-              |> Task.map (\(newSesh, vals) ->
-                Response (StartWithHistoryResponse newSesh vals))
+              (API.dispose state.session)
+              `Task.andThen` (\_ ->
+                (API.initializeFullscreen
+                  (API.getModule state.session)
+                  (API.getAddress state.session)
+                  (API.justMain))
+                `Task.andThen` (\(newSession, _) ->
+                  (API.setInputHistory
+                    newSession
+                    hist
+                  |> Task.mapError (\_ -> Debug.crash "event list wasn't empty"))
+                  `Task.andThen` (\logs ->
+                    API.getNodeStateSingle
+                      newSession
+                      (Debug.log "frames" (API.numFrames newSession - 1))
+                      [API.sgShape newSession |> .mainId]
+                    |>  Task.mapError (Debug.crash << toString)
+                    |>  Task.map (\valueSet ->
+                          Response <|
+                            StartWithHistoryResponse
+                              newSession
+                              (getMainVal newSession valueSet)
+                              logs
+                        )
+                  )
+                )
+              )
           in
-            requestTask initTask state
+            requestTask initTask { state | runningState <- Playing }
 
     Notification not ->
       case not of
@@ -222,53 +254,37 @@ update msg state =
         ScrubResponse html ->
           done { state | mainVal <- html }
 
-        ForkResponse newSesh html ->
+        ForkResponse newSession html ->
           let
             frameIdx =
-              API.numFrames newSesh - 1
+              API.numFrames newSession - 1
           in
             done
               { state
-                  | session <- newSesh
+                  | session <- newSession
                   , mainVal <- html
                   , exprLogs <- truncateLogs frameIdx state.exprLogs
                   , nodeLogs <- truncateLogs frameIdx state.nodeLogs
               }
 
-        SwapResponse newSesh html ->
+        SwapResponse newSession html logs ->
           done
             { state
-                | session <- newSesh
+                | session <- newSession
                 , mainVal <- html
+                , exprLogs <- Dict.fromList logs
             }
 
-        StartWithHistoryResponse newSesh vals ->
+        StartWithHistoryResponse newSession mainVal logs ->
           done
             { state
-                | session <- newSesh
-                , mainVal <- getMainVal newSesh vals
+                | session <- newSession
+                , mainVal <- mainVal
+                , exprLogs <- Dict.fromList logs
             }
 
     NoOp ->
       done state
-
-
-getMainValFromLogs : API.DebugSession -> List (Int, API.ValueLog) -> Html
-getMainValFromLogs session logs =
-  let
-    mainId =
-      (API.sgShape session).mainId
-
-  in
-    logs
-      |> List.filter (\(id, val) -> id == mainId)
-      |> List.head
-      |> getMaybe "no log with main id"
-      |> snd -- value log
-      |> List.head
-      |> getMaybe "log empty"
-      |> snd -- js elm value
-      |> Reflect.getHtml
 
 
 getMainVal : API.DebugSession -> API.ValueSet -> Html
