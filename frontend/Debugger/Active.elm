@@ -17,6 +17,7 @@ type alias Model =
   { session : API.DebugSession
   , runningState : RunningState
   , mainVal : Html
+  , numFrames : Int
   , exprLogs : Dict API.ExprTag API.ValueLog
   -- vv TODO: get inputs for each frame as well
   , nodeLogs : Dict API.NodeId API.ValueLog
@@ -29,6 +30,7 @@ initModel session mainVal =
   { session = session
   , runningState = Playing
   , mainVal = mainVal
+  , numFrames = 1
   , exprLogs = Dict.empty
   , nodeLogs = Dict.empty
   , subscribedNodes = Set.empty
@@ -75,7 +77,7 @@ type Notification
 
 type Response
   = ScrubResponse Html
-  | ForkResponse API.DebugSession Html
+  | ForkResponse API.DebugSession API.FrameIndex Html
   | SwapResponse
       API.DebugSession
       Html
@@ -83,6 +85,7 @@ type Response
   | StartWithHistoryResponse
       API.DebugSession
       Html
+      Int
       (List (API.ExprTag, API.ValueLog))
 
 
@@ -99,7 +102,10 @@ update msg state =
                   API.forkFrom state.session pausedIdx
                     |> Task.map (\(session, values) ->
                         Response <|
-                          ForkResponse session (getMainVal state.session values))
+                          ForkResponse
+                            session
+                            pausedIdx
+                            (getMainVal state.session values))
               in
                 requestTask fork { state | runningState <- Playing }
 
@@ -111,7 +117,7 @@ update msg state =
             (API.setPlaying state.session False
               |> Task.map (always NoOp)
               |> Task.mapError (\_ -> Debug.crash "already in that state"))
-            { state | runningState <- Paused (numFrames state - 1) }
+            { state | runningState <- Paused (state.numFrames - 1) }
 
         ScrubTo frameIdx ->
           let
@@ -143,7 +149,7 @@ update msg state =
             (API.forkFrom state.session 0
               |> Task.map (\(session, values) ->
                     Response <|
-                      ForkResponse session (getMainVal state.session values)))
+                      ForkResponse session 0 (getMainVal state.session values)))
             { state |
                 runningState <-
                   case state.runningState of
@@ -193,18 +199,21 @@ update msg state =
                     hist
                   |> Task.mapError (\_ -> Debug.crash "event list wasn't empty"))
                   `Task.andThen` (\logs ->
-                    API.getNodeStateSingle
-                      newSession
-                      (Debug.log "frames" (API.numFrames newSession - 1))
-                      [API.sgShape newSession |> .mainId]
-                    |>  Task.mapError (Debug.crash << toString)
-                    |>  Task.map (\valueSet ->
-                          Response <|
-                            StartWithHistoryResponse
-                              newSession
-                              (getMainVal newSession valueSet)
-                              logs
-                        )
+                    (API.getNumFrames newSession)
+                    `Task.andThen` (\numFrames ->
+                      API.getNodeStateSingle
+                        newSession
+                        (numFrames - 1)
+                        [API.sgShape newSession |> .mainId]
+                      |>  Task.mapError (Debug.crash << toString)
+                      |>  Task.map (\valueSet ->
+                            Response <|
+                              StartWithHistoryResponse
+                                newSession
+                                (getMainVal newSession valueSet)
+                                numFrames
+                                logs)
+                    )
                   )
                 )
               )
@@ -219,22 +228,22 @@ update msg state =
               newFrameNot.subscribedNodeValues
                 |> getMainVal state.session
 
-            curFrame =
-              curFrameIdx state
+            currentFrameIndex =
+              state.numFrames
 
             mainNodeId =
               mainId state
 
             newExprLogs =
               updateLogs
-                curFrame
+                currentFrameIndex
                 state.exprLogs
                 newFrameNot.flaggedExprValues
                 (always True)
 
             newNodeLogs =
               updateLogs
-                curFrame
+                currentFrameIndex
                 state.nodeLogs
                 newFrameNot.subscribedNodeValues
                 (\id -> id /= mainNodeId)
@@ -242,6 +251,7 @@ update msg state =
             done
               { state
                   | mainVal <- newMainVal
+                  , numFrames <- state.numFrames + 1
                   , exprLogs <- newExprLogs
                   , nodeLogs <- newNodeLogs
               }
@@ -254,18 +264,15 @@ update msg state =
         ScrubResponse html ->
           done { state | mainVal <- html }
 
-        ForkResponse newSession html ->
-          let
-            frameIdx =
-              API.numFrames newSession - 1
-          in
-            done
-              { state
-                  | session <- newSession
-                  , mainVal <- html
-                  , exprLogs <- truncateLogs frameIdx state.exprLogs
-                  , nodeLogs <- truncateLogs frameIdx state.nodeLogs
-              }
+        ForkResponse newSession frameIdx html ->
+          done
+            { state
+                | session <- newSession
+                , mainVal <- html
+                , numFrames <- frameIdx + 1
+                , exprLogs <- truncateLogs frameIdx state.exprLogs
+                , nodeLogs <- truncateLogs frameIdx state.nodeLogs
+            }
 
         SwapResponse newSession html logs ->
           done
@@ -275,11 +282,12 @@ update msg state =
                 , exprLogs <- Dict.fromList logs
             }
 
-        StartWithHistoryResponse newSession mainVal logs ->
+        StartWithHistoryResponse newSession mainVal numFrames logs ->
           done
             { state
                 | session <- newSession
                 , mainVal <- mainVal
+                , numFrames <- numFrames
                 , exprLogs <- Dict.fromList logs
             }
 
@@ -303,10 +311,10 @@ getMainVal session values =
 
 
 appendToLog : API.FrameIndex -> API.JsElmValue -> Maybe API.ValueLog -> Maybe API.ValueLog
-appendToLog curFrame value maybeLog =
+appendToLog currentFrameIndex value maybeLog =
   let
     pair =
-      (curFrame, value)
+      (currentFrameIndex, value)
 
     newLog =
       case maybeLog of
@@ -324,10 +332,10 @@ updateLogs : API.FrameIndex
           -> List (comparable, API.JsElmValue)
           -> (comparable -> Bool)
           -> Dict comparable API.ValueLog
-updateLogs curFrame logs updates idPred =
+updateLogs currentFrameIndex logs updates idPred =
   List.foldl
     (\(tag, value) logs ->
-      Dict.update tag (appendToLog curFrame value) logs)
+      Dict.update tag (appendToLog currentFrameIndex value) logs)
     logs
     (List.filter (fst >> idPred) updates)
 
@@ -359,11 +367,6 @@ mainId model =
   (API.sgShape model.session).mainId
 
 
-numFrames : Model -> Int
-numFrames model =
-  API.numFrames model.session
-
-
 curFrameIdx : Model -> API.FrameIndex
 curFrameIdx model =
   case model.runningState of
@@ -371,4 +374,4 @@ curFrameIdx model =
       idx
 
     _ ->
-      numFrames model - 1
+      model.numFrames - 1

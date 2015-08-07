@@ -73,9 +73,9 @@ getSubscriptions =
 
 
 -- TODO: this is not pure! should be a task!
-numFrames : DebugSession -> Int
-numFrames =
-  Native.Debugger.RuntimeApi.numFrames
+getNumFrames : DebugSession -> Task x Int
+getNumFrames =
+  Native.Debugger.RuntimeApi.getNumFrames
 
 
 -- can decode

@@ -183,7 +183,7 @@ scrubSlider : Signal.Address Active.Command -> Int -> Active.Model -> Html
 scrubSlider addr width activeState =
   let
     numFrames =
-      Active.numFrames activeState
+      activeState.numFrames
 
     curFrame =
       Active.curFrameIdx activeState
@@ -213,7 +213,7 @@ sliderEventText : Int -> Active.Model -> Html
 sliderEventText width activeState =
   let
     numFrames =
-      Active.numFrames activeState
+      activeState.numFrames
 
     curFrame =
       Active.curFrameIdx activeState
@@ -231,7 +231,7 @@ sliderMinMaxText : Int -> Active.Model -> Html
 sliderMinMaxText width activeState =
   let
     numFrames =
-      Active.numFrames activeState
+      activeState.numFrames
 
     curFrame =
       Active.curFrameIdx activeState

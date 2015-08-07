@@ -40,9 +40,11 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 		});
 	}
 
-	function numFrames(session)
+	function getNumFrames(session)
 	{
-		return session.events.length + 1;
+		return Task.asyncFunction(function(callback) {
+			callback(Task.succeed(session.events.length + 1));
+		});
 	}
 
 	// QUERIES
@@ -497,7 +499,7 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 		getModule: getModule,
 		getAddress: getAddress,
 		getSubscriptions: getSubscriptions,
-		numFrames: numFrames,
+		getNumFrames: getNumFrames,
 		getNodeState: F3(getNodeState),
 		getInputHistory: getInputHistory,
 		splitInputHistory: F2(splitInputHistory),
