@@ -42,6 +42,9 @@ output =
     , inputs =
         [ Signal.map NewServiceState serviceOutput.model
         , socketEventsMailbox.signal
+        , (Active.mismatchErrorMailbox ()).signal
+            |> Signal.filterMap identity Active.NoMismatchError
+            |> Signal.map ActiveMessage
         ]
     }
 
@@ -75,18 +78,13 @@ view addr state =
         Nothing ->
           (div [] [], False)
 
-    errorOverlay =
-      state.compilationErrors
-        |> Maybe.map (\errs -> viewErrors errs)
-        |> maybeToList
-
   in
     div []
       ( [ mainVal
         , eventBlocker (not isPlaying)
+        , viewErrors state.errorState
+        , viewSidebar addr state
         ]
-        ++ errorOverlay
-        ++ [ viewSidebar addr state ]
       )
 
 
@@ -126,22 +124,43 @@ toggleTab addr state =
     []
 
 
-viewErrors : CompilationErrors -> Html
+viewErrors : ErrorState -> Html
 viewErrors errors =
-  pre
-    [ style
-        [ "z-index" => "1"
-        , "position" => "absolute"
-        , "top" => "0"
-        , "left" => "0"
-        , "color" => colorToCss darkGrey
-        , "background-color" => colorToCss lightGrey
-        , "padding" => "1em"
-        , "margin" => "1em"
-        , "border-radius" => "10px"
-        ]
-    ]
-    [ text errors ]
+  let
+    (visible, errorBody) =
+      case errors of
+        NoErrors ->
+          (False, text "")
+
+        MismatchError (API.MismatchError {newShape, oldShape}) ->
+          ( True
+          , div []
+              [ h2 [] [ text "Events could not be replayed because the signal graph has a different shape." ]
+              , p [] [ text "Old signal graph:" ]
+              , pre [] [ text <| toString oldShape ]
+              , p [] [ text "New signal graph:" ]
+              , pre [] [ text <| toString newShape ]
+              ]
+          )
+
+        CompilationErrors errs ->
+          (True, text errs)
+  in
+    pre
+      [ style
+          [ "z-index" => "1"
+          , "position" => "absolute"
+          , "top" => "0"
+          , "left" => "0"
+          , "color" => colorToCss darkGrey
+          , "background-color" => colorToCss lightGrey
+          , "padding" => "1em"
+          , "margin" => "1em"
+          , "border-radius" => "10px"
+          , "display" => if visible then "block" else "none"
+          ]
+      ]
+      [ errorBody ]
 
 
 viewSidebar : Signal.Address Message -> Model -> Html
@@ -340,16 +359,16 @@ update msg state =
     SwapEvent swapEvt ->
       if state.permitSwaps then
         case swapEvt of
-          NewModule compiledMod ->
+          NewModuleEvent compiledMod ->
             requestTask
               (Signal.send
                 (Service.commandsMailbox ()).address
                 (Active.Swap compiledMod)
               |> Task.map (always NoOp))
-              { state | compilationErrors <- Nothing }
+              { state | errorState <- NoErrors }
 
-          CompilationErrors errs ->
-            done { state | compilationErrors <- Just errs }
+          CompilationErrorsEvent errs ->
+            done { state | errorState <- CompilationErrors errs }
       else
         done state
 
@@ -400,10 +419,22 @@ update msg state =
               Err err ->
                 -- todo: send error message
                 Debug.crash <| toString err
-            )
+          )
 
       in
         requestTask sendTask state
+
+    ActiveMessage mismatchErrorMessage ->
+      let
+        newErrorState =
+          case mismatchErrorMessage of
+            Active.NoMismatchError ->
+              NoErrors
+
+            Active.MismatchError err ->
+              MismatchError err
+      in
+        done { state | errorState <- newErrorState }
 
     NoOp -> 
      done state

@@ -18,10 +18,16 @@ type alias Model =
   , permitSwaps : Bool
   , restartButtonState : Button.Model
   , playPauseButtonState : Button.Model
-  , compilationErrors : Maybe CompilationErrors
+  , errorState : ErrorState
   , logsState : Logs.Model
   , swapSocket : Maybe WebSocket.WebSocket
   }
+
+
+type ErrorState
+  = CompilationErrors CompilationErrors
+  | MismatchError API.MismatchError
+  | NoErrors
 
 
 initModel : Model
@@ -31,7 +37,7 @@ initModel =
   , permitSwaps = True
   , restartButtonState = Button.Up
   , playPauseButtonState = Button.Up
-  , compilationErrors = Nothing
+  , errorState = NoErrors
   , logsState = Logs.initModel
   , swapSocket = Nothing
   }
@@ -40,15 +46,17 @@ initModel =
 type Message
   = SidebarVisible Bool
   | PermitSwaps Bool
-  | NewServiceState Service.Model
   | PlayPauseButtonAction (Button.Message Active.Command)
   | RestartButtonAction (Button.Message Active.Command)
   | LogsMessage Logs.Message
   | ConnectSocket (Maybe WebSocket.WebSocket)
-  | SwapEvent SwapEvent
-  | ServiceCommand Active.Command
   | ExportSession
   | ImportSession (List Html.File.File)
+  | SwapEvent SwapEvent
+  | NewServiceState Service.Model
+  | ServiceCommand Active.Command
+  -- vv `Nothing` here means resetting the mismatch error
+  | ActiveMessage Active.MismatchErrorMessage
   | NoOp
 
 
@@ -57,8 +65,8 @@ type alias CompilationErrors =
 
 
 type SwapEvent
-  = NewModule API.CompiledElmModule
-  | CompilationErrors CompilationErrors
+  = NewModuleEvent API.CompiledElmModule
+  | CompilationErrorsEvent CompilationErrors
 
 
 swapEvent : Decoder SwapEvent
@@ -66,10 +74,10 @@ swapEvent =
   oneOf
     [ object2
         (\name code ->
-            NewModule {name=name, code=code})
+            NewModuleEvent {name=name, code=code})
         ("name" := string)
         ("code" := string)
     , object1
-        CompilationErrors
+        CompilationErrorsEvent
         ("error" := string)
     ]

@@ -558,6 +558,9 @@ var prettyPrint = function() {
 	var Dict;
 
 	var toString = function(v, separator) {
+		if (v == null) {
+			return "<null>";
+		}
 		var type = typeof v;
 		if (type === "function") {
 			var name = v.func ? v.func.name : v.name;

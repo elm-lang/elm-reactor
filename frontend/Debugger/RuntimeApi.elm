@@ -196,10 +196,16 @@ setInputHistory =
   Native.Debugger.RuntimeApi.setInputHistory
 
 
-validate : InputHistory -> SGShape -> SGShape -> Maybe SwapError
+validate : InputHistory -> SGShape -> SGShape -> Maybe MismatchError
 validate inputHistory oldShape newShape =
   -- TODO: filter out things from mailboxes
-  Nothing
+  let
+    d = Debug.log "(IH,EQ,OS,NS)" (inputHistory, oldShape == newShape, oldShape, newShape)
+  in
+    if oldShape == newShape then
+      Nothing
+    else
+      Just <| MismatchError { oldShape = oldShape, newShape = newShape }
 
 
 {-| Given current session and new module:
@@ -214,7 +220,7 @@ validate inputHistory oldShape newShape =
 swap : DebugSession
     -> ElmModule
     -> (SGShape -> List NodeId)
-    -> Task SwapError (DebugSession, List (ExprTag, ValueLog))
+    -> Task MismatchError (DebugSession, List (ExprTag, ValueLog))
 swap session newMod initialNodesFun =
   (dispose session)
   `Task.andThen` (\_ ->
@@ -325,9 +331,12 @@ type NodeType
   | Main
 
 
-{-| Various ways replaying the InputHistory on the new code wouldn't make sense -}
-type alias SwapError =
-  String
+{-| Means replaying the InputHistory on the new code wouldn't make sense -}
+type MismatchError
+  = MismatchError
+      { oldShape : SGShape
+      , newShape : SGShape
+      }
 
 
 {-| Error with () means it was already in that state -}
