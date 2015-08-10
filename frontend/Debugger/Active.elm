@@ -91,7 +91,7 @@ type Response
 
 update : Message -> Model -> Transaction Message Model
 update msg state =
-  case msg of
+  case Debug.log "ACTIVE MSG" msg of
     Command cmd ->
       case cmd of
         Play ->
