@@ -127,6 +127,11 @@ toggleTab addr state =
 viewErrors : ErrorState -> Html
 viewErrors errors =
   let
+    sgDisplay content =
+      div
+        [ style ["font-family" => "monospace"] ]
+        [ text content ]
+
     (visible, errorBody) =
       case errors of
         NoErrors ->
@@ -135,18 +140,18 @@ viewErrors errors =
         MismatchError (API.MismatchError {newShape, oldShape}) ->
           ( True
           , div []
-              [ h2 [] [ text "Events could not be replayed because the signal graph has a different shape." ]
+              [ h2 [] [ text "Events could not be replayed because the new signal graph has a different shape than the old one" ]
               , p [] [ text "Old signal graph:" ]
-              , pre [] [ text <| toString oldShape ]
+              , sgDisplay <| toString oldShape
               , p [] [ text "New signal graph:" ]
-              , pre [] [ text <| toString newShape ]
+              , sgDisplay <| toString newShape
               ]
           )
 
         CompilationErrors errs ->
-          (True, text errs)
+          (True, pre [] [ text errs ])
   in
-    pre
+    div
       [ style
           [ "z-index" => "1"
           , "position" => "absolute"

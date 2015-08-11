@@ -390,6 +390,7 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 		return Task.asyncFunction(function(callback) {
 			session.disposed = true;
 			session.runningModule.dispose();
+			session.runtime.node.parentNode.removeChild(session.runtime.node);
 			callback(Task.succeed(Utils.Tuple0));
 		});
 	}

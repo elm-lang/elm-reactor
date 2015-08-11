@@ -170,7 +170,7 @@ type alias ValueSet =
 
 -- COMMANDS
 
-{-| Swap in new module. Starts off playing.
+{-| Starts off playing.
 Subscribes to the list of nodes returned by the given function (3rd arg),
 and returns their initial values. -}
 initializeFullscreen : ElmModule
@@ -196,6 +196,8 @@ setInputHistory =
   Native.Debugger.RuntimeApi.setInputHistory
 
 
+{-| given shape of old graph, history, and shape of new graph,
+possibly return errors -}
 validate : InputHistory -> SGShape -> SGShape -> Maybe MismatchError
 validate inputHistory oldShape newShape =
   -- TODO: filter out things from mailboxes
