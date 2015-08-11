@@ -246,15 +246,15 @@ view showSwap state =
         [ style swapButtonTextStyle ]
         (if showSwap then [ text "swap", swapButton state.permitSwap ] else [])
 
+    containerStyle =
+      node
+        "style"
+        [ type' "text/css" ]
+        [ text buttonContainerCss ]
+
     buttonContainer =
       div
-        [ style
-            [ "display" => "-webkit-flex"
-            , "-webkit-flex-direction" => "row"
-            , "-webkit-justify-content" => "space-between"
-            , "-webkit-align-items" => "center"
-            ]
-        ]
+        [ id "elm-reactor-button-container" ]
         [ restartButton state.restartButtonState
         , swapWithLabel
         , playPauseButton state.paused state.playPauseButtonState
@@ -274,7 +274,8 @@ view showSwap state =
       [ style
           [ "padding" => intToPx margin ]
       ]
-      [ buttonContainer
+      [ containerStyle
+      , buttonContainer
       , sliderContainer
       ]
 
@@ -308,3 +309,26 @@ iconButton bgColor iconHtml =
 translateToCss : Int -> Int -> String
 translateToCss x y =
   "translate(" ++ intToPx x ++ "," ++ intToPx y ++ ")"
+
+
+{- This CSS does not work if added to this element as
+inline attributes -- the `display:` attributes do not
+override each other properly.
+See https://css-tricks.com/using-flexbox/ -}
+buttonContainerCss : String
+buttonContainerCss = """
+#elm-reactor-button-container {
+  display: -webkit-box;
+  display: -moz-box;
+  display: -ms-flexbox;
+  display: -webkit-flex;
+  display: flex;
+
+  -webkit-flex-direction: row;
+  flex-direction: row;
+  -webkit-justify-content: space-between;
+  justify-content: space-between;
+  -webkit-align-items: center;
+  align-items: center;
+}
+"""
