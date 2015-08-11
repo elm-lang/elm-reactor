@@ -3,7 +3,7 @@ module Model where
 import Json.Decode exposing (..)
 
 import WebSocket
-import Html.File
+import Html.File as File
 
 import Debugger.Service as Service
 import Debugger.Active as Active
@@ -26,8 +26,18 @@ type alias Model =
 
 type ErrorState
   = CompilationErrors CompilationErrors
-  | MismatchError API.MismatchError
+  | SwapReplayError API.ReplayError
+  | HistoryMismatchError
+      { currentModuleName : API.ModuleName
+      , historyModuleName : API.ModuleName
+      }
+  | SessionInputError SessionInputError
   | NoErrors
+
+
+type SessionInputError
+  = IoError File.IoError
+  | ParseError API.InputHistoryParseError
 
 
 initModel : Model
@@ -51,12 +61,14 @@ type Message
   | LogsMessage Logs.Message
   | ConnectSocket (Maybe WebSocket.WebSocket)
   | ExportSession
-  | ImportSession (List Html.File.File)
+  | ImportSession (List File.File)
+  | SessionInputErrorMessage SessionInputError
   | SwapEvent SwapEvent
   | NewServiceState Service.Model
   | ServiceCommand Active.Command
   -- vv `Nothing` here means resetting the mismatch error
-  | ActiveMessage Active.MismatchErrorMessage
+  | CommandResponse Active.CommandResponseMessage
+  | CloseErrors
   | NoOp
 
 

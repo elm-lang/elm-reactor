@@ -29,7 +29,7 @@ import DataUtils exposing (..)
 
 serviceOutput : Start.App Service.Model
 serviceOutput =
-  Start.start <| Service.app initMod
+  Start.start <| Service.app moduleName
 
 
 output : Start.App Model.Model
@@ -42,9 +42,8 @@ output =
     , inputs =
         [ Signal.map NewServiceState serviceOutput.model
         , socketEventsMailbox.signal
-        , (Active.mismatchErrorMailbox ()).signal
-            |> Signal.filterMap identity Active.NoMismatchError
-            |> Signal.map ActiveMessage
+        , (Active.commandResponseMailbox ()).signal
+            |> Signal.map CommandResponse
         ]
     }
 
@@ -82,7 +81,7 @@ view addr state =
     div []
       ( [ mainVal
         , eventBlocker (not isPlaying)
-        , viewErrors state.errorState
+        , viewErrors addr state.errorState
         , viewSidebar addr state
         ]
       )
@@ -124,32 +123,71 @@ toggleTab addr state =
     []
 
 
-viewErrors : ErrorState -> Html
-viewErrors errors =
+viewErrors : Signal.Address Message -> ErrorState -> Html
+viewErrors addr errors =
   let
-    sgDisplay content =
-      div
+    monospaceSpan content =
+      span
         [ style ["font-family" => "monospace"] ]
         [ text content ]
 
     (visible, errorBody) =
       case errors of
-        NoErrors ->
-          (False, text "")
-
-        MismatchError (API.MismatchError {newShape, oldShape}) ->
+        SwapReplayError {newShape, oldShape} ->
           ( True
           , div []
               [ h2 [] [ text "Events could not be replayed because the new signal graph has a different shape than the old one" ]
               , p [] [ text "Old signal graph:" ]
-              , sgDisplay <| toString oldShape
+              , p [] [ monospaceSpan <| toString oldShape ]
               , p [] [ text "New signal graph:" ]
-              , sgDisplay <| toString newShape
+              , p [] [ monospaceSpan <| toString newShape ]
               ]
           )
 
         CompilationErrors errs ->
           (True, pre [] [ text errs ])
+
+        HistoryMismatchError moduleNames ->
+          ( True
+          , div []
+              [ h2 [] [ text "Import Session unsuccessful" ]
+              ,  p []
+                  [ text "You imported a session recorded on module "
+                  , monospaceSpan moduleNames.historyModuleName
+                  , text " but are currently running module "
+                  , monospaceSpan moduleNames.currentModuleName
+                  , text ". To fix, run the module the session was recorded on and try again."
+                  ]
+              ]
+          )
+
+        SessionInputError inputError ->
+          let
+            (errorType, errorMessage) =
+              case inputError of
+                IoError ioError ->
+                  ("File I/O Error", ioError)
+
+                ParseError parseError ->
+                  case parseError of
+                    API.JsonParseError error ->
+                      ("JSON parse error", error)
+
+                    API.JsonSchemaError error ->
+                      ("JSON schema error", error)
+          in
+            ( True
+            , div []
+                [ h2 [] [ text "Import Session unsuccessful" ]
+                , p []
+                    [ text <| errorType ++ ": "
+                    , monospaceSpan errorMessage
+                    ]
+                ]
+            )
+
+        NoErrors ->
+          (False, text "")
   in
     div
       [ style
@@ -157,6 +195,7 @@ viewErrors errors =
           , "position" => "absolute"
           , "top" => "0"
           , "left" => "0"
+          , "right" => "300px"
           , "color" => colorToCss darkGrey
           , "background-color" => colorToCss lightGrey
           , "padding" => "1em"
@@ -165,7 +204,11 @@ viewErrors errors =
           , "display" => if visible then "block" else "none"
           ]
       ]
-      [ errorBody ]
+      [ errorBody
+      , button
+          [ onClick addr CloseErrors ]
+          [ text "Close" ]
+      ]
 
 
 viewSidebar : Signal.Address Message -> Model -> Html
@@ -224,8 +267,8 @@ viewSidebar addr state =
         Nothing ->
           -- TODO: prettify
           [ div
-              [style [ "color" => "white" ]]
-              [text "Initialzing..."]
+              [ style [ "color" => "white" ] ]
+              [ text "Initialzing..." ]
           ]
   in
     div
@@ -422,32 +465,43 @@ update msg state =
                 |> Task.map (always NoOp)
 
               Err err ->
-                -- todo: send error message
-                Debug.crash <| toString err
+                -- maybe this should use a different action, since
+                -- CommandResponses usually come from the Active module
+                Task.succeed <| SessionInputErrorMessage err
           )
 
       in
         requestTask sendTask state
 
-    ActiveMessage mismatchErrorMessage ->
+    SessionInputErrorMessage error ->
+      done { state | errorState <- SessionInputError error }
+
+    CommandResponse responseMsg ->
       let
         newErrorState =
-          case mismatchErrorMessage of
-            Active.NoMismatchError ->
+          case responseMsg of
+            Active.SwapReplayError replayError ->
+              SwapReplayError replayError
+
+            Active.SwapSuccessful ->
               NoErrors
 
-            Active.MismatchError err ->
-              MismatchError err
+            Active.HistoryMismatchError moduleNames ->
+              HistoryMismatchError moduleNames
+
+            Active.ImportSessionSuccessful ->
+              NoErrors
+
+            Active.NoOpResponse ->
+              state.errorState
       in
         done { state | errorState <- newErrorState }
 
+    CloseErrors ->
+      done { state | errorState <- NoErrors }
+
     NoOp -> 
      done state
-
-
-type SessionInputError
-  = IoError File.IoError
-  | ParseError API.InputHistoryParseError
 
 
 -- Socket stuff
@@ -458,7 +512,7 @@ socketEventsMailbox =
 
 -- INPUT PORT: initial module
 
-port initMod : API.ElmModule
+port moduleName : API.ModuleName
 
 port fileName : String
 
@@ -494,6 +548,10 @@ exportMimeType =
 
 exportHistory : API.DebugSession -> Task x ()
 exportHistory session =
-  (API.getInputHistory session |> Task.map API.serializeInputHistory)
-  `Task.andThen` (\contents ->
-    File.download contents exportMimeType "reactor-history.json")
+  let
+    fileName =
+      "reactor-history-" ++ moduleName ++ ".json"
+  in
+    (API.getInputHistory session |> Task.map API.serializeInputHistory)
+    `Task.andThen` (\contents ->
+      File.download contents exportMimeType fileName)

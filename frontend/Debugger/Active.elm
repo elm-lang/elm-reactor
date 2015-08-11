@@ -140,7 +140,7 @@ update msg state =
 
             sequenced =
               pause `Task.andThen` (always getState)
-              |> Task.mapError (Debug.crash << toString)
+                |> Task.mapError (Debug.crash << toString)
           in
             requestTask sequenced { state | runningState <- Paused frameIdx }
 
@@ -162,84 +162,90 @@ update msg state =
 
         Swap compiledMod ->
           let
-            newMod =
-              API.evalModule compiledMod
-
             swapTask =
-              (API.swap state.session newMod API.justMain
-                |> Task.toResult)
-              `Task.andThen` (\swapRes ->
-                case swapRes of
-                  Err mismatchErr ->
-                    Signal.send
-                      (mismatchErrorMailbox ()).address
-                      (Just (MismatchError mismatchErr))
-                    |> Task.map (always NoOp)
+              (API.instantiateModule compiledMod)
+              `Task.andThen` (\newMod ->
+                (API.swap state.session newMod API.justMain
+                  |> Task.toResult)
+                `Task.andThen` (\swapRes ->
+                  case swapRes of
+                    Err replayError ->
+                      Signal.send
+                        (commandResponseMailbox ()).address
+                        (SwapReplayError replayError)
+                      |> Task.map (always NoOp)
 
-                  Ok (newSession, logs) ->
-                    API.getNodeStateSingle
-                      newSession
-                      (curFrameIdx state)
-                      [API.sgShape newSession |> .mainId]
-                    |> Task.mapError (Debug.crash << toString)
-                    |> Task.map (\values ->
-                          Response <|
-                            SwapResponse
-                              newSession
-                              (getMainVal newSession values)
-                              logs)
+                    Ok (newSession, logs) ->
+                      API.getNodeStateSingle
+                        newSession
+                        (curFrameIdx state)
+                        [API.sgShape newSession |> .mainId]
+                      |> Task.mapError (Debug.crash << toString)
+                      |> Task.map (\values ->
+                            Response <|
+                              SwapResponse
+                                newSession
+                                (getMainVal newSession values)
+                                logs)
+                )
               )
           in
             requestTask swapTask state
 
         StartWithHistory history ->
           let
-            initTask =
-              (API.dispose state.session)
-              `Task.andThen` (\_ ->
-                (API.initializeFullscreen
-                  (API.getModule state.session)
-                  (API.getAddress state.session)
-                  (API.justMain))
-                `Task.andThen` (\(newSession, _) ->
-                  let
-                    maybeMismatchError =
-                      API.validate
-                        history
-                        (API.sgShape state.session)
-                        (API.sgShape newSession)
-                  in
-                    case maybeMismatchError of
-                      Just error ->
-                        Signal.send
-                          (mismatchErrorMailbox ()).address
-                          (Just (MismatchError error))
-                        |> Task.map (always NoOp)
+            currentModule =
+              API.getModule state.session
 
-                      Nothing ->
-                        (API.setInputHistory
+            currentModuleName =
+              currentModule.name
+
+            historyModuleName =
+              API.getHistoryModuleName history
+
+            initTask =
+              if currentModuleName /= historyModuleName then
+                let
+                  error =
+                    { currentModuleName = currentModule.name
+                    , historyModuleName = API.getHistoryModuleName history
+                    }
+                in
+                  Signal.send
+                    (commandResponseMailbox ()).address
+                    (HistoryMismatchError error)
+                  |> Task.map (always NoOp)
+              else
+                (API.dispose state.session)
+                `Task.andThen` (\_ ->
+                  (API.initializeFullscreen
+                    currentModule
+                    (API.getAddress state.session)
+                    (API.justMain))
+                  `Task.andThen` (\(newSession, _) ->
+                    (API.setInputHistory
+                      newSession
+                      history
+                    |> Task.mapError (\_ -> Debug.crash "event list wasn't empty"))
+                    `Task.andThen` (\logs ->
+                      (API.getNumFrames newSession)
+                      `Task.andThen` (\numFrames ->
+                        API.getNodeStateSingle
                           newSession
-                          history
-                        |> Task.mapError (\_ -> Debug.crash "event list wasn't empty"))
-                        `Task.andThen` (\logs ->
-                          (API.getNumFrames newSession)
-                          `Task.andThen` (\numFrames ->
-                            API.getNodeStateSingle
-                              newSession
-                              (numFrames - 1)
-                              [API.sgShape newSession |> .mainId]
-                            |>  Task.mapError (Debug.crash << toString)
-                            |>  Task.map (\valueSet ->
-                                  Response <|
-                                    StartWithHistoryResponse
-                                      newSession
-                                      (getMainVal newSession valueSet)
-                                      numFrames
-                                      logs)
+                          (numFrames - 1)
+                          [API.sgShape newSession |> .mainId]
+                        |>  Task.mapError (Debug.crash << toString)
+                        |>  Task.map (\valueSet ->
+                              Response <|
+                                StartWithHistoryResponse
+                                  newSession
+                                  (getMainVal newSession valueSet)
+                                  numFrames
+                                  logs)
+                      )
                     )
                   )
                 )
-              )
           in
             requestTask initTask { state | runningState <- Playing }
 
@@ -318,19 +324,25 @@ update msg state =
       done state
 
 
-type MismatchErrorMessage
-  = MismatchError API.MismatchError
-  | NoMismatchError
+type CommandResponseMessage
+  = SwapReplayError API.ReplayError
+  -- clears the current mismatch error
+  | SwapSuccessful
+  | HistoryMismatchError
+      { currentModuleName : API.ModuleName
+      , historyModuleName : API.ModuleName
+      }
+  | ImportSessionSuccessful
+  | NoOpResponse
 
 
--- first level of 
-mismatchErrorMailbox : () -> Signal.Mailbox (Maybe MismatchErrorMessage)
-mismatchErrorMailbox _ =
+commandResponseMailbox : () -> Signal.Mailbox CommandResponseMessage
+commandResponseMailbox _ =
   mailbox
 
 
 mailbox =
-  Signal.mailbox Nothing
+  Signal.mailbox NoOpResponse
 
 
 getMainVal : API.DebugSession -> API.ValueSet -> Html

@@ -26,16 +26,21 @@ type Message
   | ActiveMessage Active.Message
 
 
-app : API.ElmModule -> Start.Config Message Model
-app initMod =
+app : API.ModuleName -> Start.Config Message Model
+app moduleName =
   { init =
       let
         initTask =
-          API.initializeFullscreen
-            initMod
-            (Signal.forwardTo notificationsMailbox.address Active.NewFrame)
-            API.justMain
-          |> Task.map (\(session, values) -> Initialized session values)
+          (API.getFromGlobalScope moduleName
+            |> Task.mapError
+                  (\err -> Debug.crash <| "module name not in scope: " ++ err))
+          `Task.andThen` (\initModule ->
+            API.initializeFullscreen
+              initModule
+              (Signal.forwardTo notificationsMailbox.address Active.NewFrame)
+              API.justMain
+            |> Task.map (\(session, values) -> Initialized session values)
+          )
       in
         requestTask initTask Nothing
   , view = \_ _ -> div [] [] -- would be nice to not do this

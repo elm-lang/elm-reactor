@@ -93,11 +93,20 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 	function getInputHistory(session)
 	{
 		return Task.asyncFunction(function(callback) {
-			callback(Task.succeed(session.events));
+			var history = {
+				moduleName: session.module.name,
+				events: session.events
+			}
+			callback(Task.succeed(history));
 		});
 	}
 
-	var emptyInputHistory = [];
+	function emptyInputHistory(moduleName) {
+		return {
+			moduleName: moduleName,
+			events: []
+		}
+	}
 
 	function splitInputHistory(frameIdx, history)
 	{
@@ -119,7 +128,8 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 				_0: { ctor: 'JsonParseError', _0: err.message }
 			}
 		}
-		if(inputHistorySchemaValid(parsed))
+		var maybeJsonSchemaError = validateInputSchema(parsed);
+		if(maybeJsonSchemaError == null)
 		{
 			return {
 				ctor: 'Ok',
@@ -130,40 +140,69 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 		{
 			return {
 				ctor: 'Err',
-				_0: { ctor: 'JsonSchemaError' }
+				_0: {
+					ctor: 'JsonSchemaError',
+					_0: maybeJsonSchemaError
+				}
 			}
 		}
 	}
 
-	// JSON -> Bool
-	function inputHistorySchemaValid(parsed)
+	function getHistoryModuleName(history) {
+		return history.moduleName;
+	}
+
+	// JSON -> String or null
+	function validateInputSchema(parsed)
 	{
-		if (!parsed instanceof Array)
+		if(typeof(parsed.moduleName) != "string")
 		{
-			return false;
+			return "invalid `moduleName` key";
 		}
-		// this is godawful
+		if (!parsed.events instanceof Array)
+		{
+			return "invalid `events` key";
+		}
+		// I wish deep equality of JS arrays was easier
 		var valid = JSON.stringify(["_", "nodeId", "time", "value"]);
-		parsed.forEach(function(evt) {
+		parsed.events.forEach(function(evt) {
 			var keys = Object.keys(evt).sort();
 			if(JSON.stringify(keys) !== valid)
 			{
-				return false;
+				return "invalid keys for an event; expecting " + valid;
 			}
 		});
-		return true;
+		return null;
 	}
 
-	function evalModule(compiledModule)
+	function getFromGlobalScope(moduleName)
 	{
-		window.eval(compiledModule.code);
-		var elmModule = Elm;
-		var names = compiledModule.name.split('.');
-		for (var i = 0; i < names.length; ++i)
-		{
-			elmModule = elmModule[names[i]];
-		}
-		return elmModule;
+		return Task.asyncFunction(function(callback) {
+			var elmModule = Elm;
+			var names = moduleName.split('.');
+			try {
+				for (var i = 0; i < names.length; ++i)
+				{
+					elmModule = elmModule[names[i]];
+				}
+			} catch (err) {
+				callback(Task.fail(err.message));
+			}
+			var result = {
+				_: {},
+				modul: elmModule,
+				name: moduleName
+			};
+			callback(Task.succeed(result));
+		});
+	}
+
+	function evalCompiledModule(compiledModule)
+	{
+		return Task.asyncFunction(function(callback) {
+			window.eval(compiledModule.code);
+			callback(Task.succeed(Utils.Tuple0));
+		});
 	}
 
 	// COMMANDS
@@ -175,7 +214,7 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 			var moduleBeingDebugged = Elm.fullscreen({
 				make: function(runtime) {
 					debugeeLocalRuntime = runtime;
-					return module.make(runtime);
+					return module.modul.make(runtime);
 				}
 			}, {}, false);
 
@@ -507,7 +546,9 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 		emptyInputHistory: emptyInputHistory,
 		serializeInputHistory: serializeInputHistory,
 		parseInputHistory: parseInputHistory,
-		evalModule: evalModule,
+		getHistoryModuleName: getHistoryModuleName,
+		getFromGlobalScope: getFromGlobalScope,
+		evalCompiledModule: evalCompiledModule,
 		initializeFullscreen: F3(initializeFullscreen),
 		setInputHistory: F2(setInputHistory),
 		dispose: dispose,

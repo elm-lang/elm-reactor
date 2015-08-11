@@ -148,9 +148,14 @@ parseInputHistory =
   Native.Debugger.RuntimeApi.parseInputHistory
 
 
+getHistoryModuleName : InputHistory -> ModuleName
+getHistoryModuleName =
+  Native.Debugger.RuntimeApi.getHistoryModuleName
+
+
 type InputHistoryParseError
   = JsonParseError String
-  | JsonSchemaError
+  | JsonSchemaError String
 
 
 {-| Interpreted as inclusive -}
@@ -198,7 +203,7 @@ setInputHistory =
 
 {-| given shape of old graph, history, and shape of new graph,
 possibly return errors -}
-validate : InputHistory -> SGShape -> SGShape -> Maybe MismatchError
+validate : InputHistory -> SGShape -> SGShape -> Maybe ReplayError
 validate inputHistory oldShape newShape =
   -- TODO: filter out things from mailboxes
   let
@@ -207,7 +212,7 @@ validate inputHistory oldShape newShape =
     if oldShape == newShape then
       Nothing
     else
-      Just <| MismatchError { oldShape = oldShape, newShape = newShape }
+      Just { oldShape = oldShape, newShape = newShape }
 
 
 {-| Given current session and new module:
@@ -222,7 +227,7 @@ validate inputHistory oldShape newShape =
 swap : DebugSession
     -> ElmModule
     -> (SGShape -> List NodeId)
-    -> Task MismatchError (DebugSession, List (ExprTag, ValueLog))
+    -> Task ReplayError (DebugSession, List (ExprTag, ValueLog))
 swap session newMod initialNodesFun =
   (dispose session)
   `Task.andThen` (\_ ->
@@ -284,19 +289,40 @@ forkFrom session frameIdx =
   )
 
 
-type alias ElmModule =
-  JsEnc.Value
-
-
-evalModule : CompiledElmModule -> ElmModule
-evalModule =
-  Native.Debugger.RuntimeApi.evalModule
-
-
 type alias CompiledElmModule =
-  { name : String
+  { name : ModuleName
   , code : String -- javascript
   }
+
+
+type alias ElmModule =
+  { name : ModuleName
+  , modul : JsEnc.Value
+  }
+
+
+type alias ModuleName =
+  String
+
+
+{-| Fails with an error message if the given name is not in scope -}
+getFromGlobalScope : ModuleName -> Task String ElmModule
+getFromGlobalScope =
+  Native.Debugger.RuntimeApi.getFromGlobalScope
+
+
+evalCompiledModule : CompiledElmModule -> Task x ()
+evalCompiledModule =
+  Native.Debugger.RuntimeApi.evalCompiledModule
+
+
+instantiateModule : CompiledElmModule -> Task x ElmModule
+instantiateModule compiled =
+  (evalCompiledModule compiled)
+  `Task.andThen` (\_ ->
+    getFromGlobalScope compiled.name
+      |> Task.mapError (\err -> Debug.crash <| "name wasn't in scope: " ++ err)
+  )
 
 
 -- opaque
@@ -334,11 +360,10 @@ type NodeType
 
 
 {-| Means replaying the InputHistory on the new code wouldn't make sense -}
-type MismatchError
-  = MismatchError
-      { oldShape : SGShape
-      , newShape : SGShape
-      }
+type alias ReplayError
+  = { oldShape : SGShape
+    , newShape : SGShape
+    }
 
 
 {-| Error with () means it was already in that state -}
