@@ -31,9 +31,9 @@ function ignore(e)
 
 // CODE TO SET UP A MODULE FOR DEBUGGING
 
-Elm.fullscreenDebug = function(module, fileName) {
+Elm.fullscreenDebug = function(moduleName, fileName) {
 	Elm.fullscreen(Elm.Debugger, {
-		initMod: module,
+		moduleName: moduleName,
 		fileName: fileName,
 		windowLocationHost: window.location.host
 	});

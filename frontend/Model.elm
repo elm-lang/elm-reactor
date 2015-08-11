@@ -3,7 +3,7 @@ module Model where
 import Json.Decode exposing (..)
 
 import WebSocket
-import Html.File
+import Html.File as File
 
 import Debugger.Service as Service
 import Debugger.Active as Active
@@ -18,10 +18,26 @@ type alias Model =
   , permitSwaps : Bool
   , restartButtonState : Button.Model
   , playPauseButtonState : Button.Model
-  , compilationErrors : Maybe CompilationErrors
+  , errorState : ErrorState
   , logsState : Logs.Model
   , swapSocket : Maybe WebSocket.WebSocket
   }
+
+
+type ErrorState
+  = CompilationErrors CompilationErrors
+  | SwapReplayError API.ReplayError
+  | HistoryMismatchError
+      { currentModuleName : API.ModuleName
+      , historyModuleName : API.ModuleName
+      }
+  | SessionInputError SessionInputError
+  | NoErrors
+
+
+type SessionInputError
+  = IoError File.IoError
+  | ParseError API.InputHistoryParseError
 
 
 initModel : Model
@@ -31,7 +47,7 @@ initModel =
   , permitSwaps = True
   , restartButtonState = Button.Up
   , playPauseButtonState = Button.Up
-  , compilationErrors = Nothing
+  , errorState = NoErrors
   , logsState = Logs.initModel
   , swapSocket = Nothing
   }
@@ -40,15 +56,19 @@ initModel =
 type Message
   = SidebarVisible Bool
   | PermitSwaps Bool
-  | NewServiceState Service.Model
   | PlayPauseButtonAction (Button.Message Active.Command)
   | RestartButtonAction (Button.Message Active.Command)
   | LogsMessage Logs.Message
   | ConnectSocket (Maybe WebSocket.WebSocket)
-  | SwapEvent SwapEvent
-  | ServiceCommand Active.Command
   | ExportSession
-  | ImportSession (List Html.File.File)
+  | ImportSession (List File.File)
+  | SessionInputErrorMessage SessionInputError
+  | SwapEvent SwapEvent
+  | NewServiceState Service.Model
+  | ServiceCommand Active.Command
+  -- vv `Nothing` here means resetting the mismatch error
+  | CommandResponse Active.CommandResponseMessage
+  | CloseErrors
   | NoOp
 
 
@@ -57,8 +77,8 @@ type alias CompilationErrors =
 
 
 type SwapEvent
-  = NewModule API.CompiledElmModule
-  | CompilationErrors CompilationErrors
+  = NewModuleEvent API.CompiledElmModule
+  | CompilationErrorsEvent CompilationErrors
 
 
 swapEvent : Decoder SwapEvent
@@ -66,10 +86,10 @@ swapEvent =
   oneOf
     [ object2
         (\name code ->
-            NewModule {name=name, code=code})
+            NewModuleEvent {name=name, code=code})
         ("name" := string)
         ("code" := string)
     , object1
-        CompilationErrors
+        CompilationErrorsEvent
         ("error" := string)
     ]

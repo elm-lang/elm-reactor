@@ -118,5 +118,5 @@ initialize debug name filePath =
   in
       "var runningElmModule =\n    " ++
       case debug of
-        True -> "Elm.fullscreenDebug(Elm." ++ moduleName ++ ", '" ++ filePath ++ "');"
+        True -> "Elm.fullscreenDebug('" ++ moduleName ++ "', '" ++ filePath ++ "');"
         False -> "Elm.fullscreen(Elm." ++ moduleName ++ ");"

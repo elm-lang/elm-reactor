@@ -19,7 +19,6 @@ Elm.Native.Debugger.Reflect.make = function(localRuntime) {
 		// TODO: I hear this is bad (http://webreflection.blogspot.com/2013/03/5-reasons-you-should-avoid-proto.html)
 		// but instanceof didn't work for some reason. find a workaround.
 		if(elmVal.__proto__.type == "VirtualNode" || elmVal.__proto__.type == "VirtualText") {
-			console.log(elmVal);
 			return elmVal;
 		} else if(elmVal.element && elmVal.props) {
 			return VirtualDom.fromElement(elmVal);
