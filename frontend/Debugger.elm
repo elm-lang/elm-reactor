@@ -11,8 +11,8 @@ import Maybe
 import Result
 import Debug
 
-import Transaction exposing (..)
-import Start
+import Effects exposing (..)
+import StartApp
 import WebSocket
 import Html.File as File
 
@@ -27,20 +27,22 @@ import SideBar.Logs as Logs
 import DataUtils exposing (..)
 
 
-serviceOutput : Start.App Service.Model
-serviceOutput =
-  Start.start <| Service.app moduleName
+serviceApp : StartApp.App Service.Model
+serviceApp =
+  StartApp.start <| Service.app moduleName
 
 
-output : Start.App Model.Model
-output =
-  Start.start
+uiApp : StartApp.App Model.Model
+uiApp =
+  StartApp.start
     { init =
-        request (task connectSocket) initModel
+        ( initModel
+        , connectSocket |> task
+        )
     , view = view
     , update = update
     , inputs =
-        [ Signal.map NewServiceState serviceOutput.model
+        [ Signal.map NewServiceState serviceApp.model
         , socketEventsMailbox.signal
         , (Active.commandResponseMailbox ()).signal
             |> Signal.map CommandResponse
@@ -50,17 +52,17 @@ output =
 
 main : Signal Html
 main =
-  output.html
+  uiApp.html
 
 
 port uiTasks : Signal (Task Never ())
 port uiTasks =
-  output.tasks
+  uiApp.tasks
 
 
 port serviceTasks : Signal (Task Never ())
 port serviceTasks =
-  serviceOutput.tasks
+  serviceApp.tasks
 
 
 (=>) = (,)
@@ -309,14 +311,18 @@ exportImport addr =
     ]
 
 
-update : Message -> Model -> Transaction Message Model
+update : Message -> Model -> (Model, Effects Message)
 update msg state =
   case Debug.log "MAIN MSG" msg of
     SidebarVisible visible -> 
-      done { state | sidebarVisible <- visible }
+      ( { state | sidebarVisible <- visible }
+      , none
+      )
 
     PermitSwaps permit -> 
-      done { state | permitSwaps <- permit }
+      ( { state | permitSwaps <- permit }
+      , none
+      )
 
     NewServiceState serviceState -> 
       let
@@ -331,106 +337,111 @@ update msg state =
             Nothing ->
               Logs.NoOp
       in
-        with
-          (tag LogsMessage <| Logs.update logMsg state.logsState)
-          (\(newLogsState, _) ->
-            done
-              { state
-                  | serviceState <- serviceState
-                  , logsState <- newLogsState
-              }
-          )
+        ( { state
+              | serviceState <- serviceState
+              , logsState <- fst (Logs.update logMsg state.logsState)
+          }
+        , none
+        )
 
     PlayPauseButtonAction buttonMsg ->
-      with
-        (tag PlayPauseButtonAction <|
-          Button.update buttonMsg state.playPauseButtonState)
-        (\(newState, maybeCommand) ->
-          let
-            sendEffect =
-              case Debug.log "maybeCommand" maybeCommand of
-                Just cmd ->
-                  Signal.send (Service.commandsMailbox ()).address cmd
-                    |> Task.map (always NoOp)
+      let
+        (newState, maybeCommand) =
+          Button.update buttonMsg state.playPauseButtonState
 
-                Nothing ->
-                  Task.succeed NoOp
-            in
-              request
-                (task sendEffect)
-                { state | playPauseButtonState <- newState }
+        sendEffects =
+          case maybeCommand of
+            Just cmd ->
+              Signal.send (Service.commandsMailbox ()).address cmd
+                |> Task.map (always NoOp)
+                |> task
+
+            Nothing ->
+              none
+      in
+        ( { state | playPauseButtonState <- newState }
+        , sendEffects
         )
 
-    RestartButtonAction buttonMsg -> 
-      with
-        (tag RestartButtonAction <|
-          Button.update buttonMsg state.restartButtonState)
-        (\(newState, maybeCommand) ->
-          let
-            sendEffect =
-              case maybeCommand of
-                Just cmd ->
-                  Signal.send (Service.commandsMailbox ()).address cmd
-                    |> Task.map (always NoOp)
+    RestartButtonAction buttonMsg ->
+      let
+        (newState, maybeCommand) =
+          Button.update buttonMsg state.restartButtonState
 
-                Nothing ->
-                  Task.succeed NoOp
-            in
-              request
-                (task sendEffect)
-                { state | restartButtonState <- newState }
+        sendEffects =
+          case maybeCommand of
+            Just cmd ->
+              Signal.send (Service.commandsMailbox ()).address cmd
+                |> Task.map (always NoOp)
+                |> task
+
+            Nothing ->
+              none
+      in
+        ( { state | restartButtonState <- newState }
+        , sendEffects
         )
 
-    LogsMessage logMsg -> 
-      with
-        (tag LogsMessage <| Logs.update logMsg state.logsState)
-        (\(newLogsState, maybeFrame) ->
-          let
-            sendScrubTo =
-              case maybeFrame of
-                Just frameIdx ->
-                  Signal.send
-                    (Service.commandsMailbox ()).address
-                    (Active.ScrubTo frameIdx)
-                  |> Task.map (always NoOp)
+    LogsMessage logMsg ->
+      let
+        (newLogsState, maybeFrame) =
+          Logs.update logMsg state.logsState
 
-                Nothing ->
-                  Task.succeed NoOp
-          in
-            requestTask sendScrubTo { state | logsState <- newLogsState }
+        sendEffect =
+          case maybeFrame of
+            Just frameIdx ->
+              Signal.send
+                (Service.commandsMailbox ()).address
+                (Active.ScrubTo frameIdx)
+              |> Task.map (always NoOp)
+              |> task
+
+            Nothing ->
+              none
+      in
+        ( { state | logsState <- newLogsState }
+        , sendEffect
         )
 
     ConnectSocket maybeSocket ->
-      done { state | swapSocket <- maybeSocket }
+      ( { state | swapSocket <- maybeSocket }
+      , none
+      )
 
     SwapEvent swapEvt ->
       if state.permitSwaps then
         case swapEvt of
           NewModuleEvent compiledMod ->
-            requestTask
-              (Signal.send
+            ( { state | errorState <- NoErrors }
+            , Signal.send
                 (Service.commandsMailbox ()).address
                 (Active.Swap compiledMod)
-              |> Task.map (always NoOp))
-              { state | errorState <- NoErrors }
+              |> Task.map (always NoOp)
+              |> task
+            )
 
           CompilationErrorsEvent errs ->
-            done { state | errorState <- CompilationErrors errs }
+            ( { state | errorState <- CompilationErrors errs }
+            , none
+            )
       else
-        done state
+        ( state, none )
 
     ServiceCommand serviceCmd -> 
-      requestTask
-        (Signal.send (Service.commandsMailbox ()).address serviceCmd
-          |> Task.map (always NoOp))
-        state
+      ( state
+      , Signal.send (Service.commandsMailbox ()).address serviceCmd
+          |> Task.map (always NoOp)
+          |> task
+      )
 
     ExportSession ->
       case state.serviceState of
         Just active ->
-          requestTask
-            (exportHistory active.session |> Task.map (always NoOp))
-            state
+          ( state
+          , exportHistory active.session
+              |> Task.map (always NoOp)
+              |> task
+          )
 
         Nothing ->
           Debug.crash "can't export before initialized"
@@ -470,10 +481,10 @@ update msg state =
           )
 
       in
-        requestTask sendTask state
+        ( state, sendTask |> task )
 
     SessionInputErrorMessage error ->
-      done { state | errorState <- SessionInputError error }
+      ( { state | errorState <- SessionInputError error }, none )
 
     CommandResponse responseMsg ->
       let
@@ -494,13 +505,13 @@ update msg state =
             Active.NoOpResponse ->
               state.errorState
       in
-        done { state | errorState <- newErrorState }
+        ( { state | errorState <- newErrorState }, none )
 
     CloseErrors ->
-      done { state | errorState <- NoErrors }
+      ( { state | errorState <- NoErrors }, none )
 
     NoOp -> 
-     done state
+     ( state, none )
 
 
 -- Socket stuff

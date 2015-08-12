@@ -6,8 +6,6 @@ import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import Html.Lazy exposing (..)
 
-import Transaction exposing (..)
-
 
 type Model
   = Up
@@ -20,14 +18,14 @@ type Message a
   | Click a
 
 
-update : Message a -> Model -> Transaction (Message a) (Model, Maybe a)
+update : Message a -> Model -> (Model, Maybe a)
 update msg state =
   case msg of
     MouseUpdate newState ->
-      done (newState, Nothing)
+      (newState, Nothing)
 
     Click clickMsg ->
-      done (state, Just clickMsg)
+      (state, Just clickMsg)
 
 
 view : Signal.Address (Message a)

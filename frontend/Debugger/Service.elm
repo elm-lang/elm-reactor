@@ -5,8 +5,8 @@ import Task
 import Debug
 import Html exposing (div)
 
-import Transaction exposing (..)
-import Start
+import Effects exposing (..)
+import StartApp
 
 import Debugger.RuntimeApi as API
 import Debugger.Active as Active
@@ -26,12 +26,11 @@ type Message
   | ActiveMessage Active.Message
 
 
-app : API.ModuleName -> Start.Config Message Model
+--app : API.ModuleName -> StartApp.Config Message Model
 app moduleName =
   { init =
-      let
-        initTask =
-          (API.getFromGlobalScope moduleName
+      ( Nothing
+      , (API.getFromGlobalScope moduleName
             |> Task.mapError
                   (\err -> Debug.crash <| "module name not in scope: " ++ err))
           `Task.andThen` (\initModule ->
@@ -41,8 +40,8 @@ app moduleName =
               API.justMain
             |> Task.map (\(session, values) -> Initialized session values)
           )
-      in
-        requestTask initTask Nothing
+        |> task
+      )
   , view = \_ _ -> div [] [] -- would be nice to not do this
   , update = update
   , inputs =
@@ -71,7 +70,7 @@ notificationsMailbox =
   Signal.mailbox Active.NoOpNot
 
 
-update : Message -> Model -> Transaction Message Model
+update : Message -> Model -> (Model, Effects Message)
 update msg model =
   case Debug.log "SERVICE MSG" msg of
     Initialized session initValues ->
@@ -80,16 +79,22 @@ update msg model =
           Debug.crash "already initialized"
 
         Nothing ->
-          Active.initModel session
-            |> Just
-            |> done
+          ( Just (Active.initModel session)
+          , none
+          )
 
     ActiveMessage actMsg ->
       case model of
         Just activeModel ->
-          with
-            (tag ActiveMessage <| Active.update actMsg activeModel)
-            (done << Just)
+          let
+            (newActiveModel, activeFx) =
+              Active.update actMsg activeModel
+
+          in
+            -- TODO: tag
+            ( Just newActiveModel
+            , Effects.map ActiveMessage activeFx
+            )
 
         Nothing ->
           Debug.crash "not yet initialized"

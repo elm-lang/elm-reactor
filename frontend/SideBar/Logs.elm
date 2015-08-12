@@ -10,8 +10,6 @@ import Html exposing (..)
 import Html.Attributes as Attr exposing (..)
 import Html.Events exposing (..)
 
-import Transaction exposing (..)
-
 import Styles exposing (..)
 import Debugger.Active as Active
 import Debugger.RuntimeApi as API
@@ -46,43 +44,40 @@ type LogId
   | ExprLog API.ExprTag
 
 
-update : Message -> Model -> Transaction Message (Model, Maybe API.FrameIndex)
+update : Message -> Model -> (Model, Maybe API.FrameIndex)
 update msg state =
   case msg of
     CollapseLog logId collapsed ->
       case logId of
         NodeLog nodeId ->
-          done
-            ( { state | nodeExpansion <-
-                  collapseLog nodeId collapsed state.nodeExpansion
-              }
-            , Nothing
-            )
+          ( { state | nodeExpansion <-
+                collapseLog nodeId collapsed state.nodeExpansion
+            }
+          , Nothing
+          )
 
         ExprLog exprTag ->
-          done
-            ( { state | exprExpansion <-
-                  collapseLog exprTag collapsed state.exprExpansion
-              }
-            , Nothing
-            )
+          ( { state | exprExpansion <-
+                collapseLog exprTag collapsed state.exprExpansion
+            }
+          , Nothing
+          )
 
     UpdateLogs {newExprLogs, newNodeLogs} ->
-      done
-        ( { state
-              | exprExpansion <-
-                  updateExpansion state.exprExpansion newExprLogs
-              , nodeExpansion <-
-                  updateExpansion state.nodeExpansion newNodeLogs
-          }
-        , Nothing
-        )
+      ( { state
+            | exprExpansion <-
+                updateExpansion state.exprExpansion newExprLogs
+            , nodeExpansion <-
+                updateExpansion state.nodeExpansion newNodeLogs
+        }
+      , Nothing
+      )
 
     ScrubTo frameIdx ->
-      done (state, Just frameIdx)
+      (state, Just frameIdx)
 
     NoOp ->
-      done (state, Nothing)
+      (state, Nothing)
 
 
 view : Signal.Address Message -> Int -> Model -> Active.Model -> Html

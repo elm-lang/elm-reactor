@@ -6,7 +6,7 @@ import Html exposing (Html)
 import Debug
 import Task
 
-import Transaction exposing (..)
+import Effects exposing (..)
 
 import Debugger.RuntimeApi as API
 import DataUtils exposing (..)
@@ -17,7 +17,6 @@ type alias Model =
   , runningState : RunningState
   , numFrames : Int
   , exprLogs : Dict API.ExprTag API.ValueLog
-  -- vv TODO: get inputs for each frame as well
   , nodeLogs : Dict API.NodeId API.ValueLog
   , subscribedNodes : Set API.NodeId
   }
@@ -86,7 +85,7 @@ type Response
       (List (API.ExprTag, API.ValueLog))
 
 
-update : Message -> Model -> Transaction Message Model
+update : Message -> Model -> (Model, Effects Message)
 update msg state =
   case Debug.log "ACTIVE MSG" msg of
     Command cmd ->
@@ -104,17 +103,20 @@ update msg state =
                             pausedIdx
                             (getMainVal state.session values))
               in
-                requestTask fork { state | runningState <- Playing }
+                ( { state | runningState <- Playing }
+                , fork |> task
+                )
 
             Playing ->
               Debug.crash "already playing"
 
         Pause ->
-          requestTask
-            (API.setPlaying state.session False
+          ( { state | runningState <- Paused (state.numFrames - 1) }
+          , API.setPlaying state.session False
               |> Task.map (always NoOp)
-              |> Task.mapError (\_ -> Debug.crash "already in that state"))
-            { state | runningState <- Paused (state.numFrames - 1) }
+              |> Task.mapError (\_ -> Debug.crash "already in that state")
+              |> task
+          )
 
         ScrubTo frameIdx ->
           let
@@ -139,15 +141,12 @@ update msg state =
               pause `Task.andThen` (always getState)
                 |> Task.mapError (Debug.crash << toString)
           in
-            requestTask sequenced { state | runningState <- Paused frameIdx }
+            ( { state | runningState <- Paused frameIdx }
+            , sequenced |> task
+            )
 
         Reset ->
-          requestTask
-            (API.forkFrom state.session 0
-              |> Task.map (\(session, values) ->
-                    Response <|
-                      ForkResponse session 0 (getMainVal state.session values)))
-            { state |
+          ( { state |
                 runningState <-
                   case state.runningState of
                     Playing ->
@@ -156,6 +155,12 @@ update msg state =
                     Paused _ ->
                       Paused 0
             }
+          , API.forkFrom state.session 0
+              |> Task.map (\(session, values) ->
+                    Response <|
+                      ForkResponse session 0 (getMainVal state.session values))
+              |> task
+          )
 
         Swap compiledMod ->
           let
@@ -187,7 +192,7 @@ update msg state =
                 )
               )
           in
-            requestTask swapTask state
+            ( state, swapTask |> task )
 
         StartWithHistory history ->
           let
@@ -244,7 +249,9 @@ update msg state =
                   )
                 )
           in
-            requestTask initTask { state | runningState <- Playing }
+            ( { state | runningState <- Playing }
+            , initTask |> task
+            )
 
     Notification not ->
       case not of
@@ -274,56 +281,61 @@ update msg state =
                 newFrameNot.subscribedNodeValues
                 (\id -> id /= mainNodeId)
           in
-            done
-              { state
+            ( { state
                   | numFrames <- state.numFrames + 1
                   , exprLogs <- newExprLogs
                   , nodeLogs <- newNodeLogs
               }
+            , none
+            )
 
         NoOpNot ->
-          done state
+          ( state, none )
 
     Response resp ->
       case resp of
         ScrubResponse mainVal ->
-          requestTask
-            (API.setMain state.session mainVal
-              |> Task.map (always NoOp))
-            state
+          ( state
+          , API.setMain state.session mainVal
+              |> Task.map (always NoOp)
+              |> task
+          )
 
         ForkResponse newSession frameIdx mainVal ->
-          requestTask
-            (API.setMain state.session mainVal
-              |> Task.map (always NoOp))
-            { state
+          ( { state
                 | session <- newSession
                 , numFrames <- frameIdx + 1
                 , exprLogs <- truncateLogs frameIdx state.exprLogs
                 , nodeLogs <- truncateLogs frameIdx state.nodeLogs
             }
+          , API.setMain state.session mainVal
+              |> Task.map (always NoOp)
+              |> task
+          )
 
         SwapResponse newSession mainVal logs ->
-          requestTask
-            (API.setMain state.session mainVal
-              |> Task.map (always NoOp))
-            { state
+          ( { state
                 | session <- newSession
                 , exprLogs <- Dict.fromList logs
             }
+          , API.setMain state.session mainVal
+              |> Task.map (always NoOp)
+              |> task
+          )
 
         StartWithHistoryResponse newSession mainVal numFrames logs ->
-          requestTask
-            (API.setMain state.session mainVal
-              |> Task.map (always NoOp))
-            { state
+          ( { state
                 | session <- newSession
                 , numFrames <- numFrames
                 , exprLogs <- Dict.fromList logs
             }
+          , API.setMain state.session mainVal
+              |> Task.map (always NoOp)
+              |> task
+          )
 
     NoOp ->
-      done state
+      ( state, none )
 
 
 type CommandResponseMessage
