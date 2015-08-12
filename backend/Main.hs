@@ -138,18 +138,14 @@ serveHtml html =
 serveAssets :: Snap ()
 serveAssets =
   do  file <- BSC.unpack . rqPathInfo <$> getRequest
-      case file `elem` staticAssets of
-        True ->
-          serveFile =<< liftIO (Utils.getDataFile file)
-
-        False ->
-          pass
+      if file `elem` staticAssets
+        then serveFile =<< liftIO (Utils.getDataFile file)
+        else pass
 
 
 staticAssets :: [FilePath]
 staticAssets =
     [ "favicon.ico"
     , "_reactor/debug.js"
-    , "_reactor/wrench.png"
+    , "_reactor/index.js"
     ]
-

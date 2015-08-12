@@ -33,7 +33,6 @@ Data-dir:
 Data-files:
   favicon.ico
   _reactor/debug.js
-  _reactor/wrench.png
 
 Extra-source-files:  README.md
 Cabal-version:       >=1.8
@@ -59,6 +58,7 @@ Executable elm-reactor
     Utils
 
   Build-depends:
+    aeson >= 0.8,
     base >=4.2 && <5,
     blaze-html,
     blaze-markup,
