@@ -11,6 +11,38 @@ import System.FilePath
 import System.Directory
 
 
+debugScriptPath :: FilePath
+debugScriptPath = outputPath "debug.js"
+
+
+indexScriptPath :: FilePath
+indexScriptPath = outputPath "index.js"
+
+
+toBuild :: [IO ()]
+toBuild =
+  [ buildSideBar
+  , buildIndex
+  ]
+
+
+outputPath :: FilePath -> FilePath
+outputPath = (("assets" </> "_reactor") </>)
+
+
+elmCompile :: FilePath -> FilePath -> IO ()
+elmCompile source target = do
+  (exitCode, out, err) <- readProcessWithExitCode
+                            "elm-make"
+                            [ "--yes", "frontend" </> source, "--output=" ++ target ]
+                            ""
+  case exitCode of
+    ExitSuccess -> return ()
+    ExitFailure _ ->
+      hPutStrLn stderr (unlines ["Failed to build" ++ source, "", out, err]) >>
+      exitFailure
+
+
 main :: IO ()
 main =
   defaultMainWithHooks simpleUserHooks { postBuild = myPostBuild }
@@ -19,25 +51,15 @@ main =
 myPostBuild :: Args -> BuildFlags -> PackageDescription -> LocalBuildInfo -> IO ()
 myPostBuild args flags pd lbi =
   do  putStrLn "Custom build step: creating and collecting all static resources"
-      buildSideBar
+      sequence_ toBuild
       src <- readFile ("frontend" </> "debugger-implementation.js")
-      appendFile output src
+      appendFile debugScriptPath src
       postBuild simpleUserHooks args flags pd lbi
 
 
-output :: FilePath
-output =
-  "assets" </> "_reactor" </> "debug.js"
-
-
 buildSideBar :: IO ()
-buildSideBar =
-  do  (exitCode, out, err) <-
-        readProcessWithExitCode "elm-make" [ "--yes", "frontend" </> "SideBar.elm", "--output=" ++ output ] ""
-      case exitCode of
-        ExitSuccess ->
-          return ()
+buildSideBar = elmCompile "SideBar.elm" debugScriptPath
 
-        ExitFailure _ ->
-          do  hPutStrLn stderr ("Failed to build SideBar.elm\n\n" ++ out ++ err)
-              exitFailure
+
+buildIndex :: IO ()
+buildIndex = elmCompile "Index.elm" indexScriptPath

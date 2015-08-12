@@ -16,6 +16,8 @@ Homepage:
 
 License: BSD3
 License-file: LICENSE
+License-files:
+  ICON-LICENSE
 
 Author:     Evan Czaplicki
 Maintainer: info@elm-lang.org
@@ -33,7 +35,8 @@ Data-dir:
 Data-files:
   favicon.ico
   _reactor/debug.js
-  _reactor/wrench.png
+  _reactor/index.js
+  _reactor/icons/*.png
   _reactor/debugger/pause-button-up.png
   _reactor/debugger/pause-button-down.png
   _reactor/debugger/pause-button-hover.png
@@ -68,6 +71,7 @@ Executable elm-reactor
     Utils
 
   Build-depends:
+    aeson >= 0.8,
     base >=4.2 && <5,
     blaze-html,
     blaze-markup,

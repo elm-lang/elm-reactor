@@ -138,19 +138,37 @@ serveHtml html =
 serveAssets :: Snap ()
 serveAssets =
   do  file <- BSC.unpack . rqPathInfo <$> getRequest
-      case file `elem` staticAssets of
-        True ->
-          serveFile =<< liftIO (Utils.getDataFile file)
+      if file `elem` staticAssets
+        then serveFile =<< liftIO (Utils.getDataFile file)
+        else pass
 
-        False ->
-          pass
+
+icon :: String -> FilePath
+icon name = "_reactor/icons" </> name ++ "-4x.png"
 
 
 staticAssets :: [FilePath]
 staticAssets =
     [ "favicon.ico"
     , "_reactor/debug.js"
-    , "_reactor/wrench.png"
+    , "_reactor/index.js"
+    , icon "file"
+    , icon "folder"
+    , icon "book"
+    , icon "home"
+    , icon "browser"
+    , icon "aperture"
+    , icon "code"
+    , icon "cog"
+    , icon "wrench"
+    , icon "document"
+    , icon "spreadsheet"
+    , icon "key"
+    , icon "lock-locked"
+    , icon "audio"
+    , icon "list"
+    , icon "hard-drive"
+    , icon "terminal"
     , "_reactor/debugger/pause-button-up.png"
     , "_reactor/debugger/pause-button-down.png"
     , "_reactor/debugger/pause-button-hover.png"
@@ -161,4 +179,3 @@ staticAssets =
     , "_reactor/debugger/restart-button-down.png"
     , "_reactor/debugger/restart-button-hover.png"
     ]
-
