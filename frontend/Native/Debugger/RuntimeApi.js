@@ -59,7 +59,7 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 
 						jumpTo(session, frameInterval.start);
 
-						// go through the target range
+						// go through the target range, collecting node value logs
 						var valueLogs = {};
 						nodeIds.forEach(function(nodeId) {
 							valueLogs[nodeId] = [];
@@ -90,6 +90,23 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 		});
 	}
 
+	// not exposed
+	function jumpTo(session, frameIdx)
+	{
+		// get to interval start
+		var snapshotBeforeIdx = Math.floor(frameIdx / EVENTS_PER_SAVE);
+		var snapshot = session.snapshots[snapshotBeforeIdx];
+		for(var nodeId in snapshot) {
+			session.sgNodes[nodeId].value = snapshot[nodeId];
+		}
+		var snapshotBeforeFrameIdx = snapshotBeforeIdx * EVENTS_PER_SAVE;
+		for(var idx=snapshotBeforeFrameIdx; idx < frameIdx; idx++)
+		{
+			var event = session.events[idx];
+			session.originalNotify(event.nodeId, event.value);
+		}
+	}
+
 	function getInputHistory(session)
 	{
 		return Task.asyncFunction(function(callback) {
@@ -110,7 +127,15 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 
 	function splitInputHistory(frameIdx, history)
 	{
-		return Utils.Tuple2(history.slice(0, frameIdx), history.slice(frameIdx));
+		var historyBefore = {
+			moduleName: history.moduleName,
+			events: history.events.slice(0, frameIdx)
+		};
+		var historyAfter = {
+			moduleName: history.moduleName,
+			events: history.events.slice(frameIdx)
+		};
+		return Utils.Tuple2(historyBefore, historyAfter);
 	}
 
 	function serializeInputHistory(inputHistory)
@@ -216,7 +241,7 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 					debugeeLocalRuntime = runtime;
 					return module.modul.make(runtime);
 				}
-			}, {}, false);
+			}, {});
 
 			var sgNodes = flattenSignalGraph(debugeeLocalRuntime);
 			var sgShape = getSgShape(sgNodes);
@@ -385,7 +410,7 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 				}
 				else
 				{
-					session.events = history;
+					session.events = history.events;
 
 					var flaggedExprLogs = {};
 
@@ -431,6 +456,15 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 			session.runningModule.dispose();
 			session.runtime.node.parentNode.removeChild(session.runtime.node);
 			callback(Task.succeed(Utils.Tuple0));
+		});
+	}
+
+	function setMain(session, mainValue)
+	{
+		return Task.asyncFunction(function(callback) {
+			var mainNode = session.sgNodes[session.shape.mainId];
+			mainNode.value = mainValue;
+			mainNode.notify(session.runtime.timer.now(), true, mainNode.parents[0].id);
 		});
 	}
 
@@ -486,23 +520,6 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 		});
 	}
 
-	// not exposed
-	function jumpTo(session, frameIdx)
-	{
-		// get to it
-		var snapshotBeforeIdx = Math.floor(frameIdx / EVENTS_PER_SAVE);
-		var snapshot = session.snapshots[snapshotBeforeIdx];
-		for(var nodeId in snapshot) {
-			session.sgNodes[nodeId].value = snapshot[nodeId];
-		}
-		var snapshotBeforeFrameIdx = snapshotBeforeIdx * EVENTS_PER_SAVE;
-		for(var idx=snapshotBeforeFrameIdx; idx < frameIdx; idx++)
-		{
-			var event = session.events[idx];
-			session.originalNotify(event.nodeId, event.value);
-		}
-	}
-
 	// Bool -> a -> (Task -> ()) -> (() -> ()) -> ???
 	function assert(bool, err, callback, thunk)
 	{
@@ -540,20 +557,26 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 		getAddress: getAddress,
 		getSubscriptions: getSubscriptions,
 		getNumFrames: getNumFrames,
+
 		getNodeState: F3(getNodeState),
+		
 		getInputHistory: getInputHistory,
 		splitInputHistory: F2(splitInputHistory),
 		emptyInputHistory: emptyInputHistory,
 		serializeInputHistory: serializeInputHistory,
 		parseInputHistory: parseInputHistory,
 		getHistoryModuleName: getHistoryModuleName,
+
 		getFromGlobalScope: getFromGlobalScope,
 		evalCompiledModule: evalCompiledModule,
+
 		initializeFullscreen: F3(initializeFullscreen),
+		setMain: F2(setMain),
 		setInputHistory: F2(setInputHistory),
 		dispose: dispose,
 		setPlaying: F2(setPlaying),
 		setSubscribedToNode: F3(setSubscribedToNode),
+
 		prettyPrint: F2(prettyPrint)
 	};
 };

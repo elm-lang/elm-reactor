@@ -69,18 +69,17 @@ port serviceTasks =
 view : Signal.Address Message -> Model -> Html
 view addr state =
   let
-    (mainVal, isPlaying) =
+    isPlaying =
       case state.serviceState of
         Just activeState ->
-          (activeState.mainVal, Active.isPlaying activeState)
+          Active.isPlaying activeState
 
         Nothing ->
-          (div [] [], False)
+          False
 
   in
     div []
-      ( [ mainVal
-        , eventBlocker (not isPlaying)
+      ( [ eventBlocker (not isPlaying)
         , viewErrors addr state.errorState
         , viewSidebar addr state
         ]
@@ -151,7 +150,7 @@ viewErrors addr errors =
           ( True
           , div []
               [ h2 [] [ text "Import Session unsuccessful" ]
-              ,  p []
+              , p []
                   [ text "You imported a session recorded on module "
                   , monospaceSpan moduleNames.historyModuleName
                   , text " but are currently running module "

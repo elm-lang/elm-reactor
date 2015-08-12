@@ -16,7 +16,6 @@ import Debugger.Reflect as Reflect
 type alias Model =
   { session : API.DebugSession
   , runningState : RunningState
-  , mainVal : Html
   , numFrames : Int
   , exprLogs : Dict API.ExprTag API.ValueLog
   -- vv TODO: get inputs for each frame as well
@@ -25,11 +24,10 @@ type alias Model =
   }
 
 
-initModel : API.DebugSession -> Html -> Model
-initModel session mainVal =
+initModel : API.DebugSession -> Model
+initModel session =
   { session = session
   , runningState = Playing
-  , mainVal = mainVal
   , numFrames = 1
   , exprLogs = Dict.empty
   , nodeLogs = Dict.empty
@@ -76,15 +74,15 @@ type Notification
 
 
 type Response
-  = ScrubResponse Html
-  | ForkResponse API.DebugSession API.FrameIndex Html
+  = ScrubResponse API.JsElmValue
+  | ForkResponse API.DebugSession API.FrameIndex API.JsElmValue
   | SwapResponse
       API.DebugSession
-      Html
+      API.JsElmValue
       (List (API.ExprTag, API.ValueLog))
   | StartWithHistoryResponse
       API.DebugSession
-      Html
+      API.JsElmValue
       Int
       (List (API.ExprTag, API.ValueLog))
 
@@ -279,8 +277,7 @@ update msg state =
           in
             done
               { state
-                  | mainVal <- newMainVal
-                  , numFrames <- state.numFrames + 1
+                  | numFrames <- state.numFrames + 1
                   , exprLogs <- newExprLogs
                   , nodeLogs <- newNodeLogs
               }
@@ -290,32 +287,38 @@ update msg state =
 
     Response resp ->
       case resp of
-        ScrubResponse html ->
-          done { state | mainVal <- html }
+        ScrubResponse mainVal ->
+          requestTask
+            (API.setMain state.session mainVal
+              |> Task.map (always NoOp))
+            state
 
-        ForkResponse newSession frameIdx html ->
-          done
+        ForkResponse newSession frameIdx mainVal ->
+          requestTask
+            (API.setMain state.session mainVal
+              |> Task.map (always NoOp))
             { state
                 | session <- newSession
-                , mainVal <- html
                 , numFrames <- frameIdx + 1
                 , exprLogs <- truncateLogs frameIdx state.exprLogs
                 , nodeLogs <- truncateLogs frameIdx state.nodeLogs
             }
 
-        SwapResponse newSession html logs ->
-          done
+        SwapResponse newSession mainVal logs ->
+          requestTask
+            (API.setMain state.session mainVal
+              |> Task.map (always NoOp))
             { state
                 | session <- newSession
-                , mainVal <- html
                 , exprLogs <- Dict.fromList logs
             }
 
         StartWithHistoryResponse newSession mainVal numFrames logs ->
-          done
+          requestTask
+            (API.setMain state.session mainVal
+              |> Task.map (always NoOp))
             { state
                 | session <- newSession
-                , mainVal <- mainVal
                 , numFrames <- numFrames
                 , exprLogs <- Dict.fromList logs
             }
@@ -345,7 +348,7 @@ mailbox =
   Signal.mailbox NoOpResponse
 
 
-getMainVal : API.DebugSession -> API.ValueSet -> Html
+getMainVal : API.DebugSession -> API.ValueSet -> API.JsElmValue
 getMainVal session values =
   let
     mainId =
@@ -357,7 +360,6 @@ getMainVal session values =
       |> List.head
       |> getMaybe "no value with main id"
       |> snd
-      |> Reflect.getHtml
 
 
 appendToLog : API.FrameIndex -> API.JsElmValue -> Maybe API.ValueLog -> Maybe API.ValueLog

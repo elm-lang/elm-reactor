@@ -32,10 +32,16 @@ function ignore(e)
 // CODE TO SET UP A MODULE FOR DEBUGGING
 
 Elm.fullscreenDebug = function(moduleName, fileName) {
-	Elm.fullscreen(Elm.Debugger, {
+	var debugContainer = document.createElement('div');
+	document.body.appendChild(debugContainer);
+	Elm.embed(Elm.Debugger, debugContainer, {
 		moduleName: moduleName,
 		fileName: fileName,
 		windowLocationHost: window.location.host
+	});
+	var debuggerSidebar = document.getElementById('elm-reactor-side-bar');
+	eventsToIgnore.forEach(function(eventName) {
+		debuggerSidebar.addEventListener(eventName, ignore);
 	});
 };
 

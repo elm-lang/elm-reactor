@@ -80,13 +80,9 @@ update msg model =
           Debug.crash "already initialized"
 
         Nothing ->
-          let
-            initMain =
-              Active.getMainVal session initValues
-          in
-            Active.initModel session initMain
-              |> Just
-              |> done
+          Active.initModel session
+            |> Just
+            |> done
 
     ActiveMessage actMsg ->
       case model of

@@ -186,9 +186,17 @@ initializeFullscreen =
   Native.Debugger.RuntimeApi.initializeFullscreen
 
 
+{-| Removes all event handlers and removes the session's node from the DOM. -}
 dispose : DebugSession -> Task x ()
 dispose =
   Native.Debugger.RuntimeApi.dispose
+
+
+{-| Forces the module to render the given value (expected to be Html
+or Element). -}
+setMain : DebugSession -> JsElmValue -> Task x ()
+setMain =
+  Native.Debugger.RuntimeApi.setMain
 
 
 {-| Set the module's event history to be the given history and
