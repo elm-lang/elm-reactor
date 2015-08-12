@@ -7,6 +7,7 @@ import Control.Applicative ((<$>),(<|>))
 import Control.Monad (guard)
 import Control.Monad.Trans (MonadIO(liftIO))
 import Data.Maybe (isJust)
+import Data.Monoid ((<>))
 import qualified Data.ByteString.Char8 as BSC
 import qualified Data.Version as Version
 import qualified Network.WebSockets.Snap as WSS
@@ -109,8 +110,13 @@ error400 =
 
 
 error404 :: Snap ()
-error404 =
+error404 = do
     modifyResponse $ setResponseStatus 404 "Not Found"
+    serveHtml $
+      Compile.htmlDocument "File not found" $
+        H.div $
+          H.h1 (H.toHtml ("File not found" :: String))
+          <> H.p (H.toHtml ("The file you requested could not be found" :: String))
 
 
 -- SERVE ELM CODE
@@ -161,4 +167,3 @@ staticAssets =
     , "_reactor/debugger/restart-button-down.png"
     , "_reactor/debugger/restart-button-hover.png"
     ]
-
