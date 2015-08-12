@@ -35,7 +35,7 @@ app moduleName =
             |> Task.mapError
                   (\err -> Debug.crash <| "module name not in scope: " ++ err))
           `Task.andThen` (\initModule ->
-            API.initializeFullscreen
+            API.initializeFullscreenAndSubscribe
               initModule
               (Signal.forwardTo notificationsMailbox.address Active.NewFrame)
               API.justMain

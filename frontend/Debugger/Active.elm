@@ -10,7 +10,6 @@ import Transaction exposing (..)
 
 import Debugger.RuntimeApi as API
 import DataUtils exposing (..)
-import Debugger.Reflect as Reflect
 
 
 type alias Model =
@@ -216,10 +215,10 @@ update msg state =
               else
                 (API.dispose state.session)
                 `Task.andThen` (\_ ->
-                  (API.initializeFullscreen
+                  (API.initializeFullscreenAndSubscribe
                     currentModule
                     (API.getAddress state.session)
-                    (API.justMain))
+                    API.justMain)
                   `Task.andThen` (\(newSession, _) ->
                     (API.setInputHistory
                       newSession

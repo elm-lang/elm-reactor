@@ -180,10 +180,32 @@ Subscribes to the list of nodes returned by the given function (3rd arg),
 and returns their initial values. -}
 initializeFullscreen : ElmModule
                     -> Signal.Address NewFrameNotification
-                    -> (SGShape -> List NodeId)
-                    -> Task x (DebugSession, ValueSet)
+                    -> Task x DebugSession
 initializeFullscreen =
   Native.Debugger.RuntimeApi.initializeFullscreen
+
+
+initializeFullscreenAndSubscribe : ElmModule
+                                -> Signal.Address NewFrameNotification
+                                -> (SGShape -> List NodeId)
+                                -> Task x (DebugSession, ValueSet)
+initializeFullscreenAndSubscribe modul addr initialNodesFun =
+  (initializeFullscreen modul addr)
+  `Task.andThen` (\newSession ->
+    (newSession
+      |> sgShape
+      |> initialNodesFun
+      |> List.map (\nodeId -> setSubscribedToNode newSession nodeId True)
+      |> Task.sequence
+      |> Task.mapError (\_ -> Debug.crash "already subscribed"))
+    `Task.andThen` (\_ ->
+      (getNodeStateSingle newSession 0 (newSession |> sgShape |> initialNodesFun)
+        |> Task.mapError (Debug.crash << toString))
+      `Task.andThen` (\valueSet ->
+        Task.succeed (newSession, valueSet)
+      )
+    )
+  )
 
 
 {-| Removes all event handlers and removes the session's node from the DOM. -}
@@ -241,7 +263,7 @@ swap session newMod initialNodesFun =
   `Task.andThen` (\_ ->
     (getInputHistory session)
     `Task.andThen` (\history ->
-      (initializeFullscreen
+      (initializeFullscreenAndSubscribe
         newMod
         (getAddress session)
         initialNodesFun)
@@ -274,7 +296,7 @@ forkFrom session frameIdx =
        |> Task.map (\history ->
             history |> splitInputHistory frameIdx |> fst))
       `Task.andThen` (\historyUpTo ->
-        (initializeFullscreen
+        (initializeFullscreenAndSubscribe
           (getModule session)
           (getAddress session)
           (always subs))

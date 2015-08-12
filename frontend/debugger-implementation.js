@@ -41,7 +41,7 @@ Elm.fullscreenDebug = function(moduleName, fileName) {
 	});
 	var debuggerSidebar = document.getElementById('elm-reactor-side-bar');
 	eventsToIgnore.forEach(function(eventName) {
-		debuggerSidebar.addEventListener(eventName, ignore);
+		// debuggerSidebar.addEventListener(eventName, ignore);
 	});
 };
 

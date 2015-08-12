@@ -232,7 +232,7 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 
 	// COMMANDS
 
-	function initializeFullscreen(module, notificationAddress, initialNodesFun)
+	function initializeFullscreen(module, notificationAddress)
 	{
 		return Task.asyncFunction(function(callback) {
 			var debugeeLocalRuntime;
@@ -260,7 +260,7 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 				notificationAddress: notificationAddress,
 				disposed: false,
 				playing: true,
-				subscribedNodeIds: List.toArray(initialNodesFun(sgShape)),
+				subscribedNodeIds: [],
 				flaggedExprValues: []
 			};
 
@@ -388,15 +388,7 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 				}
 			};
 
-			// get values of initial subscription
-
-			var initNodeVals = session.subscribedNodeIds.map(function(nodeId) {
-				return Utils.Tuple2(nodeId, session.sgNodes[nodeId].value);
-			});
-			
-			var result = Utils.Tuple2(session, List.fromArray(initNodeVals));
-
-			callback(Task.succeed(result));
+			callback(Task.succeed(session));
 		});
 	}
 
@@ -570,7 +562,7 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 		getFromGlobalScope: getFromGlobalScope,
 		evalCompiledModule: evalCompiledModule,
 
-		initializeFullscreen: F3(initializeFullscreen),
+		initializeFullscreen: F2(initializeFullscreen),
 		setMain: F2(setMain),
 		setInputHistory: F2(setInputHistory),
 		dispose: dispose,
