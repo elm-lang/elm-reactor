@@ -1,6 +1,7 @@
 Name: elm-reactor
 Version: 0.3.2
 
+
 Synopsis:
   Interactive development tool for Elm programs
 
@@ -14,36 +15,32 @@ Description:
 Homepage:
   http://elm-lang.org
 
+
 License: BSD3
 License-file: LICENSE
+
 
 Author:     Evan Czaplicki
 Maintainer: info@elm-lang.org
 Copyright:  Copyright: (c) 2011-2015 Evan Czaplicki
 
+
 Category:
   Compiler, Language
 
-Build-type:
-  Custom
-
-Data-dir:
-  assets
-
-Data-files:
-  favicon.ico
-  _reactor/debug.js
-
+Build-type: Simple
 Extra-source-files:  README.md
 Cabal-version:       >=1.8
+
 
 source-repository head
   type:     git
   location: git://github.com/elm-lang/elm-reactor.git
 
+
 Executable elm-reactor
   ghc-options:
-    -threaded -O2 -W
+    -threaded -O2 -W -Werror
 
   hs-source-dirs:
     backend
@@ -55,7 +52,8 @@ Executable elm-reactor
     Compile,
     Index,
     Socket,
-    Utils
+    StaticFiles,
+    StaticFiles.Build
 
   Build-depends:
     aeson >= 0.8,
@@ -67,6 +65,8 @@ Executable elm-reactor
     containers >= 0.3,
     directory >= 1.2,
     elm-compiler >= 0.15.1 && < 0.16,
+    elm-package,
+    file-embed,
     filepath,
     fsnotify >= 0.2,
     HTTP,
@@ -74,6 +74,7 @@ Executable elm-reactor
     process,
     snap-core,
     snap-server,
+    template-haskell,
     text,
     time,
     transformers,

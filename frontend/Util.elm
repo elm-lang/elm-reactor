@@ -1,30 +1,14 @@
 module Util where
 
-
 import String
 
 
-isSuffixOf = String.endsWith
-
-
 (</>) : String -> String -> String
-a </> b =
-  if "/" `isSuffixOf` a
-    then a ++ b
-    else a ++ "/" ++ b
-
-
-splitPath = String.split "/"
-
-
-find : a -> List (a, b) -> Maybe b
-find elem l =
-  case l of
-    [] -> Nothing
-    (elem2, val)::tail ->
-      if elem2 == elem
-        then Just val
-        else find elem tail
+(</>) directory file =
+  if String.endsWith "/" directory then
+    directory ++ file
+  else
+    directory ++ "/" ++ file
 
 
 takeExtension : String -> String
@@ -39,7 +23,3 @@ takeExtension str =
     case String.split "." str of
       [] -> ""
       (_::t) -> loop t
-
-
-(><) : List a -> List b -> List (a,b)
-(><) = List.map2 (,)
