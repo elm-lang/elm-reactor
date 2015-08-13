@@ -1,4 +1,4 @@
-module Util where
+module Util ( (</>), takeExtension ) where
 
 import String
 
@@ -13,13 +13,17 @@ import String
 
 takeExtension : String -> String
 takeExtension str =
-  let
-    loop l =
-      case l of
-        [] -> ""
-        [a] -> a
-        (_::t) -> loop t
-  in
-    case String.split "." str of
-      [] -> ""
-      (_::t) -> loop t
+  last (String.split "." str)
+
+
+last : List String -> String
+last list =
+  case list of
+    [] ->
+      ""
+
+    [finalElement] ->
+      finalElement
+
+    _ :: rest ->
+      last rest

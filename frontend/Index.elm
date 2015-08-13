@@ -5,6 +5,7 @@ import Dict
 import FontAwesome as FA
 import Html exposing (..)
 import Html.Attributes exposing (..)
+import Markdown
 import Signal exposing (Signal, Address)
 import String
 import Util exposing (..)
@@ -26,15 +27,16 @@ type alias Model =
     { pwd : List String
     , dirs : List String
     , files : List String
-    , description : Maybe Description
+    , pkg : Maybe PackageInfo
+    , readme : Maybe String
     }
 
 
-type alias Description =
+type alias PackageInfo =
     { version : String
     , repository : String
     , summary : String
-    , license : String
+    , dependencies : List (String, String)
     }
 
 
@@ -46,8 +48,6 @@ type alias Description =
 pageWidth = "960px"
 smallBoxWidth = "300px"
 largeBoxWidth = "600px"
-
-padding = "20px"
 
 
 floatLeft =
@@ -97,17 +97,19 @@ clearfix =
 view : Model -> Html
 view model =
   let
-    packageDependants cpackage =
+    packageDependants pkgInfo =
       [ div
-        [ style <| "width" => smallBoxWidth :: "margin-top" => "30px" :: floatRight ]
-        [ descriptionDisplay cpackage
-        --, dependenciesView cpackage.dependencies
-        ]
+          [ style ("width" => smallBoxWidth :: floatRight)
+          ]
+          [ viewPackageInfo pkgInfo
+          , dependenciesView pkgInfo.dependencies
+          ]
       ]
 
     contents =
-      folderView model
-      :: Maybe.withDefault [] (Maybe.map packageDependants model.description)
+      navigator model.pwd
+      :: folderView model
+      :: Maybe.withDefault [] (Maybe.map packageDependants model.pkg)
       ++ [ clearfix ]
   in
     div
@@ -122,7 +124,6 @@ view model =
       , div
           [ style
               [ "width" => pageWidth
-              , "padding" => padding
               , "margin-left" => "auto"
               , "margin-right" => "auto"
               ]
@@ -138,38 +139,36 @@ pageHeader model =
     [ style
         [ "width" => "100%"
         , "background-color" => "#1184ce"
-        , "font-weight" => "bold"
-        , "color" => "white"
-        , "box-shadow" => "0 0 7px #47474"
+        , "height" => "8px"
         ]
     ]
-    [ div
-        [ style
-            [ "padding" => padding
-            ]
-        ]
-        [ div
-            [ style floatLeft
-            ]
-            [ text "Elm Reactor" ]
-        , clearfix
-        ]
-    ]
+    []
 
 
 folderView : Model -> Html
 folderView model =
-  section
-    [ style floatLeft ]
-    [ h2 [] (navigator model.pwd)
-    , div
-        [ style <| boxStyles ++ floatLeft ++ [ "width" => largeBoxWidth ] ]
+  let
+    files =
+      div
+        [ style (boxStyles ++ ["margin-bottom" => "30px"]) ]
         (
           div [ style <| boxHeaderStyles ++ blockStyles ] [ text "File Navigation" ]
           :: List.map folderDisplay (List.sort model.dirs)
           ++ List.map fileDisplay (List.sort model.files)
         )
-    ]
+
+    viewReadme markdown =
+      [ div
+          [ style boxStyles ]
+          [ div [ style <| boxHeaderStyles ++ blockStyles ] [ text "README" ]
+          , div [ style ["padding" => "20px"] ] [ Markdown.toHtml markdown ]
+          ]
+      ]
+  in
+    section
+      [ style (floatLeft ++ ["width" => largeBoxWidth])
+      ]
+      (files :: Maybe.withDefault [] (Maybe.map viewReadme model.readme))
 
 
 folderDisplay : String -> Html
@@ -218,14 +217,15 @@ fileDisplay file =
       ] ++ (elmFileLinks isElmFile file)
 
 
-navigator : List String -> List Html
+navigator : List String -> Html
 navigator pathSegments =
   let
     hrefs =
       List.scanl (\sub path -> path </> sub) "" ("" :: pathSegments)
+        |> List.drop 1
 
     names =
-      List.map text pathSegments
+      FA.home darkGrey 32 :: List.map text pathSegments
 
     toLink name path =
       a [ href path, style linkStyles ] [ name ]
@@ -233,70 +233,58 @@ navigator pathSegments =
     subfolders =
       List.map2 toLink names hrefs
   in
-    List.intersperse guiPathSeparator subfolders
+    div
+      [ style [ "font-size" => "2em", "padding" => "20px 0", "display" => "flex", "align-items" => "center", "height" => "40px" ] ]
+      (List.intersperse navigatorSeparator subfolders)
 
 
-guiPathSeparator =
-  span [ separatorStyle ] [ text "/" ]
+navigatorSeparator =
+  span [ style [ "padding" => "0 8px" ] ] [ text "/" ]
 
 
-separatorStyle =
-  style
-    [ "display" => "inline-block"
-    , "margin" => "0 5px"
-    ]
+-- DEPENDENCIES
+
+packageUrl : String -> String -> String
+packageUrl name version =
+  "http://package.elm-lang.org/packages" </> name </> version
 
 
-{--
-
-packageUrl : Dependency -> String
-packageUrl {account, name, version} =
-  "http://package.elm-lang.org/packages"
-  </> account
-  </> name
-  </> version
-
-
-accountUrl : Dependency -> String
-accountUrl {account} = "https://github.com" </> account
-
-
-dependenciesView : List Dependency -> Html
+dependenciesView : List (String, String) -> Html
 dependenciesView dependencies =
   div
-    [ style <| boxStyles ++ floatRight ++
-        [ "width" => smallBoxWidth ]
+    [ style (boxStyles ++ floatRight ++ [ "width" => smallBoxWidth ])
     ]
-    (div [ style <| boxHeaderStyles ++ blockStyles
-         ] [ text "Dependencies" ] ::
-      List.map dependencyView dependencies)
+    ( div
+        [ style (boxHeaderStyles ++ blockStyles)
+        ]
+        [ text "Dependencies" ]
+      :: List.map dependencyView dependencies
+    )
 
 
-dependencyView : Dependency -> Html
-dependencyView package =
-  let
-    {account, name, version} = package
-  in
-    div
-      [ style <| blockStyles ++ boxItemStyles ]
-      [ div
+dependencyView : (String, String) -> Html
+dependencyView (name, version) =
+  div
+    [ style (blockStyles ++ boxItemStyles)
+    ]
+    [ div
         [ style floatLeft ]
         [ packageIcon
-        , a [ href <| accountUrl package, style linkStyles ] [ text account ]
-        , guiDependencySeparator
-        , a [ href <| packageUrl package, style linkStyles ] [ text name ]
+        , a [ href (packageUrl name version)
+            , style linkStyles
+            ]
+            [ text name ]
         ]
-      , div
+    , div
         [ style floatRight ]
         [ text version ]
-      ]
+    ]
 
-guiDependencySeparator = span [ separatorStyle ] [ text "/" ]
 
---}
+--
 
-descriptionDisplay : Description -> Html
-descriptionDisplay {version, summary, repository} =
+viewPackageInfo : PackageInfo -> Html
+viewPackageInfo pkgInfo =
   div
     [ style <| boxStyles ++ floatRight ++
         [ "margin-bottom" => "30px"
@@ -304,9 +292,8 @@ descriptionDisplay {version, summary, repository} =
         ]
     ]
     [ div [ style <| boxHeaderStyles ++ blockStyles ] [ text "Package Information" ]
-    , div [ style <| blockStyles ++ boxItemStyles ] [ text summary ]
-    , div [ style <| blockStyles ++ boxItemStyles ] [ text <| "Package Version: " ++ version ]
-    , div [ style <| blockStyles ++ boxItemStyles ] [ text repository ]
+    , div [ style <| blockStyles ++ boxItemStyles ] [ text pkgInfo.summary ]
+    , div [ style <| blockStyles ++ boxItemStyles ] [ text <| "Version: " ++ pkgInfo.version ]
     ]
 
 
@@ -349,7 +336,6 @@ packageIcon =
 makeIcon : (Color -> Int -> Html) -> Html
 makeIcon icon =
   span
-    [ style [ "padding" => "2px 6px 0 0" ] ]
-    [ icon darkGrey 14 ]
-
+    [ style [ "display" => "inline-block", "vertical-align" => "middle", "padding-right" => "0.5em" ] ]
+    [ icon darkGrey 16 ]
 

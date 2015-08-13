@@ -8,8 +8,12 @@ import Data.Aeson as Json
 import qualified Data.ByteString.Char8 as BSC
 import qualified Data.ByteString.Lazy.Char8 as LBSC
 import qualified Data.List as List
+import qualified Data.Map as Map
 import qualified Elm.Package.Description as Desc
+import qualified Elm.Package.Name as N
 import qualified Elm.Package.Paths as Paths
+import qualified Elm.Package.Solution as S
+import qualified Elm.Package.Version as V
 import System.Directory ( doesDirectoryExist, doesFileExist, getDirectoryContents)
 import System.FilePath ( (</>), splitDirectories )
 
@@ -19,27 +23,49 @@ import StaticFiles
 -- INFO
 
 data Info = Info
-  { _pwd :: [String]
-  , _dirs :: [FilePath]
-  , _files :: [FilePath]
-  , _description :: Maybe Desc.Description
-  }
+    { _pwd :: [String]
+    , _dirs :: [FilePath]
+    , _files :: [FilePath]
+    , _pkg :: Maybe PackageInfo
+    , _readme :: Maybe String
+    }
 
+
+data PackageInfo = PackageInfo
+    { _version :: V.Version
+    , _repository :: String
+    , _summary :: String
+    , _dependencies :: [(N.Name, V.Version)]
+    }
+
+
+-- TO JSON
 
 instance ToJSON Info where
-  toJSON model =
+  toJSON info =
     object
-      [ "pwd" .= _pwd model
-      , "dirs" .= _dirs model
-      , "files" .= _files model
-      , "description" .= _description model
+      [ "pwd" .= _pwd info
+      , "dirs" .= _dirs info
+      , "files" .= _files info
+      , "pkg" .= _pkg info
+      , "readme" .= _readme info
+      ]
+
+
+instance ToJSON PackageInfo where
+  toJSON pkgInfo =
+    object
+      [ "version" .= _version pkgInfo
+      , "repository" .= _repository pkgInfo
+      , "summary" .= _summary pkgInfo
+      , "dependencies" .= _dependencies pkgInfo
       ]
 
 
 -- GENERATE HTML
 
 toHtml :: Info -> BSC.ByteString
-toHtml model@(Info pwd _ _ _) =
+toHtml info@(Info pwd _ _ _ _) =
   BSC.pack $ unlines $
     [ "<html>"
     , ""
@@ -52,7 +78,7 @@ toHtml model@(Info pwd _ _ _) =
     , "<body>"
     , "  <script type=\"text/javascript\">"
     , "    Elm.fullscreen(Elm.Index, { info:"
-    , "        " ++ LBSC.unpack (Json.encode model)
+    , "        " ++ LBSC.unpack (Json.encode info)
     , "    });"
     , "  </script>"
     , "</body>"
@@ -65,13 +91,15 @@ toHtml model@(Info pwd _ _ _) =
 
 getInfo :: FilePath -> IO Info
 getInfo directory =
-  do  description <- getDescription
+  do  packageInfo <- getPackageInfo
       (dirs, files) <- getDirectoryInfo directory
+      readme <- getReadme directory
       return $ Info
           { _pwd = toPwd directory
           , _dirs = dirs
           , _files = files
-          , _description = description
+          , _pkg = packageInfo
+          , _readme = readme
           }
 
 
@@ -85,10 +113,19 @@ toPwd directory =
         path
 
 
-getDescription :: IO (Maybe Desc.Description)
-getDescription =
-  do  result <- runExceptT (Desc.read Paths.description)
-      return (either (const Nothing) Just result)
+getPackageInfo :: IO (Maybe PackageInfo)
+getPackageInfo =
+  fmap (either (const Nothing) Just) $ runExceptT $
+    do  desc <- Desc.read Paths.description
+        solution <- S.read Paths.solvedDependencies
+        let publicSolution =
+              Map.intersection solution (Map.fromList (Desc.dependencies desc))
+        return $ PackageInfo
+          { _version = Desc.version desc
+          , _repository = Desc.repo desc
+          , _summary = Desc.summary desc
+          , _dependencies = Map.toList publicSolution
+          }
 
 
 getDirectoryInfo :: FilePath -> IO ([FilePath], [FilePath])
@@ -109,3 +146,13 @@ getDirectoryInfo directory =
           filterM (doesFileExist . (directory </>)) directoryContents
 
       return (directories, files)
+
+
+getReadme :: FilePath -> IO (Maybe String)
+getReadme directory =
+  do  exists <- doesFileExist (directory </> "README.md")
+      if exists
+        then
+          Just `fmap` readFile (directory </> "README.md")
+        else
+          return Nothing
