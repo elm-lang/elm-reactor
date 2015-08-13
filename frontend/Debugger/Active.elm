@@ -5,6 +5,7 @@ import Set exposing (Set)
 import Html exposing (Html)
 import Debug
 import Task
+import Time exposing (Time)
 
 import Effects exposing (..)
 
@@ -14,6 +15,7 @@ import DataUtils exposing (..)
 
 type alias Model =
   { session : API.DebugSession
+  , totalTimeLost : Time
   , runningState : RunningState
   , numFrames : Int
   , exprLogs : Dict API.ExprTag API.ValueLog
@@ -25,6 +27,7 @@ type alias Model =
 initModel : API.DebugSession -> Model
 initModel session =
   { session = session
+  , totalTimeLost = 0
   , runningState = Playing
   , numFrames = 1
   , exprLogs = Dict.empty
@@ -87,7 +90,7 @@ type Response
 
 update : Message -> Model -> (Model, Effects Message)
 update msg state =
-  case Debug.log "ACTIVE MSG" msg of
+  case msg of
     Command cmd ->
       case cmd of
         Play ->
@@ -225,7 +228,7 @@ update msg state =
                     (API.getAddress state.session)
                     API.justMain)
                   `Task.andThen` (\(newSession, _) ->
-                    (API.setInputHistory
+                    (API.replayInputHistory
                       newSession
                       history
                     |> Task.mapError (\_ -> Debug.crash "event list wasn't empty"))

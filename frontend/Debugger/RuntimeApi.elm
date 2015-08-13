@@ -3,7 +3,7 @@ module Debugger.RuntimeApi where
 import Task exposing (Task)
 import Dict
 import Json.Encode as JsEnc
-import Time
+import Time exposing (Time)
 import Debug
 
 import DataUtils exposing (..)
@@ -36,7 +36,7 @@ type StateError
 type alias Event =
   { value : JsElmValue
   , nodeId : NodeId
-  , time : Time.Time
+  , time : Time
   }
 
 
@@ -123,7 +123,7 @@ getNodeStateSingle session frameIdx nodes =
 -- INPUT HISTORY (maybe all these should live in a different module?)
 
 
-getInputHistory : DebugSession -> Task x InputHistory
+getInputHistory : DebugSession -> InputHistory
 getInputHistory =
   Native.Debugger.RuntimeApi.getInputHistory
 
@@ -133,12 +133,12 @@ emptyInputHistory =
   Native.Debugger.RuntimeApi.emptyInputHistory
 
 
-splitInputHistory : FrameIndex -> InputHistory -> (InputHistory, InputHistory)
+splitInputHistory : FrameIndex -> InputHistory -> Task x (InputHistory, InputHistory)
 splitInputHistory =
   Native.Debugger.RuntimeApi.splitInputHistory
 
 
-serializeInputHistory : InputHistory -> String
+serializeInputHistory : InputHistory -> Task x String
 serializeInputHistory =
   Native.Debugger.RuntimeApi.serializeInputHistory
 
@@ -146,6 +146,15 @@ serializeInputHistory =
 parseInputHistory : String -> Result InputHistoryParseError InputHistory
 parseInputHistory =
   Native.Debugger.RuntimeApi.parseInputHistory
+
+
+type alias EventIdx =
+  Int
+
+
+getEvent : InputHistory -> EventIdx -> Task x (Maybe Event)
+getEvent =
+  Native.Debugger.RuntimeApi.getEvent
 
 
 getHistoryModuleName : InputHistory -> ModuleName
@@ -179,6 +188,7 @@ type alias ValueSet =
 Subscribes to the list of nodes returned by the given function (3rd arg),
 and returns their initial values. -}
 initializeFullscreen : ElmModule
+                    -> Time
                     -> Signal.Address NewFrameNotification
                     -> Task x DebugSession
 initializeFullscreen =
@@ -186,11 +196,12 @@ initializeFullscreen =
 
 
 initializeFullscreenAndSubscribe : ElmModule
+                                -> Time
                                 -> Signal.Address NewFrameNotification
                                 -> (SGShape -> List NodeId)
                                 -> Task x (DebugSession, ValueSet)
-initializeFullscreenAndSubscribe modul addr initialNodesFun =
-  (initializeFullscreen modul addr)
+initializeFullscreenAndSubscribe modul delay addr initialNodesFun =
+  (initializeFullscreen modul delay addr)
   `Task.andThen` (\newSession ->
     (newSession
       |> sgShape
@@ -226,9 +237,9 @@ regenerate snapshots. Failure means the event history wasn't empty
 (this is intended to be used right after initialization)
 
 Currently returns flagged expr history but not node history. -}
-setInputHistory : DebugSession -> InputHistory -> Task () (List (ExprTag, ValueLog))
-setInputHistory =
-  Native.Debugger.RuntimeApi.setInputHistory
+replayInputHistory : DebugSession -> InputHistory -> Task () (List (ExprTag, ValueLog))
+replayInputHistory =
+  Native.Debugger.RuntimeApi.replayInputHistory
 
 
 {-| given shape of old graph, history, and shape of new graph,
@@ -276,7 +287,7 @@ swap session newMod initialNodesFun =
               Task.fail swapErr
 
             Nothing ->
-              setInputHistory newSession history
+              replayInputHistory newSession history
                 |> Task.mapError (\_ -> Debug.crash "session's event list wasn't empty")
                 |> Task.map (\logs -> (newSession, logs))
       )
@@ -301,7 +312,7 @@ forkFrom session frameIdx =
           (getAddress session)
           (always subs))
         `Task.andThen` (\(newSession, _) ->
-          (setInputHistory
+          (replayInputHistory
             newSession
             historyUpTo
           |> Task.mapError (\_ -> Debug.crash "session's event list wasn't empty"))
@@ -396,10 +407,13 @@ type alias ReplayError
     }
 
 
-{-| Error with () means it was already in that state -}
-setPlaying : DebugSession -> Bool -> Task () ()
-setPlaying =
-  Native.Debugger.RuntimeApi.setPlaying
+{-| Pauses the module (all incoming events will be ignored), returning
+the time that it was paused.
+
+Error with () means it was already in that state -}
+pause : DebugSession -> Task () Time
+pause =
+  Native.Debugger.RuntimeApi.pause
 
 
 -- TODO: this should return the current values (what does that mean tho)

@@ -313,7 +313,7 @@ exportImport addr =
 
 update : Message -> Model -> (Model, Effects Message)
 update msg state =
-  case Debug.log "MAIN MSG" msg of
+  case msg of
     SidebarVisible visible -> 
       ( { state | sidebarVisible <- visible }
       , none

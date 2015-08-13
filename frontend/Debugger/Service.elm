@@ -72,7 +72,7 @@ notificationsMailbox =
 
 update : Message -> Model -> (Model, Effects Message)
 update msg model =
-  case Debug.log "SERVICE MSG" msg of
+  case msg of
     Initialized session initValues ->
       case model of
         Just _ ->
