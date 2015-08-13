@@ -106,14 +106,7 @@ view model =
       :: Maybe.withDefault [] (Maybe.map packageDependants model.pkg)
       ++ [ clearfix ]
   in
-    div
-      [ style
-          [ "font-family" => """"Open Sans", "Arial", sans-serif"""
-          , "margin" => "0"
-          , "padding" => "0"
-          , "background-color" => "white"
-          ]
-      ]
+    div []
       [ pageHeader model
       , div
           [ style
