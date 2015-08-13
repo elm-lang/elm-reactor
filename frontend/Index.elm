@@ -81,12 +81,6 @@ boxItemStyles =
   [ "border-top" => "1px solid #e1e1e1" ]
 
 
-linkStyles =
-  [ "color" => "#1184ce"
-  , "text-decoration" => "none"
-  ]
-
-
 clearfix : Html
 clearfix =
   div [ style [ "clear" => "both" ] ] []
@@ -138,7 +132,7 @@ pageHeader model =
   header
     [ style
         [ "width" => "100%"
-        , "background-color" => "#1184ce"
+        , "background-color" => "#60B5CC"
         , "height" => "8px"
         ]
     ]
@@ -160,8 +154,8 @@ folderView model =
     viewReadme markdown =
       [ div
           [ style boxStyles ]
-          [ div [ style <| boxHeaderStyles ++ blockStyles ] [ text "README" ]
-          , div [ style ["padding" => "20px"] ] [ Markdown.toHtml markdown ]
+          [ div [ style (blockStyles ++ boxHeaderStyles) ] [ text "README" ]
+          , div [ style (blockStyles ++ boxItemStyles) ] [ Markdown.toHtml markdown ]
           ]
       ]
   in
@@ -173,10 +167,10 @@ folderView model =
 
 folderDisplay : String -> Html
 folderDisplay folder =
-  a [ href folder
-    , style (linkStyles ++ blockStyles ++ boxItemStyles)
+  div
+    [ style (blockStyles ++ boxItemStyles)
     ]
-    [ folderIcon, text folder
+    [ a [ href folder ] [ folderIcon, text folder ]
     ]
 
 
@@ -184,14 +178,14 @@ elmFileLinks : Bool -> String -> List Html
 elmFileLinks isElmFile file =
   let
     jumpLinkStyle =
-      linkStyles ++ floatRight ++
+      floatRight ++
         [ "padding" => "0 5px"
         , "color" => "#c7c7c7"
         ]
   in
     if isElmFile then
       [ a [ href (file ++ "?debug"), style jumpLinkStyle ]
-          [ text "Debug" ]
+          [ text "debug" ]
       ]
     else
       []
@@ -202,19 +196,15 @@ fileDisplay file =
   let
     isElmFile = String.endsWith ".elm" file
   in
-    div
-      [ style <| blockStyles ++ boxItemStyles ]
-      <| [ a
-        [ href <| file
-        , style linkStyles
-        ]
-        [ getIcon file
-        , span [ style [ "display" => "inline-block"
-                       , "width" => if isElmFile then "75%" else "90%"
-                       ]
-               ] [ text file ]
-        ]
-      ] ++ (elmFileLinks isElmFile file)
+    div [ style (blockStyles ++ boxItemStyles) ]
+      (
+        a [ href file
+          ]
+          [ getIcon file
+          , text file
+          ]
+        :: elmFileLinks isElmFile file
+      )
 
 
 navigator : List String -> Html
@@ -228,7 +218,7 @@ navigator pathSegments =
       FA.home darkGrey 32 :: List.map text pathSegments
 
     toLink name path =
-      a [ href path, style linkStyles ] [ name ]
+      a [ href path ] [ name ]
 
     subfolders =
       List.map2 toLink names hrefs
@@ -270,10 +260,7 @@ dependencyView (name, version) =
     [ div
         [ style floatLeft ]
         [ packageIcon
-        , a [ href (packageUrl name version)
-            , style linkStyles
-            ]
-            [ text name ]
+        , a [ href (packageUrl name version) ] [ text name ]
         ]
     , div
         [ style floatRight ]
