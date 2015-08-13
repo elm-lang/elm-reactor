@@ -99,7 +99,6 @@ up, you will run the following command to recompile locally:
 [bfs]: https://github.com/elm-lang/elm-platform/blob/master/installers/BuildFromSource.hs
 
 ```bash
-cabal 
 ./cabal-build.py
 ```
 
