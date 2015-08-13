@@ -8,18 +8,20 @@ programs. Key features include:
   * [Time travel debugging][debug]
   * Compatible with any editor
 
-[hot-swapping]: http://elm-lang.org/blog/Interactive-Programming.elm
-[debug]: http://debug.elm-lang.org
+[hot-swapping]: http://elm-lang.org/blog/interactive-programming
+[debug]: http://elm-lang.org/blog/time-travel-made-easy
 
 This means you can get a great development experience whether you are using
 Sublime Text, emacs, vim, or whatever else to edit Elm code.
+
 
 ## Install
 
 Install [Elm Platform][platform]. This will install Elm Reactor and everything
 else it needs.
 
-[platform]: http://elm-lang.org/Install.elm
+[platform]: http://elm-lang.org/install
+
 
 ## Use
 
@@ -41,6 +43,7 @@ should see a navigation page for your project.
 Click on any file to see what it looks like. For example, you can navigate to
 an Elm file and try it out. If you modify the file, you can just refresh that
 page and see the new version!
+
 
 #### Time Travel Debugging
 
@@ -78,3 +81,27 @@ The second argument is the name of the source file for that module.
 The file name is needed so that we know which file to recompile when
 the Reactor detects that a file has changed. You may edit a dependency,
 but we always need to compile from the root file.
+
+
+## Building from Source
+
+We do some tricks in this project to bundle some static files in the resulting
+executable. For this we use a feature called Template Haskell, which adds some
+extra complexity to the build process. Specifically, if you modify any of the
+`frontend/` files, they will not automatically trigger a recompile of the
+relevant Haskell code, making it so the changes do not get into the executable.
+So instead of doing a typical build with `cabal` we have a special
+`cabal-build.py` script that makes sure these changes trigger a change.
+
+So after you have used [the `BuildFromSource.hs` script][bfs] to set everything
+up, you will run the following command to recompile locally:
+
+[bfs]: https://github.com/elm-lang/elm-platform/blob/master/installers/BuildFromSource.hs
+
+```bash
+cabal 
+./cabal-build.py
+```
+
+This will put the executable in `dist/build/elm-reactor/elm-reactor` which you
+can refer to directly to test how it works.
