@@ -24,7 +24,8 @@ import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html.Renderer.Utf8 as Blaze
 
 import qualified Compile
-import qualified Index
+import qualified Generate.Index as Index
+import qualified Generate.NotFound as NotFound
 import qualified Socket
 import qualified StaticFiles
 
@@ -117,7 +118,9 @@ error400 =
 
 error404 :: Snap ()
 error404 =
-    modifyResponse $ setResponseStatus 404 "Not Found"
+  do  modifyResponse $ setResponseStatus 404 "Not Found"
+      modifyResponse $ setContentType "text/html; charset=utf-8"
+      writeBS NotFound.html
 
 
 -- SERVE ELM CODE
@@ -159,6 +162,7 @@ staticAssets =
     [ "favicon.ico" ==> undefined
     , StaticFiles.debuggerPath ==> StaticFiles.debugger
     , StaticFiles.indexPath ==> StaticFiles.index
+    , StaticFiles.notFoundPath ==> StaticFiles.notFound
     ]
 
 

@@ -50,7 +50,9 @@ Executable elm-reactor
 
   other-modules:
     Compile,
-    Index,
+    Generate.Help,
+    Generate.Index,
+    Generate.NotFound,
     Socket,
     StaticFiles,
     StaticFiles.Build

@@ -1,8 +1,9 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# LANGUAGE TemplateHaskell #-}
 module StaticFiles
-    ( debugger, index
-    , debuggerPath, indexPath
+    ( debugger, debuggerPath
+    , index, indexPath
+    , notFound, notFoundPath
     )
     where
 
@@ -20,7 +21,12 @@ debugger =
 
 index :: BS.ByteString
 index =
-  $(bsToExp =<< runIO Build.index)
+  $(bsToExp =<< runIO (Build.navigationPage "Index.elm"))
+
+
+notFound :: BS.ByteString
+notFound =
+  $(bsToExp =<< runIO (Build.navigationPage "NotFound.elm"))
 
 
 debuggerPath :: FilePath
@@ -31,3 +37,8 @@ debuggerPath =
 indexPath :: FilePath
 indexPath =
   "_reactor/index.js"
+
+
+notFoundPath :: FilePath
+notFoundPath =
+  "_reactor/notFound.js"

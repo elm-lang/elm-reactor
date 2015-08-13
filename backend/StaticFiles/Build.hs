@@ -1,10 +1,10 @@
 {-# OPTIONS_GHC -Wall #-}
-module StaticFiles.Build (debugger, index) where
+module StaticFiles.Build (debugger, navigationPage) where
 
 import qualified Data.ByteString as BS
 import System.Directory (removeFile)
 import System.Exit (ExitCode(..), exitFailure)
-import System.FilePath ((</>))
+import System.FilePath ((</>), replaceExtension)
 import System.IO (hPutStrLn, stderr)
 import System.Process (readProcessWithExitCode)
 
@@ -23,13 +23,13 @@ debugger =
         return result
 
 
-index :: IO BS.ByteString
-index =
+navigationPage :: FilePath -> IO BS.ByteString
+navigationPage fileName =
   let
     tempFile =
-      "temp-index.js"
+      "temp-" ++ replaceExtension fileName "js"
   in
-    do  compile "Index.elm" tempFile
+    do  compile fileName tempFile
         result <- BS.readFile tempFile
         seq (BS.length result) (removeFile tempFile)
         return result

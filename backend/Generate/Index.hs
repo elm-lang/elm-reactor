@@ -1,6 +1,6 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# LANGUAGE OverloadedStrings #-}
-module Index (getInfo, toHtml) where
+module Generate.Index (getInfo, toHtml) where
 
 import Control.Monad
 import Control.Monad.Except (runExceptT)
@@ -17,7 +17,8 @@ import qualified Elm.Package.Version as V
 import System.Directory ( doesDirectoryExist, doesFileExist, getDirectoryContents)
 import System.FilePath ( (</>), splitDirectories )
 
-import StaticFiles
+import qualified Generate.Help as Help
+import qualified StaticFiles
 
 
 -- INFO
@@ -66,29 +67,10 @@ instance ToJSON PackageInfo where
 
 toHtml :: Info -> BSC.ByteString
 toHtml info@(Info pwd _ _ _ _) =
-  BSC.pack $ unlines $
-    [ "<html>"
-    , ""
-    , "<head>"
-    , "  <title>" ++ List.intercalate "/" ("~" : pwd) ++ "</title>"
-    , "  <script src=\"/" ++ StaticFiles.indexPath ++ "\"></script>"
-    , "  <style>"
-    , "    html, body { margin: 0; padding: 0; }"
-    , "    a { color: #60B5CC; text-decoration: none; }"
-    , "    a:hover { text-decoration: underline; }"
-    , "  </style>"
-    , "</head>"
-    , ""
-    , "<body>"
-    , "  <script type=\"text/javascript\">"
-    , "    Elm.fullscreen(Elm.Index, { info:"
-    , "        " ++ LBSC.unpack (Json.encode info)
-    , "    });"
-    , "  </script>"
-    , "</body>"
-    , ""
-    , "</html>"
-    ]
+  Help.makeHtml
+    (List.intercalate "/" ("~" : pwd))
+    ("/" ++ StaticFiles.indexPath)
+    ("Elm.fullscreen(Elm.Index, { info: " ++ LBSC.unpack (Json.encode info) ++ " });")
 
 
 -- GET INFO FOR THIS LOCATION
