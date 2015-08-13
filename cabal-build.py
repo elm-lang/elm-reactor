@@ -1,4 +1,5 @@
 import os
+import sys
 
 
 ## FIGURE OUT NEW MODIFICATION TIME
@@ -43,4 +44,6 @@ if mostRecent > prevMostRecent:
 
 ## RUN CABAL BUILD
 
-os.system("cabal build")
+exitCode = os.system("cabal build")
+
+sys.exit(exitCode)
