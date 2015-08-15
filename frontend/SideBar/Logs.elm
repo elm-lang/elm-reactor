@@ -144,23 +144,26 @@ viewExprLog addr collapsed logId frameIdx log =
         [ text <| if collapsed then "▶" else "▼" ]
   in 
     if collapsed then
-      if frameIdx == 0 then
-        li
-          clickAttrs
-          [ colButton
-          , text <| logLabel logId
-          ]
-      else
-        li
-          clickAttrs
-          [ colButton
-          , text <| logLabel logId ++ ": "
-          , code []
-              [ text <|
-                  API.prettyPrint
-                    (log |> getAtIdx frameIdx |> getMaybe "idx out of range")
+      let
+        maybeItem =
+          log |> getAtIdx frameIdx
+      in
+        case maybeItem of
+          Nothing ->
+            li
+              clickAttrs
+              [ colButton
+              , text <| logLabel logId
               ]
-          ]
+
+          Just item ->
+            li
+              clickAttrs
+              [ colButton
+              , text <| logLabel logId ++ ": "
+              , code []
+                  [ text <| API.prettyPrint item ]
+              ]
     else
       li []
         [ span
