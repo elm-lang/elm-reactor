@@ -32,12 +32,17 @@ length =
 
 get : Int -> JsArray a -> Maybe a
 get idx array =
-  if idx < 0 then
-    get (length array + idx) array
-  else if idx < length array then
-    Just (Native.JsArray.get idx array)
-  else
-    Nothing
+  case length array of
+    0 ->
+      Nothing
+
+    arrayLength ->
+      if idx < 0 then
+        get (length array + idx) array
+      else if idx < length array then
+        Just (Native.JsArray.get idx array)
+      else
+        Nothing
 
 
 split : Int -> JsArray a -> (JsArray a, JsArray a)

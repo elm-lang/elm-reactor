@@ -85,6 +85,7 @@ type Response
       DM.DebugSession
       DM.JsElmValue
       (List (DM.ExprTag, DM.ValueLog))
+      RunningState
   | StartWithHistoryResponse
       DM.DebugSession
       DM.JsElmValue
@@ -166,9 +167,17 @@ update msg state =
 
         Swap compiledMod ->
           let
+            getRecord =
+              case state.runningState of
+                Playing ->
+                  API.pause state.session
+                    |> Task.mapError (\_ -> Debug.crash "already paused")
+
+                Paused _ record ->
+                  Task.succeed record
+
             swapTask =
-              (API.pause state.session
-                |> Task.mapError (\_ -> Debug.crash "already paused"))
+              getRecord
               `Task.andThen` (\record ->
                 (API.dispose state.session)
                 `Task.andThen` (\_ ->
@@ -193,17 +202,31 @@ update msg state =
                           (API.subscribeToAll newSession API.justMain
                             |> Task.mapError (\_ -> Debug.crash "already subscribed"))
                           `Task.andThen` (\_ ->
-                            API.getNodeStateSingle
+                            (API.getNodeStateSingle
                               newSession
                               (curFrameIdx state)
                               [API.getSgShape newSession |> .mainId]
-                            |> Task.mapError (Debug.crash << toString)
-                            |> Task.map (\values ->
+                            |> Task.mapError (Debug.crash << toString))
+                            `Task.andThen` (\values ->
+                              (case state.runningState of
+                                Playing ->
+                                  Task.succeed Playing
+
+                                Paused idx _ ->
+                                  (API.pause newSession
+                                    |> Task.mapError (\_ -> Debug.crash "already paused")
+                                    |> Task.map (\newRecord ->
+                                      Paused (JsArray.length newRecord.inputHistory) newRecord)))
+                              `Task.andThen` (\newRunningState ->
+                                Task.succeed <|
                                   Response <|
                                     SwapResponse
                                       newSession
                                       (getMainVal newSession values)
-                                      exprLogs)
+                                      exprLogs
+                                      newRunningState
+                              )
+                            )
                           )
                     )
                   )
@@ -270,38 +293,43 @@ update msg state =
     Notification not ->
       case not of
         NewFrame newFrameNot ->
-          let
-            newMainVal =
-              newFrameNot.subscribedNodeValues
-                |> getMainVal state.session
+          case state.runningState of
+            Paused _ _ ->
+              Debug.crash "new frame while paused"
 
-            currentFrameIndex =
-              state.numFrames
+            Playing ->
+              let
+                newMainVal =
+                  newFrameNot.subscribedNodeValues
+                    |> getMainVal state.session
 
-            mainNodeId =
-              mainId state
+                currentFrameIndex =
+                  state.numFrames
 
-            newExprLogs =
-              updateLogs
-                currentFrameIndex
-                state.exprLogs
-                newFrameNot.flaggedExprValues
-                (always True)
+                mainNodeId =
+                  mainId state
 
-            newNodeLogs =
-              updateLogs
-                currentFrameIndex
-                state.nodeLogs
-                newFrameNot.subscribedNodeValues
-                (\id -> id /= mainNodeId)
-          in
-            ( { state
-                  | numFrames <- state.numFrames + 1
-                  , exprLogs <- newExprLogs
-                  , nodeLogs <- newNodeLogs
-              }
-            , none
-            )
+                newExprLogs =
+                  updateLogs
+                    currentFrameIndex
+                    state.exprLogs
+                    newFrameNot.flaggedExprValues
+                    (always True)
+
+                newNodeLogs =
+                  updateLogs
+                    currentFrameIndex
+                    state.nodeLogs
+                    newFrameNot.subscribedNodeValues
+                    (\id -> id /= mainNodeId)
+              in
+                ( { state
+                      | numFrames <- state.numFrames + 1
+                      , exprLogs <- newExprLogs
+                      , nodeLogs <- newNodeLogs
+                  }
+                , none
+                )
 
         NoOpNot ->
           ( state, none )
@@ -327,9 +355,10 @@ update msg state =
               |> task
           )
 
-        SwapResponse newSession mainVal logs ->
+        SwapResponse newSession mainVal logs newRunningState ->
           ( { state
                 | session <- newSession
+                , runningState <- newRunningState
                 , exprLogs <- Dict.fromList logs
             }
           , API.renderMain state.session mainVal
