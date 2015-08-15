@@ -6,6 +6,7 @@ import Html.Events exposing (..)
 import Signal
 import Task exposing (Task)
 import Json.Decode as JsDec
+import Json.Encode as JsEnc
 import Color
 import Maybe
 import Result
@@ -20,8 +21,10 @@ import Model exposing (..)
 import Styles exposing (..)
 import Button
 import Debugger.RuntimeApi as API
+import Debugger.Model as DM
 import Debugger.Active as Active
 import Debugger.Service as Service
+import SessionRecord as SessionRecord
 import SideBar.Controls as Controls
 import SideBar.Logs as Logs
 import DataUtils exposing (..)
@@ -170,12 +173,7 @@ viewErrors addr errors =
                   ("File I/O Error", ioError)
 
                 ParseError parseError ->
-                  case parseError of
-                    API.JsonParseError error ->
-                      ("JSON parse error", error)
-
-                    API.JsonSchemaError error ->
-                      ("JSON schema error", error)
+                  ("JSON schema error", parseError)
           in
             ( True
             , div []
@@ -448,13 +446,13 @@ update msg state =
 
     ImportSession files ->
       let
-        parseHistory : String -> Result SessionInputError API.InputHistory
+        parseHistory : String -> Result SessionInputError DM.SessionRecord
         parseHistory str =
-          API.parseInputHistory str
+          JsDec.decodeString SessionRecord.decodeSessionRecord str
             |> Result.formatError ParseError
 
-        contentsTask : Task x (Result SessionInputError API.InputHistory)
-        contentsTask =
+        sessionRecordTask : Task x (Result SessionInputError DM.SessionRecord)
+        sessionRecordTask =
           files
             |> List.head
             |> getMaybe "files list empty"
@@ -465,9 +463,9 @@ update msg state =
 
         sendTask : Task x Message
         sendTask =
-          contentsTask
-          `Task.andThen` (\historyRes ->
-            case historyRes of
+          sessionRecordTask
+          `Task.andThen` (\record ->
+            case record of
               Ok history ->
                 Signal.send
                   (Service.commandsMailbox ()).address
@@ -522,7 +520,7 @@ socketEventsMailbox =
 
 -- INPUT PORT: initial module
 
-port moduleName : API.ModuleName
+port moduleName : DM.ModuleName
 
 port fileName : String
 
@@ -556,12 +554,15 @@ exportMimeType =
   "application/json"
 
 
-exportHistory : API.DebugSession -> Task x ()
+exportHistory : DM.DebugSession -> Task x ()
 exportHistory session =
   let
     fileName =
       "reactor-history-" ++ moduleName ++ ".json"
   in
-    (API.getInputHistory session |> Task.map API.serializeInputHistory)
+    (API.getSessionRecord session
+      |> Task.map (\record ->
+          SessionRecord.encodeSessionRecord record
+            |> JsEnc.encode 4))
     `Task.andThen` (\contents ->
       File.download contents exportMimeType fileName)

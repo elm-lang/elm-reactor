@@ -12,13 +12,14 @@ import Html.Events exposing (..)
 
 import Styles exposing (..)
 import Debugger.Active as Active
+import Debugger.Model as DM
 import Debugger.RuntimeApi as API
 import DataUtils exposing (..)
 
 
 type alias Model =
-  { exprExpansion : ExpansionModel API.ExprTag
-  , nodeExpansion : ExpansionModel API.NodeId
+  { exprExpansion : ExpansionModel DM.ExprTag
+  , nodeExpansion : ExpansionModel DM.NodeId
   }
 
 
@@ -32,19 +33,19 @@ initModel =
 type Message
   = CollapseLog LogId Bool
   | UpdateLogs
-      { newExprLogs : Dict API.ExprTag API.ValueLog
-      , newNodeLogs : Dict API.NodeId API.ValueLog
+      { newExprLogs : Dict DM.ExprTag DM.ValueLog
+      , newNodeLogs : Dict DM.NodeId DM.ValueLog
       }
-  | ScrubTo API.FrameIndex
+  | ScrubTo DM.FrameIndex
   | NoOp
 
 
 type LogId
-  = NodeLog API.NodeId
-  | ExprLog API.ExprTag
+  = NodeLog DM.NodeId
+  | ExprLog DM.ExprTag
 
 
-update : Message -> Model -> (Model, Maybe API.FrameIndex)
+update : Message -> Model -> (Model, Maybe DM.FrameIndex)
 update msg state =
   case msg of
     CollapseLog logId collapsed ->
@@ -125,7 +126,7 @@ sidePadding =
   20
 
 
-viewExprLog : Signal.Address Message -> Bool -> LogId -> API.FrameIndex -> API.ValueLog -> Html
+viewExprLog : Signal.Address Message -> Bool -> LogId -> DM.FrameIndex -> DM.ValueLog -> Html
 viewExprLog addr collapsed logId frameIdx log =
   let
     clickAttrs =
@@ -173,7 +174,7 @@ viewExprLog addr collapsed logId frameIdx log =
         ]
 
 
-viewLogItem : Signal.Address Message -> Bool -> API.FrameIndex -> API.JsElmValue -> Html
+viewLogItem : Signal.Address Message -> Bool -> DM.FrameIndex -> DM.JsElmValue -> Html
 viewLogItem addr highlighted idx val =
   li
     [ onClick addr (ScrubTo idx)
@@ -235,7 +236,7 @@ type alias ExpansionModel comparable =
   Dict comparable Bool
 
 
-getAtIdx : API.FrameIndex -> API.ValueLog -> Maybe API.JsElmValue
+getAtIdx : DM.FrameIndex -> DM.ValueLog -> Maybe DM.JsElmValue
 getAtIdx idx log =
   log
     |> List.filter (\(itemIdx, val) -> itemIdx <= idx)

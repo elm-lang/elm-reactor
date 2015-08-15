@@ -17,10 +17,341 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 	var Utils = Elm.Native.Utils.make (localRuntime);
 	var List = Elm.Native.List.make (localRuntime);
 	var Dict = Elm.Dict.make (localRuntime);
+	var JsArray = Elm.Native.JsArray.make (localRuntime);
 
-	var latestSessionId = 0;
+	// not exposed
+	function jumpTo(session, frameIdx)
+	{
+		// get to interval start
+		var snapshotBeforeIdx = Math.floor(frameIdx / eventsPerSnapshot);
+		var snapshot = session.snapshots[snapshotBeforeIdx];
+		for(var nodeId in snapshot) {
+			session.sgNodes[nodeId].value = snapshot[nodeId];
+		}
+		var snapshotBeforeFrameIdx = snapshotBeforeIdx * eventsPerSnapshot;
+		for(var idx=snapshotBeforeFrameIdx; idx < frameIdx; idx++)
+		{
+			var event = session.events[idx];
+			session.originalNotify(event.nodeId, event.value);
+		}
+	}
 
-	function sgShape(session)
+	// not exposed
+	function initializeFullscreen(module, delay, notificationAddress)
+	{
+		var session;
+		var moduleBeingDebugged = Elm.fullscreen({
+			make: function(debugeeLocalRuntime) {
+				session = {
+					module: module,
+					runtime: debugeeLocalRuntime,
+					originalNotify: debugeeLocalRuntime.notify,
+					delay: delay,
+					// TODO: delay, totalTimeLost, asyncCallbacks
+					asyncCallbacks: [],
+					events: [],
+					notificationAddress: notificationAddress,
+					disposed: false,
+					playing: true,
+					replayingHistory: false,
+					subscribedNodeIds: [],
+					flaggedExprValues: [],
+					setIntervalIds: []
+				};
+
+				// set up event recording
+				debugeeLocalRuntime.notify = function(id, value) {
+					if (!session.playing || session.replayingHistory)
+					{
+						return false;
+					}
+
+					session.flaggedExprValues = [];
+
+					var changed = session.originalNotify(id, value);
+
+					// Record the event
+					var event = {
+						_: {},
+						value: value,
+						nodeId: id,
+						time: session.runtime.timer.now()
+					}
+					session.events.push(event);
+					// take snapshot if necessary
+					if(session.events.length % eventsPerSnapshot == 0)
+					{
+						session.snapshots.push(takeSnapshot(session.sgNodes));
+					}
+					
+					var subscribedNodeValues = session.subscribedNodeIds.map(function(nodeId) {
+						var node = session.sgNodes[nodeId];
+						return Utils.Tuple2(nodeId, node.value);
+					});
+					// send notification
+					var notification = {
+						_: {},
+						event: event,
+						flaggedExprValues: List.fromArray(session.flaggedExprValues),
+						subscribedNodeValues: List.fromArray(subscribedNodeValues)
+					}
+					Task.perform(notificationAddress._0(notification));
+
+					// TODO: add traces
+
+					return changed;
+				};
+
+				debugeeLocalRuntime.setTimeout = function(thunk, delay) {
+					if (!session.playing)
+					{
+						return 0;
+					}
+
+					var callback = {
+						thunk: thunk,
+						id: 0,
+						executed: false
+					};
+
+					callback.id = setTimeout(function() {
+						callback.executed = true;
+						console.log("thunk", session.id);
+						thunk();
+					}, delay);
+
+					// TODO: this isn't fully hooked up yet
+					session.asyncCallbacks.push(callback);
+					return callback.id;
+				};
+
+				debugeeLocalRuntime.setInterval = function(thunk, interval) {
+					var intervalId = window.setInterval(function() {
+						if(session.playing && !session.replayingHistory)
+						{
+							thunk();
+						}
+					}, interval);
+					session.setIntervalIds.push(intervalId);
+				}
+
+				debugeeLocalRuntime.timer.now = function() {
+					// TODO: not sure how to get time of last event
+					// if (debugState.paused || debugState.swapInProgress)
+					// {
+					// 	var event = debugState.events[debugState.index];
+					// 	return event.time;
+					// }
+					return Date.now() - session.delay;
+				};
+				debugeeLocalRuntime.debug = {
+					log: function(tag, value) {
+						if (!session.playing)
+						{
+							return;
+						}
+						session.flaggedExprValues.push(Utils.Tuple2(tag, value));
+					},
+					trace: function(tag, form) {
+						// TODO: ...
+						return replace([['trace', tag]], form);
+					}
+				};
+
+				return module.modul.make(debugeeLocalRuntime);
+			}
+		}, {});
+
+		session.runningModule = moduleBeingDebugged;
+		session.sgNodes = flattenSignalGraph(session.runtime);
+		session.shape = extractSgShape(session.sgNodes);
+		session.snapshots = [takeSnapshot(session.sgNodes)];
+
+		return session;
+	}
+
+	function start(module, address)
+	{
+		return Task.asyncFunction(function(callback) {
+			var session = initializeFullscreen(module, 0, address);
+			callback(Task.succeed(session));
+		})
+	}
+
+	function swap(module, address, inputHistory, maybeShape, validator)
+	{
+		return Task.asyncFunction(function(callback) {
+			var session = initializeFullscreen(module, 0, address);
+			// TODO: basically writing Elm in JS here. should do it in Elm.
+			var valid;
+			switch (maybeShape.ctor) {
+				case 'Just':
+					valid = A3(validator, maybeShape._0, session.shape, inputHistory);
+					break;
+
+				case 'Nothing':
+					valid = true;
+					break;
+			}
+			if (!valid) {
+				var error = {
+					_: {},
+					oldShape: maybeShape._0,
+					newShape: session.shape
+				}
+				callback(Task.fail(error));
+			} else {
+				session.replayingHistory = true;
+
+				session.events = JsArray.toMutableArray(inputHistory);
+				
+				var flaggedExprLogs = {};
+				var nodeLogs = {};
+				session.subscribedNodeIds.forEach(function(nodeId) {
+					var value = session.sgNodes[nodeId].value;
+					nodeLogs[nodeId] = [Utils.Tuple2(0, value)];
+				});
+
+				// replay events, regenerating snapshots and capturing
+				// flagged expr logs along the way
+				for (var i = 0; i < session.events.length; i++)
+				{
+					var event = session.events[i];
+
+					session.flaggedExprValues = [];
+					session.originalNotify(event.nodeId, event.value);
+					var frameIdx = i + 1;
+					session.flaggedExprValues.forEach(function(tagAndVal) {
+						var tag = tagAndVal._0;
+						var value = tagAndVal._1;
+						if (!(tag in flaggedExprLogs)) {
+							flaggedExprLogs[tag] = [];
+						}
+						flaggedExprLogs[tag].push(Utils.Tuple2(frameIdx, value));
+					});
+					session.subscribedNodeIds.forEach(function(nodeId) {
+						var value = session.sgNodes[nodeId].value;
+						nodeLogs[nodeId].push(Utils.Tuple2(frameIdx, value));
+					});
+
+					if(i != 0 && i % eventsPerSnapshot == 0)
+					{
+						session.snapshots.push(takeSnapshot(session.sgNodes));
+					}
+				}
+				var flaggedExprLogsArray = [];
+				for (var exprTag in flaggedExprLogs)
+				{
+					var log = List.fromArray(flaggedExprLogs[exprTag]);
+					flaggedExprLogsArray.push(Utils.Tuple2(exprTag, log));
+				}
+				var flaggedExprLogsList = List.fromArray(flaggedExprLogsArray);
+
+				var nodeLogsArray = [];
+				for (var nodeId of session.subscribedNodeIds)
+				{
+					var log = List.fromArray(nodeLogs[nodeId]);
+					nodeLogsArray.push(Utils.Tuple2(nodeId, log));
+				}
+				var nodeLogsList = List.fromArray(nodeLogsArray);
+
+				session.replayingHistory = false;
+
+				var result = Utils.Tuple3(session, flaggedExprLogsList, nodeLogsList);
+
+				callback(Task.succeed(result));
+			}
+		});
+	}
+
+	function play(record, address)
+	{
+		return Task.asyncFunction(function (callback) {
+			var timePaused = Date.now() - record.pausedAt;
+			var delay = record.delay + timePaused;
+			var session = initializeFullscreen(record.modul, delay, address);
+			session.events = JsArray.toMutableArray(record.inputHistory);
+			session.snapshots = JsArray.toMutableArray(record.snapshots);
+			callback(Task.succeed(session));
+		});
+	}
+
+	function pause(session)
+	{
+		return Task.asyncFunction(function(callback) {
+			assertNotDisposed(session, callback, function() {
+				if(session.playing) {
+
+					session.playing = false;
+
+					var sessionRecord = {
+						_: {},
+						sgShape: session.shape,
+						modul: session.module,
+						pausedAt: Date.now(),
+						delay: session.delay,
+						snapshots: JsArray.fromMutableArray(session.snapshots),
+						inputHistory: JsArray.fromMutableArray(session.events)
+					};
+
+					callback(Task.succeed(sessionRecord));
+				} else {
+					callback(Task.fail(Utils.Tuple0));
+				}
+			});
+		});
+	}
+
+	function dispose(session)
+	{
+		return Task.asyncFunction(function(callback) {
+			session.disposed = true;
+			session.runningModule.dispose();
+			for (var intervalId of session.setIntervalIds)
+			{
+				window.clearInterval(intervalId);
+			}
+			session.runtime.node.parentNode.removeChild(session.runtime.node);
+			callback(Task.succeed(Utils.Tuple0));
+		});
+	}
+
+	function setSubscribedToNode(session, nodeId, subscribed)
+	{
+		return Task.asyncFunction(function(callback) {
+			assertNotDisposed(session, callback, function() {
+				var idx = session.subscribedNodeIds.indexOf(nodeId);
+				var alreadySubscribed = idx != -1;
+				if(subscribed) {
+					if(alreadySubscribed) {
+						callback(Task.fail(Utils.Tuple0));
+					} else {
+						session.subscribedNodeIds.push(nodeId);
+						callback(Task.succeed(Utils.Tuple0));
+					}
+				} else {
+					if(alreadySubscribed) {
+						session.subscribedNodeIds.splice(idx, 1);
+						callback(Task.succeed(Utils.Tuple0));
+					} else {
+						callback(Task.fail(Utils.Tuple0));
+					}
+				}
+			});
+		});
+	}
+
+	function renderMain(session, mainValue)
+	{
+		return Task.asyncFunction(function(callback) {
+			var mainNode = session.sgNodes[session.shape.mainId];
+			mainNode.value = mainValue;
+			mainNode.notify(session.runtime.timer.now(), true, mainNode.parents[0].id);
+			callback(Task.succeed(Utils.Tuple0));
+		});
+	}
+
+	function getSgShape(session)
 	{
 		return session.shape;
 	}
@@ -41,15 +372,6 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 			callback(Task.succeed(List.fromArray(session.subscribedNodeIds)));
 		});
 	}
-
-	function getNumFrames(session)
-	{
-		return Task.asyncFunction(function(callback) {
-			callback(Task.succeed(session.events.length + 1));
-		});
-	}
-
-	// QUERIES
 
 	function getNodeState(session, frameInterval, nodeIds)
 	{
@@ -92,136 +414,19 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 		});
 	}
 
-	// not exposed
-	function jumpTo(session, frameIdx)
-	{
-		// get to interval start
-		var snapshotBeforeIdx = Math.floor(frameIdx / EVENTS_PER_SAVE);
-		var snapshot = session.snapshots[snapshotBeforeIdx];
-		for(var nodeId in snapshot) {
-			session.sgNodes[nodeId].value = snapshot[nodeId];
-		}
-		var snapshotBeforeFrameIdx = snapshotBeforeIdx * EVENTS_PER_SAVE;
-		for(var idx=snapshotBeforeFrameIdx; idx < frameIdx; idx++)
-		{
-			var event = session.events[idx];
-			session.originalNotify(event.nodeId, event.value);
-		}
-	}
-
-	function getInputHistory(session)
-	{
-		return {
-			moduleName: session.module.name,
-			events: session.events
-		}
-	}
-
-	function emptyInputHistory(moduleName) {
-		return {
-			moduleName: moduleName,
-			events: []
-		}
-	}
-
-	function splitInputHistory(frameIdx, history)
+	function getSessionRecord(session)
 	{
 		return Task.asyncFunction(function(callback) {
-			var historyBefore = {
-				moduleName: history.moduleName,
-				events: history.events.slice(0, frameIdx)
-			};
-			var historyAfter = {
-				moduleName: history.moduleName,
-				events: history.events.slice(frameIdx)
-			};
-			var result = Utils.Tuple2(historyBefore, historyAfter);
-			return callback(Task.succeed(result));
+			var result = {
+				_: {},
+				moduleName: session.module.name,
+				inputHistory: JsArray.fromMutableArray(session.events)
+			}
+			callback(Task.succeed(result));
 		});
 	}
 
-	function serializeInputHistory(inputHistory)
-	{
-		return Task.asyncFunction(function(callback) {
-			callback(Task.succeed(JSON.stringify(inputHistory)));
-		});
-	}
-
-	function parseInputHistory(str) {
-		var parsed;
-		try {
-			parsed = JSON.parse(str);
-		} catch (err) {
-			return {
-				ctor: 'Err',
-				_0: { ctor: 'JsonParseError', _0: err.message }
-			}
-		}
-		var maybeJsonSchemaError = validateInputSchema(parsed);
-		if(maybeJsonSchemaError == null)
-		{
-			return {
-				ctor: 'Ok',
-				_0: parsed
-			}
-		}
-		else
-		{
-			return {
-				ctor: 'Err',
-				_0: {
-					ctor: 'JsonSchemaError',
-					_0: maybeJsonSchemaError
-				}
-			}
-		}
-	}
-
-	function getEvent(history, eventIdx)
-	{
-		return Task.asyncFunction(function(callback) {
-			if(eventIdx >= 0 && eventIdx < history.events.length)
-			{
-				var result = {
-					ctor: 'Just',
-					_0: history.events[eventIdx]
-				};
-				callback(Task.succeed(result));
-			}
-			else
-			{
-				callback(Task.succeed({ctor: 'Nothing'}));
-			}
-		});
-	}
-
-
-	function getHistoryModuleName(history) {
-		return history.moduleName;
-	}
-
-	// JSON -> String or null
-	function validateInputSchema(parsed)
-	{
-		if(typeof(parsed.moduleName) != "string")
-		{
-			return "invalid `moduleName` key";
-		}
-		if (!parsed.events instanceof Array)
-		{
-			return "invalid `events` key";
-		}
-		// I wish deep equality of JS arrays was easier
-		var valid = JSON.stringify(["_", "nodeId", "time", "value"]);
-		parsed.events.forEach(function(evt) {
-			var keys = Object.keys(evt).sort();
-			if(JSON.stringify(keys) !== valid)
-			{
-				return "invalid keys for an event; expecting " + valid;
-			}
-		});
-		return null;
-	}
+	// GETTING MODULE FROM JS
 
 	function getFromGlobalScope(moduleName)
 	{
@@ -253,149 +458,42 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 		});
 	}
 
-	// COMMANDS
+	// == NOT EXPOSED BELOW HERE ==
 
-	function initializeFullscreen(module, delay, notificationAddress)
+	// Bool -> a -> (Task -> ()) -> (() -> ()) -> ()
+	function assert(bool, err, callback, thunk)
 	{
-		return Task.asyncFunction(function(callback) {
-			var debugeeLocalRuntime;
-			var session;
-			var moduleBeingDebugged = Elm.fullscreen({
-				make: function(debugeeLocalRuntime) {
-					session = {
-						id: latestSessionId++,
-						module: module,
-						runtime: debugeeLocalRuntime,
-						originalNotify: debugeeLocalRuntime.notify,
-						delay: delay,
-						// TODO: delay, totalTimeLost, asyncCallbacks
-						asyncCallbacks: [],
-						events: [],
-						notificationAddress: notificationAddress,
-						disposed: false,
-						playing: true,
-						replayingHistory: false,
-						subscribedNodeIds: [],
-						flaggedExprValues: [],
-						setIntervalIds: []
-					};
-
-					// set up event recording
-					debugeeLocalRuntime.notify = function(id, value) {
-						if (!session.playing || session.replayingHistory)
-						{
-							return false;
-						}
-
-						session.flaggedExprValues = [];
-
-						var changed = session.originalNotify(id, value);
-
-						// Record the event
-						var event = {
-							_: {},
-							value: value,
-							nodeId: id,
-							time: session.runtime.timer.now()
-						}
-						session.events.push(event);
-						// take snapshot if necessary
-						if(session.events.length % EVENTS_PER_SAVE == 0)
-						{
-							session.snapshots.push(takeSnapshot(session.sgNodes));
-						}
-						
-						var subscribedNodeValues = session.subscribedNodeIds.map(function(nodeId) {
-							var node = session.sgNodes[nodeId];
-							return Utils.Tuple2(nodeId, node.value);
-						});
-						// send notification
-						var notification = {
-							_: {},
-							event: event,
-							flaggedExprValues: List.fromArray(session.flaggedExprValues),
-							subscribedNodeValues: List.fromArray(subscribedNodeValues)
-						}
-						Task.perform(notificationAddress._0(notification));
-
-						// TODO: add traces
-
-						return changed;
-					};
-
-					debugeeLocalRuntime.setTimeout = function(thunk, delay) {
-						if (!session.playing)
-						{
-							return 0;
-						}
-
-						var callback = {
-							thunk: thunk,
-							id: 0,
-							executed: false
-						};
-
-						callback.id = setTimeout(function() {
-							callback.executed = true;
-							console.log("thunk", session.id);
-							thunk();
-						}, delay);
-
-						// TODO: this isn't fully hooked up yet
-						session.asyncCallbacks.push(callback);
-						return callback.id;
-					};
-
-					debugeeLocalRuntime.setInterval = function(thunk, interval) {
-						var intervalId = window.setInterval(function() {
-							if(session.playing && !session.replayingHistory)
-							{
-								thunk();
-							}
-						}, interval);
-						session.setIntervalIds.push(intervalId);
-					}
-
-					debugeeLocalRuntime.timer.now = function() {
-						// TODO: not sure how to get time of last event
-						// if (debugState.paused || debugState.swapInProgress)
-						// {
-						// 	var event = debugState.events[debugState.index];
-						// 	return event.time;
-						// }
-						return Date.now() - session.delay;
-					};
-					debugeeLocalRuntime.debug = {
-						log: function(tag, value) {
-							if (!session.playing)
-							{
-								return;
-							}
-							session.flaggedExprValues.push(Utils.Tuple2(tag, value));
-						},
-						trace: function(tag, form) {
-							// TODO: ...
-							return replace([['trace', tag]], form);
-						}
-					};
-
-					return module.modul.make(debugeeLocalRuntime);
-				}
-			}, {});
-
-			session.runningModule = moduleBeingDebugged;
-			session.sgNodes = flattenSignalGraph(session.runtime);
-			session.shape = getSgShape(session.sgNodes);
-			session.snapshots = [takeSnapshot(session.sgNodes)];
-
-			console.log(session);
-
-			callback(Task.succeed(session));
-		});
+		if(!bool) {
+			callback(Task.fail(err));
+		} else {
+			thunk();
+		}
 	}
 
-	// not exposed
-	function getSgShape(nodes)
+	function assertNotDisposed(session, callback, thunk)
+	{
+		assert(!session.disposed, {ctor: "IsDisposed"}, callback, thunk);
+	}
+
+	function assertPaused(session, callback, thunk)
+	{
+		assert(!session.disposed, {ctor: "IsPlaying"}, callback, thunk);
+	}
+
+	function assertIntervalInRange(session, interval, callback, thunk)
+	{
+		assert(
+			(interval.start >= 0 && interval.start <= session.events.length)
+				&& (interval.end >= 0 && interval.end <= session.events.length),
+			{ctor: "EventIndexOutOfRange", _0: interval},
+			callback,
+			thunk
+		);
+	}
+
+	var eventsPerSnapshot = 100;
+
+	function extractSgShape(nodes)
 	{
 		var mainId;
 		var nodeTuples = Object.keys(nodes).map(function(nodeId) {
@@ -432,343 +530,187 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 		}
 	}
 
-	function replayInputHistory(session, history)
-	{
-		return Task.asyncFunction(function(callback) {
-			assertNotDisposed(session, callback, function() {
-				if(session.events.length != 0)
-				{
-					callback(Task.fail(Utils.Tuple0));
-				}
-				else
-				{
-					session.replayingHistory = true;
+	// returns array of node references, indexed by node id (?)
+	function flattenSignalGraph(runtime) {
+		var nodesById = {};
 
-					session.events = history.events;
-
-					var flaggedExprLogs = {};
-
-					// replay events, regenerating snapshots and capturing
-					// flagged expr logs along the way
-					for (var i = 0; i < session.events.length; i++)
-					{
-						var event = session.events[i];
-
-						session.flaggedExprValues = [];
-						session.originalNotify(event.nodeId, event.value);
-						session.flaggedExprValues.forEach(function(tagAndVal) {
-							var tag = tagAndVal._0;
-							var value = tagAndVal._1;
-							if (!(tag in flaggedExprLogs)) {
-								flaggedExprLogs[tag] = [];
-							}
-							var frameIdx = i + 1;
-							flaggedExprLogs[tag].push(Utils.Tuple2(frameIdx, value));
-						});
-
-						if(i != 0 && i % EVENTS_PER_SAVE == 0)
-						{
-							session.snapshots.push(takeSnapshot(session.sgNodes));
-						}
-					}
-					var logs = [];
-					for (exprTag in flaggedExprLogs)
-					{
-						var log = List.fromArray(flaggedExprLogs[exprTag]);
-						logs.push(Utils.Tuple2(exprTag, log));
-					}
-
-					session.replayingHistory = false;
-
-					callback(Task.succeed(List.fromArray(logs)));
-				}
-			});
-		});
-	}
-
-	function dispose(session)
-	{
-		return Task.asyncFunction(function(callback) {
-			session.disposed = true;
-			session.runningModule.dispose();
-			for (var intervalId of session.setIntervalIds)
-			{
-				window.clearInterval(intervalId);
+		function addAllToDict(node)
+		{
+			nodesById[node.id] = node;
+			if(node.kids) {
+				node.kids.forEach(addAllToDict);
 			}
-			session.runtime.node.parentNode.removeChild(session.runtime.node);
-			callback(Task.succeed(Utils.Tuple0));
-		});
-	}
-
-	function setMain(session, mainValue)
-	{
-		return Task.asyncFunction(function(callback) {
-			var mainNode = session.sgNodes[session.shape.mainId];
-			mainNode.value = mainValue;
-			mainNode.notify(session.runtime.timer.now(), true, mainNode.parents[0].id);
-		});
-	}
-
-	function pause(session)
-	{
-		return Task.asyncFunction(function(callback) {
-			assertNotDisposed(session, callback, function() {
-				if(session.playing) {
-					// TODO asyncCallback stuff for timers
-					session.playing = false;
-					callback(Task.succeed(Date.now()));
-				} else {
-					callback(Task.fail(Utils.Tuple0));
-				}
-			});
-		});
-	}
-
-	function setSubscribedToNode(session, nodeId, subscribed)
-	{
-		return Task.asyncFunction(function(callback) {
-			assertNotDisposed(session, callback, function() {
-				var idx = session.subscribedNodeIds.indexOf(nodeId);
-				var alreadySubscribed = idx != -1;
-				if(subscribed) {
-					if(alreadySubscribed) {
-						callback(Task.fail(Utils.Tuple0));
-					} else {
-						session.subscribedNodeIds.push(nodeId);
-						callback(Task.succeed(Utils.Tuple0));
-					}
-				} else {
-					if(alreadySubscribed) {
-						session.subscribedNodeIds.splice(idx, 1);
-						callback(Task.succeed(Utils.Tuple0));
-					} else {
-						callback(Task.fail(Utils.Tuple0));
-					}
-				}
-			});
-		});
-	}
-
-	// Bool -> a -> (Task -> ()) -> (() -> ()) -> ()
-	function assert(bool, err, callback, thunk)
-	{
-		if(!bool) {
-			callback(Task.fail(err));
-		} else {
-			thunk();
 		}
+		runtime.inputs.forEach(addAllToDict);
+
+		return nodesById;
 	}
 
-	function assertNotDisposed(session, callback, thunk)
+
+	// returns snapshot
+	function takeSnapshot(signalGraphNodes)
 	{
-		assert(!session.disposed, {ctor: "IsDisposed"}, callback, thunk);
+		var nodeValues = {};
+
+		Object.keys(signalGraphNodes).forEach(function(nodeId) {
+			var node = signalGraphNodes[nodeId];
+			nodeValues[nodeId] = node.value;
+		});
+
+		return nodeValues;
 	}
 
-	function assertPaused(session, callback, thunk)
-	{
-		assert(!session.disposed, {ctor: "IsPlaying"}, callback, thunk);
-	}
+	var prettyPrint = function() {
 
-	function assertIntervalInRange(session, interval, callback, thunk)
-	{
-		assert(
-			(interval.start >= 0 && interval.start <= session.events.length)
-				&& (interval.end >= 0 && interval.end <= session.events.length),
-			{ctor: "EventIndexOutOfRange", _0: interval},
-			callback,
-			thunk
-		);
-	}
+		var independentRuntime = {};
+		var List;
+		var ElmArray;
+		var Dict;
+
+		var toString = function(v, separator) {
+			if (v == null) {
+				return "<null>";
+			}
+			var type = typeof v;
+			if (type === "function") {
+				var name = v.func ? v.func.name : v.name;
+				return '<function' + (name === '' ? '' : ': ') + name + '>';
+			} else if (type === "boolean") {
+				return v ? "True" : "False";
+			} else if (type === "number") {
+				return v.toFixed(2).replace(/\.0+$/g, '');
+			} else if ((v instanceof String) && v.isChar) {
+				return "'" + addSlashes(v) + "'";
+			} else if (type === "string") {
+				return '"' + addSlashes(v) + '"';
+			} else if (type === "object" && '_' in v && probablyPublic(v)) {
+				var output = [];
+				for (var k in v._) {
+					for (var i = v._[k].length; i--; ) {
+						output.push(k + " = " + toString(v._[k][i], separator));
+					}
+				}
+				for (var k in v) {
+					if (k === '_') continue;
+					output.push(k + " = " + toString(v[k], separator));
+				}
+				if (output.length === 0) return "{}";
+				var body = "\n" + output.join(",\n");
+				return "{" + body.replace(/\n/g,"\n" + separator) + "\n}";
+			} else if (type === "object" && 'ctor' in v) {
+				if (v.ctor.substring(0,6) === "_Tuple") {
+					var output = [];
+					for (var k in v) {
+						if (k === 'ctor') continue;
+						output.push(toString(v[k], separator));
+					}
+					return "(" + output.join(", ") + ")";
+				} else if (v.ctor === "_Array") {
+					if (!ElmArray) {
+						ElmArray = Elm.Array.make(independentRuntime);
+					}
+					var list = ElmArray.toList(v);
+					return "Array.fromList " + toString(list, separator);
+				} else if (v.ctor === "::") {
+					var output = '[\n' + toString(v._0, separator);
+					v = v._1;
+					while (v && v.ctor === "::") {
+						output += ",\n" + toString(v._0, separator);
+						v = v._1;
+					}
+					return output.replace(/\n/g,"\n" + separator) + "\n]";
+				} else if (v.ctor === "[]") {
+					return "[]";
+				} else if (v.ctor === "RBNode" || v.ctor === "RBEmpty") {
+					if (!Dict || !List) {
+						Dict = Elm.Dict.make(independentRuntime);
+						List = Elm.List.make(independentRuntime);
+					}
+					var list = Dict.toList(v);
+					var name = "Dict";
+					if (list.ctor === "::" && list._0._1.ctor === "_Tuple0") {
+						name = "Set";
+						list = A2(List.map, function(x){return x._0}, list);
+					}
+					return name + ".fromList " + toString(list, separator);
+				} else {
+					var output = "";
+					for (var i in v) {
+						if (i === 'ctor') continue;
+						var str = toString(v[i], separator);
+						var parenless = str[0] === '{' ||
+										str[0] === '<' ||
+										str[0] === "[" ||
+										str.indexOf(' ') < 0;
+						output += ' ' + (parenless ? str : "(" + str + ')');
+					}
+					return v.ctor + output;
+				}
+			}
+			if (type === 'object' && 'notify' in v) return '<signal>';
+			return "<internal structure>";
+		};
+
+		function addSlashes(str)
+		{
+			return str.replace(/\\/g, '\\\\')
+					  .replace(/\n/g, '\\n')
+					  .replace(/\t/g, '\\t')
+					  .replace(/\r/g, '\\r')
+					  .replace(/\v/g, '\\v')
+					  .replace(/\0/g, '\\0')
+					  .replace(/\'/g, "\\'")
+					  .replace(/\"/g, '\\"');
+		}
+
+		function probablyPublic(v)
+		{
+			var keys = Object.keys(v);
+			var len = keys.length;
+			if (len === 3
+				&& 'props' in v
+				&& 'element' in v) return false;
+			if (len === 5
+				&& 'horizontal' in v
+				&& 'vertical' in v
+				&& 'x' in v
+				&& 'y' in v) return false;
+			if (len === 7
+				&& 'theta' in v
+				&& 'scale' in v
+				&& 'x' in v
+				&& 'y' in v
+				&& 'alpha' in v
+				&& 'form' in v) return false;
+			return true;
+		}
+
+		return toString;
+	}();
+
 
 	return localRuntime.Native.Debugger.RuntimeApi.values = {
-		sgShape: sgShape,
+
+		start: F2(start),
+		swap: F5(swap),
+		play: F2(play),
+		pause: pause,
+		dispose: dispose,
+		setSubscribedToNode: F3(setSubscribedToNode),
+		renderMain: F2(renderMain),
+		
+		getSgShape: getSgShape,
 		getModule: getModule,
 		getAddress: getAddress,
 		getSubscriptions: getSubscriptions,
-		getNumFrames: getNumFrames,
-
 		getNodeState: F3(getNodeState),
+		getSessionRecord: getSessionRecord,
 		
-		getInputHistory: getInputHistory,
-		splitInputHistory: F2(splitInputHistory),
-		emptyInputHistory: emptyInputHistory,
-		serializeInputHistory: serializeInputHistory,
-		parseInputHistory: parseInputHistory,
-		getEvent: F2(getEvent),
-		getHistoryModuleName: getHistoryModuleName,
-
 		getFromGlobalScope: getFromGlobalScope,
 		evalCompiledModule: evalCompiledModule,
 
-		initializeFullscreen: F3(initializeFullscreen),
-		setMain: F2(setMain),
-		replayInputHistory: F2(replayInputHistory),
-		dispose: dispose,
-		pause: F2(pause),
-		setSubscribedToNode: F3(setSubscribedToNode),
+		eventsPerSnapshot: eventsPerSnapshot,
 
 		prettyPrint: F2(prettyPrint)
 	};
 };
-
-// Utils
-
-var EVENTS_PER_SAVE = 100;
-
-// returns array of node references, indexed by node id (?)
-function flattenSignalGraph(runtime) {
-	var nodesById = {};
-
-	function addAllToDict(node)
-	{
-		nodesById[node.id] = node;
-		if(node.kids) {
-			node.kids.forEach(addAllToDict);
-		}
-	}
-	runtime.inputs.forEach(addAllToDict);
-
-	return nodesById;
-}
-
-
-// returns snapshot
-function takeSnapshot(signalGraphNodes)
-{
-	var nodeValues = {};
-
-	Object.keys(signalGraphNodes).forEach(function(nodeId) {
-		var node = signalGraphNodes[nodeId];
-		nodeValues[nodeId] = node.value;
-	});
-
-	return nodeValues;
-}
-
-var prettyPrint = function() {
-
-	var independentRuntime = {};
-	var List;
-	var ElmArray;
-	var Dict;
-
-	var toString = function(v, separator) {
-		if (v == null) {
-			return "<null>";
-		}
-		var type = typeof v;
-		if (type === "function") {
-			var name = v.func ? v.func.name : v.name;
-			return '<function' + (name === '' ? '' : ': ') + name + '>';
-		} else if (type === "boolean") {
-			return v ? "True" : "False";
-		} else if (type === "number") {
-			return v.toFixed(2).replace(/\.0+$/g, '');
-		} else if ((v instanceof String) && v.isChar) {
-			return "'" + addSlashes(v) + "'";
-		} else if (type === "string") {
-			return '"' + addSlashes(v) + '"';
-		} else if (type === "object" && '_' in v && probablyPublic(v)) {
-			var output = [];
-			for (var k in v._) {
-				for (var i = v._[k].length; i--; ) {
-					output.push(k + " = " + toString(v._[k][i], separator));
-				}
-			}
-			for (var k in v) {
-				if (k === '_') continue;
-				output.push(k + " = " + toString(v[k], separator));
-			}
-			if (output.length === 0) return "{}";
-			var body = "\n" + output.join(",\n");
-			return "{" + body.replace(/\n/g,"\n" + separator) + "\n}";
-		} else if (type === "object" && 'ctor' in v) {
-			if (v.ctor.substring(0,6) === "_Tuple") {
-				var output = [];
-				for (var k in v) {
-					if (k === 'ctor') continue;
-					output.push(toString(v[k], separator));
-				}
-				return "(" + output.join(", ") + ")";
-			} else if (v.ctor === "_Array") {
-				if (!ElmArray) {
-					ElmArray = Elm.Array.make(independentRuntime);
-				}
-				var list = ElmArray.toList(v);
-				return "Array.fromList " + toString(list, separator);
-			} else if (v.ctor === "::") {
-				var output = '[\n' + toString(v._0, separator);
-				v = v._1;
-				while (v && v.ctor === "::") {
-					output += ",\n" + toString(v._0, separator);
-					v = v._1;
-				}
-				return output.replace(/\n/g,"\n" + separator) + "\n]";
-			} else if (v.ctor === "[]") {
-				return "[]";
-			} else if (v.ctor === "RBNode" || v.ctor === "RBEmpty") {
-				if (!Dict || !List) {
-					Dict = Elm.Dict.make(independentRuntime);
-					List = Elm.List.make(independentRuntime);
-				}
-				var list = Dict.toList(v);
-				var name = "Dict";
-				if (list.ctor === "::" && list._0._1.ctor === "_Tuple0") {
-					name = "Set";
-					list = A2(List.map, function(x){return x._0}, list);
-				}
-				return name + ".fromList " + toString(list, separator);
-			} else {
-				var output = "";
-				for (var i in v) {
-					if (i === 'ctor') continue;
-					var str = toString(v[i], separator);
-					var parenless = str[0] === '{' ||
-									str[0] === '<' ||
-									str[0] === "[" ||
-									str.indexOf(' ') < 0;
-					output += ' ' + (parenless ? str : "(" + str + ')');
-				}
-				return v.ctor + output;
-			}
-		}
-		if (type === 'object' && 'notify' in v) return '<signal>';
-		return "<internal structure>";
-	};
-
-	function addSlashes(str)
-	{
-		return str.replace(/\\/g, '\\\\')
-				  .replace(/\n/g, '\\n')
-				  .replace(/\t/g, '\\t')
-				  .replace(/\r/g, '\\r')
-				  .replace(/\v/g, '\\v')
-				  .replace(/\0/g, '\\0')
-				  .replace(/\'/g, "\\'")
-				  .replace(/\"/g, '\\"');
-	}
-
-	function probablyPublic(v)
-	{
-		var keys = Object.keys(v);
-		var len = keys.length;
-		if (len === 3
-			&& 'props' in v
-			&& 'element' in v) return false;
-		if (len === 5
-			&& 'horizontal' in v
-			&& 'vertical' in v
-			&& 'x' in v
-			&& 'y' in v) return false;
-		if (len === 7
-			&& 'theta' in v
-			&& 'scale' in v
-			&& 'x' in v
-			&& 'y' in v
-			&& 'alpha' in v
-			&& 'form' in v) return false;
-		return true;
-	}
-
-	return toString;
-}();

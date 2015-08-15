@@ -2,29 +2,30 @@ module Debugger.Active where
 
 import Dict exposing (Dict)
 import Set exposing (Set)
-import Html exposing (Html)
 import Debug
-import Task
+import Task exposing (Task)
 import Time exposing (Time)
 
 import Effects exposing (..)
 
+import JsArray
 import Debugger.RuntimeApi as API
+import Debugger.Model as DM
 import DataUtils exposing (..)
 
 
 type alias Model =
-  { session : API.DebugSession
+  { session : DM.DebugSession
   , totalTimeLost : Time
   , runningState : RunningState
   , numFrames : Int
-  , exprLogs : Dict API.ExprTag API.ValueLog
-  , nodeLogs : Dict API.NodeId API.ValueLog
-  , subscribedNodes : Set API.NodeId
+  , exprLogs : Dict DM.ExprTag DM.ValueLog
+  , nodeLogs : Dict DM.NodeId DM.ValueLog
+  , subscribedNodes : Set DM.NodeId
   }
 
 
-initModel : API.DebugSession -> Model
+initModel : DM.DebugSession -> Model
 initModel session =
   { session = session
   , totalTimeLost = 0
@@ -44,7 +45,7 @@ type SwapState
 
 type RunningState
   = Playing
-  | Paused Int
+  | Paused DM.FrameIndex DM.ImmediateSessionRecord
 
 
 type alias SwapError =
@@ -61,159 +62,167 @@ type Message
 type Command
   = Play
   | Pause
-  | ScrubTo API.FrameIndex
+  | ScrubTo DM.FrameIndex
   | Reset
-  | Swap API.CompiledElmModule
-  | StartWithHistory API.InputHistory
+  | Swap DM.CompiledElmModule
+  | StartWithHistory DM.SessionRecord
   | NoOpCommand
 
 
 type Notification
-  = NewFrame API.NewFrameNotification
+  = NewFrame DM.NewFrameNotification
   -- TODO: task update
   | NoOpNot
 
 
+{-| Responses from the Runtime API that will be processed
+within the Debugger service -}
 type Response
-  = ScrubResponse API.JsElmValue
-  | ForkResponse API.DebugSession API.FrameIndex API.JsElmValue
+  = ScrubResponse DM.FrameIndex DM.ImmediateSessionRecord DM.JsElmValue
+  | ForkResponse DM.DebugSession DM.FrameIndex DM.JsElmValue
+  | PausedResponse DM.FrameIndex DM.ImmediateSessionRecord
   | SwapResponse
-      API.DebugSession
-      API.JsElmValue
-      (List (API.ExprTag, API.ValueLog))
+      DM.DebugSession
+      DM.JsElmValue
+      (List (DM.ExprTag, DM.ValueLog))
   | StartWithHistoryResponse
-      API.DebugSession
-      API.JsElmValue
+      DM.DebugSession
+      DM.JsElmValue
       Int
-      (List (API.ExprTag, API.ValueLog))
+      (List (DM.ExprTag, DM.ValueLog))
 
 
 update : Message -> Model -> (Model, Effects Message)
 update msg state =
-  case msg of
+  case Debug.log "ACTIVE MSG" msg of
     Command cmd ->
       case cmd of
         Play ->
           case state.runningState of
-            Paused pausedIdx ->
-              let
-                fork =
-                  API.forkFrom state.session pausedIdx
-                    |> Task.map (\(session, values) ->
-                        Response <|
-                          ForkResponse
-                            session
-                            pausedIdx
-                            (getMainVal state.session values))
-              in
-                ( { state | runningState <- Playing }
-                , fork |> task
-                )
+            Paused pausedIdx record ->
+              ( { state | runningState <- Playing }
+              , playFrom state.session record pausedIdx
+                  |> task
+              )
 
             Playing ->
               Debug.crash "already playing"
 
         Pause ->
-          ( { state | runningState <- Paused (state.numFrames - 1) }
-          , API.setPlaying state.session False
-              |> Task.map (always NoOp)
+          ( state
+          , API.pause state.session
               |> Task.mapError (\_ -> Debug.crash "already in that state")
+              |> Task.map (\record ->
+                    Response <| PausedResponse (state.numFrames - 1) record)
               |> task
           )
 
         ScrubTo frameIdx ->
           let
-            pause =
-              case state.runningState of
+            pauseAndGetState =
+              (case state.runningState of
                 Playing ->
-                  API.setPlaying state.session False
-                    |> Task.map (always NoOp)
+                  API.pause state.session
                     |> Task.mapError (\_ -> Debug.crash "already in that state")
 
-                Paused _ ->
-                  Task.succeed NoOp
-
-            getState =
-              API.getNodeStateSingle
-                state.session
-                frameIdx
-                [(API.sgShape state.session).mainId]
-              |> Task.map (Response << ScrubResponse << getMainVal state.session)
-
-            sequenced =
-              pause `Task.andThen` (always getState)
+                Paused _ record ->
+                  Task.succeed record)
+              `Task.andThen` (\record ->
+                API.getNodeStateSingle
+                  state.session
+                  frameIdx
+                  [(API.getSgShape state.session).mainId]
                 |> Task.mapError (Debug.crash << toString)
+                |> Task.map (\valueSet ->
+                      Response
+                        (ScrubResponse
+                          frameIdx
+                          record
+                          (getMainVal state.session valueSet)))
+              )
           in
-            ( { state | runningState <- Paused frameIdx }
-            , sequenced |> task
-            )
+            ( state, pauseAndGetState |> task )
 
         Reset ->
-          ( { state |
-                runningState <-
-                  case state.runningState of
-                    Playing ->
-                      Playing
+          let
+            getRecord =
+              case state.runningState of
+                Playing ->
+                  (API.pause state.session
+                    |> Task.mapError (\_ -> Debug.crash "already paused"))
 
-                    Paused _ ->
-                      Paused 0
-            }
-          , API.forkFrom state.session 0
-              |> Task.map (\(session, values) ->
-                    Response <|
-                      ForkResponse session 0 (getMainVal state.session values))
+                Paused _ record ->
+                  record
+                    |> API.splitRecord 0
+                    |> fst
+                    |> Task.succeed
+          in
+            ( { state | runningState <- Playing }
+            , getRecord
+              `Task.andThen` (\record ->
+                playFrom state.session record 0)
               |> task
-          )
+            )
 
         Swap compiledMod ->
           let
             swapTask =
-              (API.instantiateModule compiledMod)
-              `Task.andThen` (\newMod ->
-                (API.swap state.session newMod API.justMain
-                  |> Task.toResult)
-                `Task.andThen` (\swapRes ->
-                  case swapRes of
-                    Err replayError ->
-                      Signal.send
-                        (commandResponseMailbox ()).address
-                        (SwapReplayError replayError)
-                      |> Task.map (always NoOp)
+              (API.pause state.session
+                |> Task.mapError (\_ -> Debug.crash "already paused"))
+              `Task.andThen` (\record ->
+                (API.dispose state.session)
+                `Task.andThen` (\_ ->
+                  (API.instantiateModule compiledMod)
+                  `Task.andThen` (\newMod ->
+                    (API.swap
+                      newMod
+                      (API.getAddress state.session)
+                      record.inputHistory
+                      (Just (API.getSgShape state.session))
+                      API.shapesEqual
+                    |> Task.toResult)
+                    `Task.andThen` (\swapRes ->
+                      case swapRes of
+                        Err replayError ->
+                          Signal.send
+                            (commandResponseMailbox ()).address
+                            (SwapReplayError replayError)
+                          |> Task.map (always NoOp)
 
-                    Ok (newSession, logs) ->
-                      API.getNodeStateSingle
-                        newSession
-                        (curFrameIdx state)
-                        [API.sgShape newSession |> .mainId]
-                      |> Task.mapError (Debug.crash << toString)
-                      |> Task.map (\values ->
-                            Response <|
-                              SwapResponse
-                                newSession
-                                (getMainVal newSession values)
-                                logs)
+                        Ok (newSession, exprLogs, nodeLogs) ->
+                          (API.subscribeToAll newSession API.justMain
+                            |> Task.mapError (\_ -> Debug.crash "already subscribed"))
+                          `Task.andThen` (\_ ->
+                            API.getNodeStateSingle
+                              newSession
+                              (curFrameIdx state)
+                              [API.getSgShape newSession |> .mainId]
+                            |> Task.mapError (Debug.crash << toString)
+                            |> Task.map (\values ->
+                                  Response <|
+                                    SwapResponse
+                                      newSession
+                                      (getMainVal newSession values)
+                                      exprLogs)
+                          )
+                    )
+                  )
                 )
               )
           in
             ( state, swapTask |> task )
 
-        StartWithHistory history ->
+        StartWithHistory sessionRecord ->
           let
             currentModule =
               API.getModule state.session
 
-            currentModuleName =
-              currentModule.name
-
-            historyModuleName =
-              API.getHistoryModuleName history
-
             initTask =
-              if currentModuleName /= historyModuleName then
+              if currentModule.name /= sessionRecord.moduleName then
                 let
                   error =
                     { currentModuleName = currentModule.name
-                    , historyModuleName = API.getHistoryModuleName history
+                    , historyModuleName = sessionRecord.moduleName
                     }
                 in
                   Signal.send
@@ -223,31 +232,33 @@ update msg state =
               else
                 (API.dispose state.session)
                 `Task.andThen` (\_ ->
-                  (API.initializeFullscreenAndSubscribe
+                  (API.swap
                     currentModule
                     (API.getAddress state.session)
-                    API.justMain)
-                  `Task.andThen` (\(newSession, _) ->
-                    (API.replayInputHistory
-                      newSession
-                      history
-                    |> Task.mapError (\_ -> Debug.crash "event list wasn't empty"))
-                    `Task.andThen` (\logs ->
-                      (API.getNumFrames newSession)
-                      `Task.andThen` (\numFrames ->
+                    sessionRecord.inputHistory
+                    Nothing
+                    (API.shapesEqual)
+                  |> Task.mapError (\_ -> Debug.crash "replay error"))
+                  `Task.andThen` (\(newSession, exprLogs, nodeLogs) ->
+                    (API.subscribeToAll newSession API.justMain
+                      |> Task.mapError (\_ -> Debug.crash "already subscribed"))
+                    `Task.andThen` (\_ ->
+                      let
+                        numFrames =
+                          JsArray.length sessionRecord.inputHistory - 1
+                      in
                         API.getNodeStateSingle
                           newSession
-                          (numFrames - 1)
-                          [API.sgShape newSession |> .mainId]
-                        |>  Task.mapError (Debug.crash << toString)
-                        |>  Task.map (\valueSet ->
+                          numFrames
+                          [API.getSgShape newSession |> .mainId]
+                        |> Task.mapError (Debug.crash << toString)
+                        |> Task.map (\valueSet ->
                               Response <|
                                 StartWithHistoryResponse
                                   newSession
                                   (getMainVal newSession valueSet)
                                   numFrames
-                                  logs)
-                      )
+                                  exprLogs)
                     )
                   )
                 )
@@ -297,9 +308,9 @@ update msg state =
 
     Response resp ->
       case resp of
-        ScrubResponse mainVal ->
-          ( state
-          , API.setMain state.session mainVal
+        ScrubResponse frameIdx record mainVal ->
+          ( { state | runningState <- Paused frameIdx record }
+          , API.renderMain state.session mainVal
               |> Task.map (always NoOp)
               |> task
           )
@@ -311,7 +322,7 @@ update msg state =
                 , exprLogs <- truncateLogs frameIdx state.exprLogs
                 , nodeLogs <- truncateLogs frameIdx state.nodeLogs
             }
-          , API.setMain state.session mainVal
+          , API.renderMain state.session mainVal
               |> Task.map (always NoOp)
               |> task
           )
@@ -321,7 +332,7 @@ update msg state =
                 | session <- newSession
                 , exprLogs <- Dict.fromList logs
             }
-          , API.setMain state.session mainVal
+          , API.renderMain state.session mainVal
               |> Task.map (always NoOp)
               |> task
           )
@@ -332,22 +343,62 @@ update msg state =
                 , numFrames <- numFrames
                 , exprLogs <- Dict.fromList logs
             }
-          , API.setMain state.session mainVal
+          , API.renderMain state.session mainVal
               |> Task.map (always NoOp)
               |> task
+          )
+
+        PausedResponse frameIdx record ->
+          ( { state | runningState <- Paused frameIdx record }
+          , none
           )
 
     NoOp ->
       ( state, none )
 
 
+-- should this be in RuntimeApi?
+playFrom : DM.DebugSession
+        -> DM.ImmediateSessionRecord
+        -> DM.FrameIndex
+        -> Task x Message
+playFrom session record frameIdx =
+  (API.dispose session)
+  `Task.andThen` (\_ ->
+    (let
+      (beforeRecord, _) =
+        Debug.log "split" <| API.splitRecord frameIdx record
+    in
+      API.play beforeRecord (API.getAddress session)
+    )
+    `Task.andThen` (\newSession ->
+      (API.subscribeToAll newSession API.justMain
+        |> Task.mapError (\_ -> Debug.crash "already subscribed"))
+      `Task.andThen` (\_ ->
+        API.getNodeStateSingle
+          newSession
+          frameIdx
+          [(API.getSgShape newSession).mainId]
+        |> Task.mapError (Debug.crash << toString)
+        |> Task.map (\valueSet ->
+              Response <|
+                ForkResponse
+                  newSession
+                  frameIdx
+                  (getMainVal newSession valueSet))
+      )
+    )
+  )
+
+
+{-| Responses that need to go back to the UI -}
 type CommandResponseMessage
-  = SwapReplayError API.ReplayError
+  = SwapReplayError DM.ReplayError
   -- clears the current mismatch error
   | SwapSuccessful
   | HistoryMismatchError
-      { currentModuleName : API.ModuleName
-      , historyModuleName : API.ModuleName
+      { currentModuleName : DM.ModuleName
+      , historyModuleName : DM.ModuleName
       }
   | ImportSessionSuccessful
   | NoOpResponse
@@ -362,11 +413,11 @@ mailbox =
   Signal.mailbox NoOpResponse
 
 
-getMainVal : API.DebugSession -> API.ValueSet -> API.JsElmValue
+getMainVal : DM.DebugSession -> DM.ValueSet -> DM.JsElmValue
 getMainVal session values =
   let
     mainId =
-      (API.sgShape session).mainId
+      (API.getSgShape session).mainId
 
   in
     values
@@ -376,7 +427,7 @@ getMainVal session values =
       |> snd
 
 
-appendToLog : API.FrameIndex -> API.JsElmValue -> Maybe API.ValueLog -> Maybe API.ValueLog
+appendToLog : DM.FrameIndex -> DM.JsElmValue -> Maybe DM.ValueLog -> Maybe DM.ValueLog
 appendToLog currentFrameIndex value maybeLog =
   let
     pair =
@@ -393,11 +444,11 @@ appendToLog currentFrameIndex value maybeLog =
     Just newLog
 
 
-updateLogs : API.FrameIndex
-          -> Dict comparable API.ValueLog
-          -> List (comparable, API.JsElmValue)
+updateLogs : DM.FrameIndex
+          -> Dict comparable DM.ValueLog
+          -> List (comparable, DM.JsElmValue)
           -> (comparable -> Bool)
-          -> Dict comparable API.ValueLog
+          -> Dict comparable DM.ValueLog
 updateLogs currentFrameIndex logs updates idPred =
   List.foldl
     (\(tag, value) logs ->
@@ -406,14 +457,14 @@ updateLogs currentFrameIndex logs updates idPred =
     (List.filter (fst >> idPred) updates)
 
 
-truncateLogs : API.FrameIndex -> Dict comparable API.ValueLog -> Dict comparable API.ValueLog
+truncateLogs : DM.FrameIndex -> Dict comparable DM.ValueLog -> Dict comparable DM.ValueLog
 truncateLogs frameIdx logs =
   logs
     |> Dict.map (\_ log -> truncateLog frameIdx log)
     |> Dict.filter (\_ log -> not (List.isEmpty log))
 
 
-truncateLog : API.FrameIndex -> API.ValueLog -> API.ValueLog
+truncateLog : DM.FrameIndex -> DM.ValueLog -> DM.ValueLog
 truncateLog frameIdx log =
   List.filter (\(idx, val) -> idx <= frameIdx) log
 
@@ -428,15 +479,15 @@ isPlaying model =
       False
 
 
-mainId : Model -> API.NodeId
+mainId : Model -> DM.NodeId
 mainId model =
-  (API.sgShape model.session).mainId
+  (API.getSgShape model.session).mainId
 
 
-curFrameIdx : Model -> API.FrameIndex
+curFrameIdx : Model -> DM.FrameIndex
 curFrameIdx model =
   case model.runningState of
-    Paused idx ->
+    Paused idx _ ->
       idx
 
     _ ->
