@@ -29,9 +29,9 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 			session.sgNodes[nodeId].value = snapshot[nodeId];
 		}
 		var snapshotBeforeFrameIdx = snapshotBeforeIdx * eventsPerSnapshot;
-		for(var idx=snapshotBeforeFrameIdx; idx < frameIdx; idx++)
+		for(session.index=snapshotBeforeFrameIdx; session.index < frameIdx; session.index++)
 		{
-			var event = session.events[idx];
+			var event = session.events[session.index];
 			session.originalNotify(event.nodeId, event.value);
 		}
 	}
@@ -57,7 +57,9 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 					replayingHistory: false,
 					subscribedNodeIds: [],
 					flaggedExprValues: [],
-					setIntervalIds: []
+					setIntervalIds: [],
+					index: 0,
+					record: null
 				};
 
 				// set up event recording
@@ -79,6 +81,7 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 						time: session.runtime.timer.now()
 					}
 					session.events.push(event);
+					session.index++;
 					// take snapshot if necessary
 					if(session.events.length % eventsPerSnapshot == 0)
 					{
@@ -137,12 +140,16 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 				}
 
 				debugeeLocalRuntime.timer.now = function() {
-					// TODO: not sure how to get time of last event
-					// if (debugState.paused || debugState.swapInProgress)
-					// {
-					// 	var event = debugState.events[debugState.index];
-					// 	return event.time;
-					// }
+					if (!session.playing || session.replayingHistory)
+					{
+						var t =
+							session.index < session.events.length
+								? session.events[session.index].time
+								: session.record.pausedAt
+								;
+						return t;
+						
+					}
 					return Date.now() - session.delay;
 				};
 				debugeeLocalRuntime.debug = {
@@ -215,13 +222,14 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 
 				// replay events, regenerating snapshots and capturing
 				// flagged expr logs along the way
-				for (var i = 0; i < session.events.length; i++)
+				for (; session.index < session.events.length; session.index++)
 				{
-					var event = session.events[i];
+					var event = session.events[session.index];
 
 					session.flaggedExprValues = [];
 					session.originalNotify(event.nodeId, event.value);
-					var frameIdx = i + 1;
+					session.index++;
+					var frameIdx = session.index + 1;
 					session.flaggedExprValues.forEach(function(tagAndVal) {
 						var tag = tagAndVal._0;
 						var value = tagAndVal._1;
@@ -235,7 +243,7 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 						nodeLogs[nodeId].push(Utils.Tuple2(frameIdx, value));
 					});
 
-					if(i != 0 && i % eventsPerSnapshot == 0)
+					if(session.index != 0 && session.index % eventsPerSnapshot == 0)
 					{
 						session.snapshots.push(takeSnapshot(session.sgNodes));
 					}
@@ -290,7 +298,7 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 
 					session.playing = false;
 
-					var sessionRecord = {
+					session.record = {
 						_: {},
 						sgShape: session.shape,
 						modul: session.module,
@@ -301,7 +309,7 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 						inputHistory: JsArray.fromMutableArray(session.events)
 					};
 
-					callback(Task.succeed(sessionRecord));
+					callback(Task.succeed(session.record));
 				} else {
 					callback(Task.fail(Utils.Tuple0));
 				}
@@ -395,17 +403,17 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 						nodeIds.forEach(function(nodeId) {
 							valueLogs[nodeId] = [];
 						});
-						for(var idx = frameInterval.start; idx <= frameInterval.end; idx++)
+						for(; session.index <= frameInterval.end; session.index++)
 						{
 							// get values
 							nodeIds.forEach(function(nodeId) {
-								var tuple = Utils.Tuple2(idx, session.sgNodes[nodeId].value);
+								var tuple = Utils.Tuple2(session.index, session.sgNodes[nodeId].value);
 								valueLogs[nodeId].push(tuple);
 							});
 							// push event
-							if(idx < frameInterval.end)
+							if(session.index < frameInterval.end)
 							{
-								var event = session.events[idx];
+								var event = session.events[session.index];
 								session.originalNotify(event.nodeId, event.value);
 							}
 						}
