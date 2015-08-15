@@ -173,7 +173,7 @@ viewErrors addr errors =
                   ("File I/O Error", ioError)
 
                 ParseError parseError ->
-                  ("JSON schema error", parseError)
+                  ("JSON parse error", parseError)
           in
             ( True
             , div []

@@ -135,6 +135,7 @@ type alias ImmediateSessionRecord =
   , snapshots : JsArray Snapshot
   , inputHistory : InputHistory
   , delay : Time
+  , startedAt : Time
   , pausedAt : Time
   }
 

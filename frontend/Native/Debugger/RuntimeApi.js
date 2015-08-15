@@ -47,6 +47,7 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 					runtime: debugeeLocalRuntime,
 					originalNotify: debugeeLocalRuntime.notify,
 					delay: delay,
+					startedAt: Date.now(),
 					// TODO: delay, totalTimeLost, asyncCallbacks
 					asyncCallbacks: [],
 					events: [],
@@ -257,7 +258,12 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 
 				session.replayingHistory = false;
 
-				var result = Utils.Tuple3(session, flaggedExprLogsList, nodeLogsList);
+				var result = {
+					ctor: '_Tuple3',
+					_0: session,
+					_1: flaggedExprLogsList,
+					_2: nodeLogsList
+				};
 
 				callback(Task.succeed(result));
 			}
@@ -288,6 +294,7 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 						_: {},
 						sgShape: session.shape,
 						modul: session.module,
+						startedAt: session.startedAt,
 						pausedAt: Date.now(),
 						delay: session.delay,
 						snapshots: JsArray.fromMutableArray(session.snapshots),

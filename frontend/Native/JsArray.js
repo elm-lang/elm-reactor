@@ -87,7 +87,7 @@ Elm.Native.JsArray.make = function(localRuntime) {
 		decode: decode,
 		encode: encode,
 		length: length,
-		get: get,
+		get: F2(get),
 		split: F2(split),
 		map: F2(map)
 	};

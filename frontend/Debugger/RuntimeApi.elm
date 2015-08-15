@@ -179,7 +179,10 @@ splitRecord idx record =
     ( { record
           | inputHistory <- beforeHistory
           , snapshots <- beforeSnaps
-          , pausedAt <- 0
+          , pausedAt <-
+              JsArray.get -1 afterHistory
+                |> Maybe.map .time
+                |> Maybe.withDefault record.startedAt
       }
     , { record
           | inputHistory <- afterHistory
