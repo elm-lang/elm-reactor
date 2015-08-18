@@ -125,7 +125,7 @@ getDirectoryInfo directory =
           filterM (doesDirectoryExist . (directory </>)) directoryContents
 
       let isLegit name =
-            List.notElem name [".", ".."]
+            List.notElem name [".", "..", "elm-stuff"]
 
       let directories =
             filter isLegit allDirectories
