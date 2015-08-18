@@ -95,7 +95,7 @@ type Response
 
 update : Message -> Model -> (Model, Effects Message)
 update msg state =
-  case Debug.log "ACTIVE MSG" msg of
+  case msg of
     Command cmd ->
       case cmd of
         Play ->
@@ -396,7 +396,7 @@ playFrom session record frameIdx =
   `Task.andThen` (\_ ->
     (let
       (beforeRecord, _) =
-        Debug.log "split" <| API.splitRecord frameIdx record
+        API.splitRecord frameIdx record
     in
       API.play beforeRecord (API.getAddress session)
     )

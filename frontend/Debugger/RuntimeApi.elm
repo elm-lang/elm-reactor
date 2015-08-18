@@ -180,8 +180,9 @@ splitRecord idx record =
           | inputHistory <- beforeHistory
           , snapshots <- beforeSnaps
           , pausedAt <-
-              JsArray.get -1 afterHistory
+              JsArray.get -1 beforeHistory
                 |> Maybe.map .time
+                |> Maybe.map (\x -> x + record.delay)
                 |> Maybe.withDefault record.startedAt
       }
     , { record
@@ -189,6 +190,7 @@ splitRecord idx record =
           , snapshots <- afterSnaps
       }
     )
+      
 
 
 -- PRETTY PRINT
@@ -196,4 +198,4 @@ splitRecord idx record =
 
 prettyPrint : JsElmValue -> String
 prettyPrint val =
-  Native.Debugger.RuntimeApi.prettyPrint val "  "
+  Native.Debugger.RuntimeApi.prettyPrint val
