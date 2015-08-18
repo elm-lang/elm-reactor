@@ -91,9 +91,9 @@ clearfix =
 view : Model -> Html
 view model =
   let
-    packageDependants pkgInfo =
+    rightColumnView pkgInfo =
       [ div
-          [ style ("width" => smallBoxWidth :: floatRight)
+          [ style ("width" => smallBoxWidth :: "padding-bottom" => "80px" :: floatRight)
           ]
           [ viewPackageInfo pkgInfo
           , dependenciesView pkgInfo.dependencies
@@ -102,8 +102,8 @@ view model =
 
     contents =
       navigator model.pwd
-      :: folderView model
-      :: Maybe.withDefault [] (Maybe.map packageDependants model.pkg)
+      :: leftColumnView model
+      :: Maybe.withDefault [] (Maybe.map rightColumnView model.pkg)
       ++ [ clearfix ]
   in
     div []
@@ -132,8 +132,8 @@ pageHeader model =
     []
 
 
-folderView : Model -> Html
-folderView model =
+leftColumnView : Model -> Html
+leftColumnView model =
   let
     files =
       div
@@ -153,7 +153,7 @@ folderView model =
       ]
   in
     section
-      [ style (floatLeft ++ ["width" => largeBoxWidth])
+      [ style (floatLeft ++ ["width" => largeBoxWidth, "padding-bottom" => "80px"])
       ]
       (files :: Maybe.withDefault [] (Maybe.map viewReadme model.readme))
 
