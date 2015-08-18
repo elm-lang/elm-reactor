@@ -116,7 +116,6 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 					var id = setTimeout(function() {
 						if (session.playing)
 						{
-							console.log("thunk:", session.sessionId);
 							thunk();
 						}
 					}, delay);
@@ -331,14 +330,16 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 	function dispose(session)
 	{
 		return Task.asyncFunction(function(callback) {
-			session.disposed = true;
-			session.runningModule.dispose();
-			for (var intervalId of session.setIntervalIds)
-			{
-				window.clearInterval(intervalId);
-			}
-			session.runtime.node.parentNode.removeChild(session.runtime.node);
-			callback(Task.succeed(Utils.Tuple0));
+			assertNotDisposed(session, callback, function() {
+				session.disposed = true;
+				session.runningModule.dispose();
+				for (var intervalId of session.setIntervalIds)
+				{
+					window.clearInterval(intervalId);
+				}
+				session.runtime.node.parentNode.removeChild(session.runtime.node);
+				callback(Task.succeed(Utils.Tuple0));
+			});
 		});
 	}
 
