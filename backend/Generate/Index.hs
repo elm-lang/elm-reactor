@@ -9,13 +9,15 @@ import qualified Data.ByteString.Char8 as BSC
 import qualified Data.ByteString.Lazy.Char8 as LBSC
 import qualified Data.List as List
 import qualified Data.Map as Map
+import qualified Data.Text as Text
+import qualified Data.Text.IO as Text
 import qualified Elm.Package.Description as Desc
 import qualified Elm.Package.Name as N
 import qualified Elm.Package.Paths as Paths
 import qualified Elm.Package.Solution as S
 import qualified Elm.Package.Version as V
-import System.Directory ( doesDirectoryExist, doesFileExist, getDirectoryContents)
-import System.FilePath ( (</>), splitDirectories )
+import System.Directory (doesDirectoryExist, doesFileExist, getDirectoryContents)
+import System.FilePath ((</>), splitDirectories, takeExtension)
 
 import qualified Generate.Help as Help
 import qualified StaticFiles
@@ -26,7 +28,7 @@ import qualified StaticFiles
 data Info = Info
     { _pwd :: [String]
     , _dirs :: [FilePath]
-    , _files :: [FilePath]
+    , _files :: [(FilePath, Bool)]
     , _pkg :: Maybe PackageInfo
     , _readme :: Maybe String
     }
@@ -116,7 +118,7 @@ getPackageInfo =
           }
 
 
-getDirectoryInfo :: FilePath -> IO ([FilePath], [FilePath])
+getDirectoryInfo :: FilePath -> IO ([FilePath], [(FilePath, Bool)])
 getDirectoryInfo directory =
   do  directoryContents <-
           getDirectoryContents directory
@@ -130,10 +132,25 @@ getDirectoryInfo directory =
       let directories =
             filter isLegit allDirectories
 
-      files <-
+      rawFiles <-
           filterM (doesFileExist . (directory </>)) directoryContents
 
+      files <- mapM (inspectFile directory) rawFiles
+
       return (directories, files)
+
+
+inspectFile :: FilePath -> FilePath -> IO (FilePath, Bool)
+inspectFile directory filePath =
+  if takeExtension filePath == ".elm" then
+    do  source <- Text.readFile (directory </> filePath)
+        let hasMain = Text.isInfixOf "\nmain " source
+        return (filePath, hasMain)
+
+  else
+    return (filePath, False)
+
+
 
 
 getReadme :: FilePath -> IO (Maybe String)

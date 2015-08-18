@@ -26,7 +26,7 @@ port info : Model
 type alias Model =
     { pwd : List String
     , dirs : List String
-    , files : List String
+    , files : List (String, Bool)
     , pkg : Maybe PackageInfo
     , readme : Maybe String
     }
@@ -141,7 +141,7 @@ leftColumnView model =
         (
           div [ style <| boxHeaderStyles ++ blockStyles ] [ text "File Navigation" ]
           :: List.map folderDisplay (List.sort model.dirs)
-          ++ List.map fileDisplay (List.sort model.files)
+          ++ List.map fileDisplay (List.sortBy fst model.files)
         )
 
     viewReadme markdown =
@@ -184,20 +184,17 @@ elmFileLinks isElmFile file =
       []
 
 
-fileDisplay : String -> Html
-fileDisplay file =
-  let
-    isElmFile = String.endsWith ".elm" file
-  in
-    div [ style (blockStyles ++ boxItemStyles) ]
-      (
-        a [ href file
-          ]
-          [ getIcon file
-          , text file
-          ]
-        :: elmFileLinks isElmFile file
-      )
+fileDisplay : (String, Bool) -> Html
+fileDisplay (file, hasMain) =
+  div [ style (blockStyles ++ boxItemStyles) ]
+    (
+      a [ href file
+        ]
+        [ getIcon file
+        , text file
+        ]
+      :: elmFileLinks hasMain file
+    )
 
 
 navigator : List String -> Html
