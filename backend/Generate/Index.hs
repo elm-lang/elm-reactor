@@ -3,7 +3,7 @@
 module Generate.Index (getInfo, toHtml) where
 
 import Control.Monad
-import Control.Monad.Except (runExceptT)
+import Control.Monad.Except (liftIO, runExceptT, throwError)
 import Data.Aeson as Json
 import qualified Data.ByteString.Char8 as BSC
 import qualified Data.ByteString.Lazy.Char8 as LBSC
@@ -102,7 +102,9 @@ toPwd directory =
 getPackageInfo :: IO (Maybe PackageInfo)
 getPackageInfo =
   fmap (either (const Nothing) Just) $ runExceptT $
-    do  desc <- Desc.read Paths.description
+    do  exists <- liftIO (doesFileExist Paths.description)
+        when (not exists) (throwError "file not found")
+        desc <- Desc.read Paths.description
         solution <- S.read Paths.solvedDependencies
         let publicSolution =
               Map.intersection solution (Map.fromList (Desc.dependencies desc))
