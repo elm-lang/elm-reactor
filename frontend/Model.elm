@@ -10,6 +10,7 @@ import Debugger.Active as Active
 import SideBar.Logs as Logs
 import Button
 import Debugger.RuntimeApi as API
+import Debugger.Model as DM
 
 
 type alias Model =
@@ -26,10 +27,10 @@ type alias Model =
 
 type ErrorState
   = CompilationErrors CompilationErrors
-  | SwapReplayError API.ReplayError
+  | SwapReplayError DM.ReplayError
   | HistoryMismatchError
-      { currentModuleName : API.ModuleName
-      , historyModuleName : API.ModuleName
+      { currentModuleName : DM.ModuleName
+      , historyModuleName : DM.ModuleName
       }
   | SessionInputError SessionInputError
   | NoErrors
@@ -37,7 +38,7 @@ type ErrorState
 
 type SessionInputError
   = IoError File.IoError
-  | ParseError API.InputHistoryParseError
+  | ParseError String
 
 
 initModel : Model
@@ -77,7 +78,7 @@ type alias CompilationErrors =
 
 
 type SwapEvent
-  = NewModuleEvent API.CompiledElmModule
+  = NewModuleEvent DM.CompiledElmModule
   | CompilationErrorsEvent CompilationErrors
 
 

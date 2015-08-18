@@ -1,60 +1,104 @@
 module Debugger.RuntimeApi where
 
 import Task exposing (Task)
-import Dict
-import Json.Encode as JsEnc
-import Time
 import Debug
 
 import DataUtils exposing (..)
+import Debugger.Model exposing (..)
+import JsArray
 
 import Native.Debugger.RuntimeApi
 
 
-type alias FrameIndex =
-  Int
+---- COMMANDS ----
+
+-- starting, pausing, disposing
+
+start : ElmModule
+     -> Signal.Address NewFrameNotification
+     -> Task x DebugSession
+start =
+  Native.Debugger.RuntimeApi.start
 
 
-type alias JsElmValue =
-  JsEnc.Value
+swap : ElmModule
+    -> Signal.Address NewFrameNotification
+    -> InputHistory
+    -> Maybe SGShape
+    -> (SGShape -> SGShape -> InputHistory -> Bool)
+    -> Task ReplayError (DebugSession, List (ExprTag, ValueLog), List (NodeId, ValueLog))
+swap =
+  Native.Debugger.RuntimeApi.swap
 
 
-type DebugSession
-  = DebugSession
+shapesEqual : SGShape -> SGShape -> InputHistory -> Bool
+shapesEqual old new history =
+  old == new
 
 
-type alias NodeId =
-  Int
+{-| Initialize module with events and snapshots from the
+SessionRecord. The new instance's delay is calculated from
+the SessionRecord's paused time and the current time.
+
+Error: SessionRecord's name is different than given module's. -}
+play : ImmediateSessionRecord
+    -> Signal.Address NewFrameNotification
+    -> Task x DebugSession
+play =
+  Native.Debugger.RuntimeApi.play
 
 
-type StateError
-  = IsDisposed
-  | IsPlaying -- TODO: using 2 modules should get rid of this
-  | EventIndexOutOfRange FrameInterval
+{-| Module will now ignore all inputs, but can still be used
+for getNodeState -}
+pause : DebugSession -> Task () ImmediateSessionRecord
+pause =
+  Native.Debugger.RuntimeApi.pause
 
 
-type alias Event =
-  { value : JsElmValue
-  , nodeId : NodeId
-  , time : Time.Time
-  }
+{-| Removes the session's node from the DOM; it can no longer
+be used for getNodeState. -}
+dispose : DebugSession -> Task x ()
+dispose =
+  Native.Debugger.RuntimeApi.dispose
 
 
-emptyEvent =
-  { value = JsEnc.null
-  , nodeId = 0
-  , time = 0
-  }
+-- getting and rendering past node state
 
 
-sgShape : DebugSession -> SGShape
-sgShape =
-  Native.Debugger.RuntimeApi.sgShape
+-- TODO: this should return the current values (what does that mean tho)
+{-| Error with () means it was already in that state -}
+setSubscribedToNode : DebugSession -> NodeId -> Bool -> Task () ()
+setSubscribedToNode =
+  Native.Debugger.RuntimeApi.setSubscribedToNode
+
+
+subscribeToAll : DebugSession -> (SGShape -> List NodeId) -> Task () ()
+subscribeToAll session nodesFun =
+  session
+    |> getSgShape
+    |> nodesFun
+    |> List.map (\nodeId -> setSubscribedToNode session nodeId True)
+    |> Task.sequence
+    |> Task.map (always ())
 
 
 justMain : SGShape -> List NodeId
 justMain shape =
   [shape.mainId]
+
+
+{-| Forces the module to render the given value (expected to be Html
+or Element). -}
+renderMain : DebugSession -> JsElmValue -> Task x ()
+renderMain =
+  Native.Debugger.RuntimeApi.renderMain
+
+
+-- QUERIES
+
+getSgShape : DebugSession -> SGShape
+getSgShape =
+  Native.Debugger.RuntimeApi.getSgShape
 
 
 getModule : DebugSession -> ElmModule
@@ -72,35 +116,10 @@ getSubscriptions =
   Native.Debugger.RuntimeApi.getSubscriptions
 
 
--- TODO: this is not pure! should be a task!
-getNumFrames : DebugSession -> Task x Int
-getNumFrames =
-  Native.Debugger.RuntimeApi.getNumFrames
+getSessionRecord : DebugSession -> Task x SessionRecord
+getSessionRecord =
+  Native.Debugger.RuntimeApi.getSessionRecord
 
-
--- can decode
-
--- new frame
-type alias NewFrameNotification =
-    { event : Event
-    , flaggedExprValues : List (ExprTag, JsElmValue)
-    , subscribedNodeValues : ValueSet
-    }
-
-
-emptyNotification =
-  { event = emptyEvent
-  , flaggedExprValues = []
-  , subscribedNodeValues = []
-  }
-
-
--- for time being, these are only set by Debug.log
-type alias ExprTag =
-  String
-
-
--- QUERIES
 
 {-| We do this with *lists* of nodes or exprs
 a/o just one at a time, because simulating the module forward in the
@@ -120,219 +139,7 @@ getNodeStateSingle session frameIdx nodes =
             (id, List.head log |> getMaybe "head of empty" |> snd)))
 
 
--- INPUT HISTORY (maybe all these should live in a different module?)
-
-
-getInputHistory : DebugSession -> Task x InputHistory
-getInputHistory =
-  Native.Debugger.RuntimeApi.getInputHistory
-
-
-emptyInputHistory : InputHistory
-emptyInputHistory =
-  Native.Debugger.RuntimeApi.emptyInputHistory
-
-
-splitInputHistory : FrameIndex -> InputHistory -> (InputHistory, InputHistory)
-splitInputHistory =
-  Native.Debugger.RuntimeApi.splitInputHistory
-
-
-serializeInputHistory : InputHistory -> String
-serializeInputHistory =
-  Native.Debugger.RuntimeApi.serializeInputHistory
-
-
-parseInputHistory : String -> Result InputHistoryParseError InputHistory
-parseInputHistory =
-  Native.Debugger.RuntimeApi.parseInputHistory
-
-
-getHistoryModuleName : InputHistory -> ModuleName
-getHistoryModuleName =
-  Native.Debugger.RuntimeApi.getHistoryModuleName
-
-
-type InputHistoryParseError
-  = JsonParseError String
-  | JsonSchemaError String
-
-
-{-| Interpreted as inclusive -}
-type alias FrameInterval =
-  { start : FrameIndex
-  , end : FrameIndex
-  }
-
-
-type alias ValueLog =
-  List (FrameIndex, JsElmValue)
-
-
-type alias ValueSet =
-  List (NodeId, JsElmValue)
-
-
--- COMMANDS
-
-{-| Starts off playing.
-Subscribes to the list of nodes returned by the given function (3rd arg),
-and returns their initial values. -}
-initializeFullscreen : ElmModule
-                    -> Signal.Address NewFrameNotification
-                    -> Task x DebugSession
-initializeFullscreen =
-  Native.Debugger.RuntimeApi.initializeFullscreen
-
-
-initializeFullscreenAndSubscribe : ElmModule
-                                -> Signal.Address NewFrameNotification
-                                -> (SGShape -> List NodeId)
-                                -> Task x (DebugSession, ValueSet)
-initializeFullscreenAndSubscribe modul addr initialNodesFun =
-  (initializeFullscreen modul addr)
-  `Task.andThen` (\newSession ->
-    (newSession
-      |> sgShape
-      |> initialNodesFun
-      |> List.map (\nodeId -> setSubscribedToNode newSession nodeId True)
-      |> Task.sequence
-      |> Task.mapError (\_ -> Debug.crash "already subscribed"))
-    `Task.andThen` (\_ ->
-      (getNodeStateSingle newSession 0 (newSession |> sgShape |> initialNodesFun)
-        |> Task.mapError (Debug.crash << toString))
-      `Task.andThen` (\valueSet ->
-        Task.succeed (newSession, valueSet)
-      )
-    )
-  )
-
-
-{-| Removes all event handlers and removes the session's node from the DOM. -}
-dispose : DebugSession -> Task x ()
-dispose =
-  Native.Debugger.RuntimeApi.dispose
-
-
-{-| Forces the module to render the given value (expected to be Html
-or Element). -}
-setMain : DebugSession -> JsElmValue -> Task x ()
-setMain =
-  Native.Debugger.RuntimeApi.setMain
-
-
-{-| Set the module's event history to be the given history and
-regenerate snapshots. Failure means the event history wasn't empty
-(this is intended to be used right after initialization)
-
-Currently returns flagged expr history but not node history. -}
-setInputHistory : DebugSession -> InputHistory -> Task () (List (ExprTag, ValueLog))
-setInputHistory =
-  Native.Debugger.RuntimeApi.setInputHistory
-
-
-{-| given shape of old graph, history, and shape of new graph,
-possibly return errors -}
-validate : InputHistory -> SGShape -> SGShape -> Maybe ReplayError
-validate inputHistory oldShape newShape =
-  -- TODO: filter out things from mailboxes
-  let
-    d = Debug.log "(IH,EQ,OS,NS)" (inputHistory, oldShape == newShape, oldShape, newShape)
-  in
-    if oldShape == newShape then
-      Nothing
-    else
-      Just { oldShape = oldShape, newShape = newShape }
-
-
-{-| Given current session and new module:
-
-- kill old module
-- initialize new module
-- check if the old module's event history can be replayed over the new module
-  (failing if no)
-- replay events over old module, saving snapshots along the way
-- return new session and logs for all flagged expressions (`Debug.log`)
--}
-swap : DebugSession
-    -> ElmModule
-    -> (SGShape -> List NodeId)
-    -> Task ReplayError (DebugSession, List (ExprTag, ValueLog))
-swap session newMod initialNodesFun =
-  (dispose session)
-  `Task.andThen` (\_ ->
-    (getInputHistory session)
-    `Task.andThen` (\history ->
-      (initializeFullscreenAndSubscribe
-        newMod
-        (getAddress session)
-        initialNodesFun)
-      `Task.andThen` (\(newSession, _) ->
-        let valid =
-          validate history (sgShape session) (sgShape newSession)
-        in
-          case valid of
-            Just swapErr ->
-              Task.fail swapErr
-
-            Nothing ->
-              setInputHistory newSession history
-                |> Task.mapError (\_ -> Debug.crash "session's event list wasn't empty")
-                |> Task.map (\logs -> (newSession, logs))
-      )
-    )
-  )
-
-
-forkFrom : DebugSession
-        -> FrameIndex
-        -> Task x (DebugSession, ValueSet)
-forkFrom session frameIdx =
-  (dispose session)
-  `Task.andThen` (\_ ->
-    (getSubscriptions session)
-    `Task.andThen` (\subs ->
-      (getInputHistory session
-       |> Task.map (\history ->
-            history |> splitInputHistory frameIdx |> fst))
-      `Task.andThen` (\historyUpTo ->
-        (initializeFullscreenAndSubscribe
-          (getModule session)
-          (getAddress session)
-          (always subs))
-        `Task.andThen` (\(newSession, _) ->
-          (setInputHistory
-            newSession
-            historyUpTo
-          |> Task.mapError (\_ -> Debug.crash "session's event list wasn't empty"))
-          `Task.andThen` (\_ ->
-            (getNodeStateSingle
-              newSession
-              frameIdx
-              subs)
-            |> Task.mapError (Debug.crash << toString)
-            |> Task.map (\values -> (newSession, values))
-          )
-        )
-      )
-    )
-  )
-
-
-type alias CompiledElmModule =
-  { name : ModuleName
-  , code : String -- javascript
-  }
-
-
-type alias ElmModule =
-  { name : ModuleName
-  , modul : JsEnc.Value
-  }
-
-
-type alias ModuleName =
-  String
+-- GETTING MODULE FROM JS
 
 
 {-| Fails with an error message if the given name is not in scope -}
@@ -355,61 +162,37 @@ instantiateModule compiled =
   )
 
 
--- opaque
--- must start from time 0
--- TODO: if this is opaque, how are we gonna serialize it for download?
--- could just JSON-ize it on the JS side...
-type InputHistory =
-  InputHistory
+splitRecord : FrameIndex
+           -> ImmediateSessionRecord
+           -> (ImmediateSessionRecord, ImmediateSessionRecord)
+splitRecord idx record =
+  let
+    (beforeHistory, afterHistory) =
+      JsArray.split idx record.inputHistory
+
+    snapshotIdx =
+      idx // Native.Debugger.RuntimeApi.eventsPerSnapshot + 1
+
+    (beforeSnaps, afterSnaps) =
+      JsArray.split snapshotIdx record.snapshots
+  in
+    ( { record
+          | inputHistory <- beforeHistory
+          , snapshots <- beforeSnaps
+          , pausedAt <-
+              JsArray.get -1 afterHistory
+                |> Maybe.map .time
+                |> Maybe.withDefault record.startedAt
+      }
+    , { record
+          | inputHistory <- afterHistory
+          , snapshots <- afterSnaps
+      }
+    )
 
 
-type alias SubscriptionSet =
-  List NodeId
-
-
-type alias SGShape =
-  { nodes : Dict.Dict NodeId NodeInfo
-  , mainId : NodeId
-  }
-
-
-type alias NodeInfo =
-  { name : String
-  , nodeType : NodeType
-  , kids : List NodeId
-  }
-
-
-type NodeType
-  = InputPort
-  | CoreLibInput
-  | Mailbox
-  | InternalNode
-  | OutputPort
-  | Main
-
-
-{-| Means replaying the InputHistory on the new code wouldn't make sense -}
-type alias ReplayError
-  = { oldShape : SGShape
-    , newShape : SGShape
-    }
-
-
-{-| Error with () means it was already in that state -}
-setPlaying : DebugSession -> Bool -> Task () ()
-setPlaying =
-  Native.Debugger.RuntimeApi.setPlaying
-
-
--- TODO: this should return the current values (what does that mean tho)
-{-| Error with () means it was already in that state -}
-setSubscribedToNode : DebugSession -> NodeId -> Bool -> Task () ()
-setSubscribedToNode =
-  Native.Debugger.RuntimeApi.setSubscribedToNode
-
-
--- Util
+-- PRETTY PRINT
+-- TODO: return Elm repr of Elm value
 
 prettyPrint : JsElmValue -> String
 prettyPrint val =

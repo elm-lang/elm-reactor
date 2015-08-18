@@ -9,6 +9,7 @@ import Effects exposing (..)
 import StartApp
 
 import Debugger.RuntimeApi as API
+import Debugger.Model as DM
 import Debugger.Active as Active
 
 
@@ -22,11 +23,11 @@ initModel =
 
 
 type Message
-  = Initialized API.DebugSession API.ValueSet
+  = Initialized DM.DebugSession DM.ValueSet
   | ActiveMessage Active.Message
 
 
---app : API.ModuleName -> StartApp.Config Message Model
+app : DM.ModuleName -> StartApp.Config Model Message
 app moduleName =
   { init =
       ( Nothing
@@ -34,11 +35,21 @@ app moduleName =
             |> Task.mapError
                   (\err -> Debug.crash <| "module name not in scope: " ++ err))
           `Task.andThen` (\initModule ->
-            API.initializeFullscreenAndSubscribe
+            API.start
               initModule
               (Signal.forwardTo notificationsMailbox.address Active.NewFrame)
-              API.justMain
-            |> Task.map (\(session, values) -> Initialized session values)
+            `Task.andThen` (\session ->
+              (API.subscribeToAll session API.justMain
+                |> Task.mapError (\_ -> Debug.crash "already subscribed"))
+              `Task.andThen` (\_ ->
+                (API.getNodeStateSingle
+                  session
+                  0
+                  [API.getSgShape session |> .mainId])
+                |> Task.mapError (Debug.crash << toString)
+                |> Task.map (\(valueSet) -> Initialized session valueSet)
+              )
+            )
           )
         |> task
       )
@@ -72,7 +83,7 @@ notificationsMailbox =
 
 update : Message -> Model -> (Model, Effects Message)
 update msg model =
-  case Debug.log "SERVICE MSG" msg of
+  case msg of
     Initialized session initValues ->
       case model of
         Just _ ->

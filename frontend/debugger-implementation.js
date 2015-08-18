@@ -39,10 +39,27 @@ Elm.fullscreenDebug = function(moduleName, fileName) {
 		fileName: fileName,
 		windowLocationHost: window.location.host
 	});
+	
+	// ignore clicks on sidebar
 	var debuggerSidebar = document.getElementById('elm-reactor-side-bar');
-	eventsToIgnore.forEach(function(eventName) {
-		// debuggerSidebar.addEventListener(eventName, ignore);
-	});
+	debuggerSidebar.addEventListener("click", blockClicks);
+	function blockClicks(e)
+	{
+		var event = e || window.event;
+		event.cancelBubble = true;
+		if (event.stopPropagation)
+		{
+			event.stopPropagation();
+		}
+	}
+
+	// ignore events on event blocker
+	var eventBlocker = document.getElementById('elm-reactor-event-blocker');
+	for (var eventName of eventsToIgnore)
+	{
+		eventBlocker.addEventListener(eventName, ignore, true);
+	}
+
 };
 
 })();
