@@ -58,7 +58,7 @@ Executable elm-reactor
     StaticFiles.Build
 
   Build-depends:
-    aeson >= 0.8,
+    aeson >= 0.7,
     base >=4.2 && <5,
     blaze-html,
     blaze-markup,
