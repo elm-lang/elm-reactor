@@ -32,25 +32,15 @@ app moduleName =
   { init =
       ( Nothing
       , (API.getFromGlobalScope moduleName
-            |> Task.mapError
+          |> Task.mapError
                   (\err -> Debug.crash <| "module name not in scope: " ++ err))
-          `Task.andThen` (\initModule ->
-            API.start
-              initModule
-              (Signal.forwardTo notificationsMailbox.address Active.NewFrame)
-            `Task.andThen` (\session ->
-              (API.subscribeToAll session API.justMain
-                |> Task.mapError (\_ -> Debug.crash "already subscribed"))
-              `Task.andThen` (\_ ->
-                (API.getNodeStateSingle
-                  session
-                  0
-                  [API.getSgShape session |> .mainId])
-                |> Task.mapError (Debug.crash << toString)
-                |> Task.map (\(valueSet) -> Initialized session valueSet)
-              )
-            )
-          )
+        `Task.andThen` (\initModule ->
+          API.start
+            initModule
+            (Signal.forwardTo notificationsMailbox.address Active.NewFrame)
+            API.justMain
+          |> Task.map (\(session, valueSet) -> Initialized session valueSet)
+        )
         |> task
       )
   , view = \_ _ -> div [] [] -- would be nice to not do this

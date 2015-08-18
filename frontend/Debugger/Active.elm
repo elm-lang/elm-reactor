@@ -186,6 +186,7 @@ update msg state =
                     (API.swap
                       newMod
                       (API.getAddress state.session)
+                      API.justMain
                       record.inputHistory
                       (Just (API.getSgShape state.session))
                       API.shapesEqual
@@ -199,34 +200,35 @@ update msg state =
                           |> Task.map (always NoOp)
 
                         Ok (newSession, exprLogs, nodeLogs) ->
-                          (API.subscribeToAll newSession API.justMain
-                            |> Task.mapError (\_ -> Debug.crash "already subscribed"))
-                          `Task.andThen` (\_ ->
-                            (API.getNodeStateSingle
-                              newSession
-                              (curFrameIdx state)
-                              [API.getSgShape newSession |> .mainId]
-                            |> Task.mapError (Debug.crash << toString))
-                            `Task.andThen` (\values ->
-                              (case state.runningState of
-                                Playing ->
-                                  Task.succeed Playing
+                          (case state.runningState of
+                            Playing ->
+                              Task.succeed Playing
 
-                                Paused idx _ ->
-                                  (API.pause newSession
-                                    |> Task.mapError (\_ -> Debug.crash "already paused")
-                                    |> Task.map (\newRecord ->
-                                      Paused (JsArray.length newRecord.inputHistory) newRecord)))
-                              `Task.andThen` (\newRunningState ->
-                                Task.succeed <|
-                                  Response <|
-                                    SwapResponse
-                                      newSession
-                                      (getMainVal newSession values)
-                                      exprLogs
-                                      newRunningState
-                              )
-                            )
+                            Paused idx _ ->
+                              (API.pause newSession
+                                |> Task.mapError (\_ -> Debug.crash "already paused")
+                                |> Task.map (\newRecord ->
+                                  Paused (JsArray.length newRecord.inputHistory) newRecord)))
+                          `Task.andThen` (\newRunningState ->
+                            let
+                              mainVal =
+                                nodeLogs
+                                  |> List.filter (\(nodeId, log) ->
+                                        nodeId == (API.getSgShape newSession).mainId)
+                                  |> List.head
+                                  |> getMaybe "no log for main"
+                                  |> snd
+                                  |> getLast
+                                  |> getMaybe "no values in main log"
+                                  |> snd
+                            in
+                              Task.succeed <|
+                                Response <|
+                                  SwapResponse
+                                    newSession
+                                    mainVal
+                                    exprLogs
+                                    newRunningState
                           )
                     )
                   )
@@ -258,6 +260,7 @@ update msg state =
                   (API.swap
                     currentModule
                     (API.getAddress state.session)
+                    API.justMain
                     sessionRecord.inputHistory
                     Nothing
                     (API.shapesEqual)
@@ -398,24 +401,13 @@ playFrom session record frameIdx =
       (beforeRecord, _) =
         API.splitRecord frameIdx record
     in
-      API.play beforeRecord (API.getAddress session)
-    )
-    `Task.andThen` (\newSession ->
-      (API.subscribeToAll newSession API.justMain
-        |> Task.mapError (\_ -> Debug.crash "already subscribed"))
-      `Task.andThen` (\_ ->
-        API.getNodeStateSingle
-          newSession
-          frameIdx
-          [(API.getSgShape newSession).mainId]
-        |> Task.mapError (Debug.crash << toString)
-        |> Task.map (\valueSet ->
-              Response <|
-                ForkResponse
-                  newSession
-                  frameIdx
-                  (getMainVal newSession valueSet))
-      )
+      API.play beforeRecord (API.getAddress session) API.justMain
+      |> Task.map (\(newSession, valueSet) ->
+          Response <|
+            ForkResponse
+              newSession
+              frameIdx
+              (getMainVal newSession valueSet))
     )
   )
 

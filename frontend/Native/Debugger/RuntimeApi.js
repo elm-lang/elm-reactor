@@ -37,6 +37,8 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 		}
 	}
 
+	var latestSessionId = 0;
+
 	// not exposed
 	function initializeFullscreen(module, delay, notificationAddress)
 	{
@@ -49,23 +51,21 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 					originalNotify: debugeeLocalRuntime.notify,
 					delay: delay,
 					startedAt: Date.now(),
-					// TODO: delay, totalTimeLost, asyncCallbacks
-					asyncCallbacks: [],
 					events: [],
 					notificationAddress: notificationAddress,
 					disposed: false,
 					playing: true,
-					replayingHistory: false,
 					subscribedNodeIds: [],
 					flaggedExprValues: [],
 					setIntervalIds: [],
 					index: 0,
-					record: null
+					record: null,
+					sessionId: latestSessionId++
 				};
 
 				// set up event recording
 				debugeeLocalRuntime.notify = function(id, value) {
-					if (!session.playing || session.replayingHistory)
+					if (!session.playing)
 					{
 						return false;
 					}
@@ -113,26 +113,18 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 						return 0;
 					}
 
-					var callback = {
-						thunk: thunk,
-						id: 0,
-						executed: false
-					};
-
-					callback.id = setTimeout(function() {
-						callback.executed = true;
-						console.log("thunk", session.id);
-						thunk();
+					var id = setTimeout(function() {
+						if (session.playing)
+						{
+							thunk();
+						}
 					}, delay);
-
-					// TODO: this isn't fully hooked up yet
-					session.asyncCallbacks.push(callback);
-					return callback.id;
+					return id;
 				};
 
 				debugeeLocalRuntime.setInterval = function(thunk, interval) {
 					var intervalId = window.setInterval(function() {
-						if(session.playing && !session.replayingHistory)
+						if(session.playing)
 						{
 							thunk();
 						}
@@ -141,7 +133,7 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 				}
 
 				debugeeLocalRuntime.timer.now = function() {
-					if (!session.playing || session.replayingHistory)
+					if (!session.playing)
 					{
 						var t =
 							session.index < session.events.length
@@ -179,15 +171,21 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 		return session;
 	}
 
-	function start(module, address)
+	function start(module, address, subscribedNodesFun)
 	{
 		return Task.asyncFunction(function(callback) {
 			var session = initializeFullscreen(module, 0, address);
-			callback(Task.succeed(session));
+			session.subscribedNodeIds =
+				List.toArray(subscribedNodesFun(session.shape));
+			var values = session.subscribedNodeIds.map(function(nodeId) {
+				return Utils.Tuple2(nodeId, session.sgNodes[nodeId].value);
+			});
+			var result = Utils.Tuple2(session, List.fromArray(values));
+			callback(Task.succeed(result));
 		})
 	}
 
-	function swap(module, address, inputHistory, maybeShape, validator)
+	function swap(module, address, subscribedNodesFun, inputHistory, maybeShape, validator)
 	{
 		return Task.asyncFunction(function(callback) {
 			var session = initializeFullscreen(module, 0, address);
@@ -210,9 +208,11 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 				}
 				callback(Task.fail(error));
 			} else {
-				session.replayingHistory = true;
 
 				session.events = JsArray.toMutableArray(inputHistory);
+				session.subscribedNodeIds =
+					List.toArray(subscribedNodesFun(session.shape));
+				session.playing = false;
 				
 				var flaggedExprLogs = {};
 				var nodeLogs = {};
@@ -265,8 +265,6 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 				}
 				var nodeLogsList = List.fromArray(nodeLogsArray);
 
-				session.replayingHistory = false;
-
 				var result = {
 					ctor: '_Tuple3',
 					_0: session,
@@ -274,12 +272,14 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 					_2: nodeLogsList
 				};
 
+				session.playing = true;
+
 				callback(Task.succeed(result));
 			}
 		});
 	}
 
-	function play(record, address)
+	function play(record, address, subscribedNodesFun)
 	{
 		return Task.asyncFunction(function (callback) {
 			var timePaused = Date.now() - record.pausedAt;
@@ -287,7 +287,16 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 			var session = initializeFullscreen(record.modul, delay, address);
 			session.events = JsArray.toMutableArray(record.inputHistory);
 			session.snapshots = JsArray.toMutableArray(record.snapshots);
-			callback(Task.succeed(session));
+			session.playing = false;
+			jumpTo(session, session.events.length);
+			session.playing = true;
+			session.subscribedNodeIds =
+				List.toArray(subscribedNodesFun(session.shape));
+			var values = session.subscribedNodeIds.map(function(nodeId) {
+				return Utils.Tuple2(nodeId, session.sgNodes[nodeId].value);
+			});
+			var result = Utils.Tuple2(session, List.fromArray(values));
+			callback(Task.succeed(result));
 		});
 	}
 
@@ -321,14 +330,16 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 	function dispose(session)
 	{
 		return Task.asyncFunction(function(callback) {
-			session.disposed = true;
-			session.runningModule.dispose();
-			for (var intervalId of session.setIntervalIds)
-			{
-				window.clearInterval(intervalId);
-			}
-			session.runtime.node.parentNode.removeChild(session.runtime.node);
-			callback(Task.succeed(Utils.Tuple0));
+			assertNotDisposed(session, callback, function() {
+				session.disposed = true;
+				session.runningModule.dispose();
+				for (var intervalId of session.setIntervalIds)
+				{
+					window.clearInterval(intervalId);
+				}
+				session.runtime.node.parentNode.removeChild(session.runtime.node);
+				callback(Task.succeed(Utils.Tuple0));
+			});
 		});
 	}
 
@@ -493,7 +504,7 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 
 	function assertPaused(session, callback, thunk)
 	{
-		assert(!session.disposed, {ctor: "IsPlaying"}, callback, thunk);
+		assert(!session.playing, {ctor: "IsPlaying"}, callback, thunk);
 	}
 
 	function assertIntervalInRange(session, interval, callback, thunk)
@@ -584,9 +595,9 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 
 	return localRuntime.Native.Debugger.RuntimeApi.values = {
 
-		start: F2(start),
-		swap: F5(swap),
-		play: F2(play),
+		start: F3(start),
+		swap: F6(swap),
+		play: F3(play),
 		pause: pause,
 		dispose: dispose,
 		setSubscribedToNode: F3(setSubscribedToNode),
