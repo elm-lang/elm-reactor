@@ -40,10 +40,11 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 	var latestSessionId = 0;
 
 	// not exposed
-	function initializeFullscreen(module, delay, notificationAddress)
+	function initializeFullscreen(_window, module, delay, notificationAddress)
 	{
+		console.log('C', _window);
 		var session;
-		var moduleBeingDebugged = Elm.fullscreen({
+		var moduleBeingDebugged = _window.Elm.fullscreen({
 			make: function(debugeeLocalRuntime) {
 				session = {
 					module: module,
@@ -171,10 +172,11 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 		return session;
 	}
 
-	function start(module, address, subscribedNodesFun)
+	function start(_window, module, address, subscribedNodesFun)
 	{
 		return Task.asyncFunction(function(callback) {
-			var session = initializeFullscreen(module, 0, address);
+			console.log('B', _window);
+			var session = initializeFullscreen(_window, module, 0, address);
 			session.subscribedNodeIds =
 				List.toArray(subscribedNodesFun(session.shape));
 			var values = session.subscribedNodeIds.map(function(nodeId) {
@@ -185,10 +187,10 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 		})
 	}
 
-	function swap(module, address, subscribedNodesFun, inputHistory, maybeShape, validator)
+	function swap(_window, module, address, subscribedNodesFun, inputHistory, maybeShape, validator)
 	{
 		return Task.asyncFunction(function(callback) {
-			var session = initializeFullscreen(module, 0, address);
+			var session = initializeFullscreen(_window, module, 0, address);
 			// TODO: basically writing Elm in JS here. should do it in Elm.
 			var valid;
 			switch (maybeShape.ctor) {
@@ -279,12 +281,12 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 		});
 	}
 
-	function play(record, address, subscribedNodesFun)
+	function play(_window, record, address, subscribedNodesFun)
 	{
 		return Task.asyncFunction(function (callback) {
 			var timePaused = Date.now() - record.pausedAt;
 			var delay = record.delay + timePaused;
-			var session = initializeFullscreen(record.modul, delay, address);
+			var session = initializeFullscreen(_window, record.modul, delay, address);
 			session.events = JsArray.toMutableArray(record.inputHistory);
 			session.snapshots = JsArray.toMutableArray(record.snapshots);
 			session.playing = false;
@@ -455,10 +457,10 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 
 	// GETTING MODULE FROM JS
 
-	function getFromGlobalScope(moduleName)
+	function getFromGlobalScope(_window, moduleName)
 	{
 		return Task.asyncFunction(function(callback) {
-			var elmModule = Elm;
+			var elmModule = _window.Elm;
 			var names = moduleName.split('.');
 			try {
 				for (var i = 0; i < names.length; ++i)
@@ -477,13 +479,15 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 		});
 	}
 
-	function evalCompiledModule(compiledModule)
+	function evalCompiledModule(_window, compiledModule)
 	{
 		return Task.asyncFunction(function(callback) {
-			window.eval(compiledModule.code);
+			_window.eval(compiledModule.code);
 			callback(Task.succeed(Utils.Tuple0));
 		});
 	}
+
+	var opener = window.opener;
 
 	// == NOT EXPOSED BELOW HERE ==
 
@@ -595,9 +599,9 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 
 	return localRuntime.Native.Debugger.RuntimeApi.values = {
 
-		start: F3(start),
-		swap: F6(swap),
-		play: F3(play),
+		start: F4(start),
+		swap: F7(swap),
+		play: F4(play),
 		pause: pause,
 		dispose: dispose,
 		setSubscribedToNode: F3(setSubscribedToNode),
@@ -610,8 +614,9 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 		getNodeState: F3(getNodeState),
 		getSessionRecord: getSessionRecord,
 		
-		getFromGlobalScope: getFromGlobalScope,
-		evalCompiledModule: evalCompiledModule,
+		getFromGlobalScope: F2(getFromGlobalScope),
+		evalCompiledModule: F2(evalCompiledModule),
+		opener: opener,
 
 		eventsPerSnapshot: eventsPerSnapshot,
 

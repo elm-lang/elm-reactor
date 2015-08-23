@@ -15,7 +15,8 @@ import DataUtils exposing (..)
 
 
 type alias Model =
-  { session : DM.DebugSession
+  { window_ : DM.Window
+  , session : DM.DebugSession
   , totalTimeLost : Time
   , runningState : RunningState
   , numFrames : Int
@@ -25,9 +26,10 @@ type alias Model =
   }
 
 
-initModel : DM.DebugSession -> Model
-initModel session =
-  { session = session
+initModel : DM.Window -> DM.DebugSession -> Model
+initModel window_ session =
+  { window_ = window_
+  , session = session
   , totalTimeLost = 0
   , runningState = Playing
   , numFrames = 1
@@ -102,7 +104,7 @@ update msg state =
           case state.runningState of
             Paused pausedIdx record ->
               ( { state | runningState <- Playing }
-              , playFrom state.session record pausedIdx
+              , playFrom state.window_ state.session record pausedIdx
                   |> task
               )
 
@@ -161,7 +163,7 @@ update msg state =
             ( { state | runningState <- Playing }
             , getRecord
               `Task.andThen` (\record ->
-                playFrom state.session record 0)
+                playFrom state.window_ state.session record 0)
               |> task
             )
 
@@ -181,9 +183,10 @@ update msg state =
               `Task.andThen` (\record ->
                 (API.dispose state.session)
                 `Task.andThen` (\_ ->
-                  (API.instantiateModule compiledMod)
+                  (API.instantiateModule state.window_ compiledMod)
                   `Task.andThen` (\newMod ->
                     (API.swap
+                      state.window_
                       newMod
                       (API.getAddress state.session)
                       API.justMain
@@ -258,6 +261,7 @@ update msg state =
                 (API.dispose state.session)
                 `Task.andThen` (\_ ->
                   (API.swap
+                    state.window_
                     currentModule
                     (API.getAddress state.session)
                     API.justMain
@@ -390,18 +394,19 @@ update msg state =
 
 
 -- should this be in RuntimeApi?
-playFrom : DM.DebugSession
+playFrom : DM.Window
+        -> DM.DebugSession
         -> DM.ImmediateSessionRecord
         -> DM.FrameIndex
         -> Task x Message
-playFrom session record frameIdx =
+playFrom window_ session record frameIdx =
   (API.dispose session)
   `Task.andThen` (\_ ->
     (let
       (beforeRecord, _) =
         API.splitRecord frameIdx record
     in
-      API.play beforeRecord (API.getAddress session) API.justMain
+      API.play window_ beforeRecord (API.getAddress session) API.justMain
       |> Task.map (\(newSession, valueSet) ->
           Response <|
             ForkResponse

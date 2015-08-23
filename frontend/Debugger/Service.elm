@@ -23,37 +23,42 @@ initModel =
 
 
 type Message
-  = Initialized DM.DebugSession DM.ValueSet
+  = Initialized DM.DebugSession DM.ValueSet DM.Window
   | ActiveMessage Active.Message
 
 
 app : DM.ModuleName -> StartApp.Config Model Message
 app moduleName =
-  { init =
-      ( Nothing
-      , (API.getFromGlobalScope moduleName
-          |> Task.mapError
-                  (\err -> Debug.crash <| "module name not in scope: " ++ err))
-        `Task.andThen` (\initModule ->
-          API.start
-            initModule
-            (Signal.forwardTo notificationsMailbox.address Active.NewFrame)
-            API.justMain
-          |> Task.map (\(session, valueSet) -> Initialized session valueSet)
+  let
+    window_ =
+      API.opener
+  in
+    { init =
+        ( Nothing
+        , (API.getFromGlobalScope window_ moduleName
+            |> Task.mapError
+                    (\err -> Debug.crash <| "module name not in scope: " ++ err))
+          `Task.andThen` (\initModule ->
+            API.start
+              window_
+              initModule
+              (Signal.forwardTo notificationsMailbox.address Active.NewFrame)
+              API.justMain
+            |> Task.map (\(session, valueSet) -> Initialized session valueSet window_)
+          )
+          |> task
         )
-        |> task
-      )
-  , view = \_ _ -> div [] [] -- would be nice to not do this
-  , update = update
-  , inputs =
-      [ Signal.map
-          (ActiveMessage << Active.Notification)
-          notificationsMailbox.signal
-      , Signal.map
-          (ActiveMessage << Active.Command)
-          (commandsMailbox ()).signal
-      ]
-  }
+    , view = \_ _ -> div [] [] -- would be nice to not do this
+    , update = update
+    , inputs =
+        [ Signal.map
+            (ActiveMessage << Active.Notification)
+            notificationsMailbox.signal
+        , Signal.map
+            (ActiveMessage << Active.Command)
+            (commandsMailbox ()).signal
+        ]
+    }
 
 
 -- TODO: there's an error if I make this a value instead of a function. Why?
@@ -74,13 +79,13 @@ notificationsMailbox =
 update : Message -> Model -> (Model, Effects Message)
 update msg model =
   case msg of
-    Initialized session initValues ->
+    Initialized session initValues window_ ->
       case model of
         Just _ ->
           Debug.crash "already initialized"
 
         Nothing ->
-          ( Just (Active.initModel session)
+          ( Just (Active.initModel window_ session)
           , none
           )
 

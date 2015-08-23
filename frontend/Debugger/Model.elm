@@ -15,6 +15,10 @@ type alias JsElmValue =
   JsEnc.Value
 
 
+type Window =
+  Window
+
+
 type DebugSession
   = DebugSession
 
