@@ -12,7 +12,7 @@ var eventsToIgnore = [
 
 Elm.fullscreenDebug = function(moduleName, fileName) {
 
-	var debuggerWindow = window.open('/debugger.html');
+	var debuggerWindow = window.open('_reactor/debug-interface.html');
 
 	window.MODULE_INFO = {
 		moduleName: moduleName,

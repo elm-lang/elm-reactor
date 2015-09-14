@@ -25,8 +25,8 @@ fileChangeApp watchedFile pendingConnection =
 sendHotSwap :: FilePath -> WS.Connection -> FilePath -> IO ()
 sendHotSwap watchedFile connection _ =
   do  result <- liftIO (Compile.toJson watchedFile)
-      WS.sendTextData connection (BSC.pack result)
       putStrLn $ "swapped " ++ watchedFile
+      WS.sendTextData connection (BSC.pack result)
 
 
 loopForever :: IO ()

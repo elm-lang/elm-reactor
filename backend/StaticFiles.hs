@@ -1,7 +1,9 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# LANGUAGE TemplateHaskell #-}
 module StaticFiles
-    ( debugger, debuggerPath
+    ( debuggerAgent, debuggerAgentPath
+    , debuggerInterfaceJs, debuggerInterfaceJsPath
+    , debuggerInterfaceHtml, debuggerInterfaceHtmlPath
     , index, indexPath
     , notFound, notFoundPath
     )
@@ -14,9 +16,19 @@ import Language.Haskell.TH (runIO)
 import qualified StaticFiles.Build as Build
 
 
-debugger :: BS.ByteString
-debugger =
-  $(bsToExp =<< runIO Build.debugger)
+debuggerAgent :: BS.ByteString
+debuggerAgent =
+  $(bsToExp =<< runIO Build.debuggerAgent)
+
+
+debuggerInterfaceJs :: BS.ByteString
+debuggerInterfaceJs =
+  $(bsToExp =<< runIO Build.debuggerInterfaceJs)
+
+
+debuggerInterfaceHtml :: BS.ByteString
+debuggerInterfaceHtml =
+  $(bsToExp =<< runIO Build.debuggerInterfaceHtml)
 
 
 index :: BS.ByteString
@@ -29,9 +41,19 @@ notFound =
   $(bsToExp =<< runIO (Build.navigationPage "NotFound.elm"))
 
 
-debuggerPath :: FilePath
-debuggerPath =
-  "_reactor/debug.js"
+debuggerAgentPath :: FilePath
+debuggerAgentPath =
+  "_reactor/debug-agent.js"
+
+
+debuggerInterfaceJsPath :: FilePath
+debuggerInterfaceJsPath =
+  "_reactor/debug-interface.js"
+
+
+debuggerInterfaceHtmlPath :: FilePath
+debuggerInterfaceHtmlPath =
+  "_reactor/debug-interface.html"
 
 
 indexPath :: FilePath
