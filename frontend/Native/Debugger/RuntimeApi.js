@@ -24,16 +24,34 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 	function jumpTo(session, frameIdx)
 	{
 		// get to interval start
-		var snapshotBeforeIdx = Math.floor(frameIdx / eventsPerSnapshot);
-		var snapshot = session.snapshots[snapshotBeforeIdx];
-		for(var nodeId in snapshot) {
-			session.sgNodes[nodeId].value = snapshot[nodeId];
+		var currentSnapshotIdx = Math.floor(session.index / eventsPerSnapshot);
+		var targetSnapshotIdx = Math.floor(frameIdx / eventsPerSnapshot);
+		if (currentSnapshotIdx != targetSnapshotIdx || frameIdx < session.index) {
+			// instantiate snapshot
+			var snapshot = session.snapshots[targetSnapshotIdx];
+			for(var nodeId in snapshot) {
+				session.sgNodes[nodeId].value = snapshot[nodeId];
+			}
+			// push events
+			var targetSnapshotFrameIdx = targetSnapshotIdx * eventsPerSnapshot;
+			for(session.index=targetSnapshotFrameIdx;
+				session.index < frameIdx;
+				session.index++)
+			{
+				var event = session.events[session.index];
+				session.originalNotify(event.nodeId, event.value);
+			}
 		}
-		var snapshotBeforeFrameIdx = snapshotBeforeIdx * eventsPerSnapshot;
-		for(session.index=snapshotBeforeFrameIdx; session.index < frameIdx; session.index++)
+		else
 		{
-			var event = session.events[session.index];
-			session.originalNotify(event.nodeId, event.value);
+			// only push events
+			for(;
+				session.index < frameIdx;
+				session.index++)
+			{
+				var event = session.events[session.index];
+				session.originalNotify(event.nodeId, event.value);
+			}
 		}
 	}
 
@@ -94,12 +112,23 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 						var node = session.sgNodes[nodeId];
 						return Utils.Tuple2(nodeId, node.value);
 					});
+
+					var updatedNodes = [];
+					for (var nodeId in session.sgNodes)
+					{
+						var node = session.sgNodes[nodeId];
+						if (node.updatedThisFrame)
+						{
+							updatedNodes.push(node.id);
+						}
+					}
 					// send notification
 					var notification = {
 						_: {},
 						event: event,
 						flaggedExprValues: List.fromArray(session.flaggedExprValues),
-						subscribedNodeValues: List.fromArray(subscribedNodeValues)
+						subscribedNodeValues: List.fromArray(subscribedNodeValues),
+						updatedNodes: List.fromArray(updatedNodes)
 					}
 					Task.perform(notificationAddress._0(notification));
 

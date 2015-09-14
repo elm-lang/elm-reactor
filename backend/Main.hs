@@ -153,7 +153,7 @@ serveAssets =
           pass
 
         Just (content, mimeType) ->
-          do  modifyResponse (setContentType $ BSC.pack mimeType)
+          do  modifyResponse (setContentType $ BSC.pack (mimeType ++ ";charset=utf-8"))
               writeBS content
 
 

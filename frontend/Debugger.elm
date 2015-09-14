@@ -3,6 +3,7 @@ module Debugger where
 import Html exposing (..)
 import Html.Attributes as Attr exposing (..)
 import Html.Events exposing (..)
+import Html.Lazy
 import Signal
 import Task exposing (Task)
 import Json.Decode as JsDec
@@ -69,62 +70,6 @@ port serviceTasks =
 
 
 (=>) = (,)
-
-
-view : Signal.Address Message -> Model -> Html
-view addr state =
-  let
-    isPlaying =
-      case state.serviceState of
-        Just activeState ->
-          Active.isPlaying activeState
-
-        Nothing ->
-          False
-
-  in
-    div []
-      ( [ eventBlocker (not isPlaying)
-        , viewErrors addr state.errorState
-        , viewSidebar addr state
-        ]
-      )
-
-
-eventBlocker : Bool -> Html
-eventBlocker visible =
-  div
-    [ id "elm-reactor-event-blocker"
-    , style
-        [ "position" => "absolute"
-        , "top" => "0"
-        , "left" => "0"
-        , "width" => "100%"
-        , "height" => "100%"
-        , "display" => if visible then "block" else "none"
-        ]
-    ]
-    []
-
-
-tabWidth = 25
-
-toggleTab : Signal.Address Message -> Model -> Html
-toggleTab addr state =
-  div
-    [ style
-        [ "position" => "absolute"
-        , "width" => intToPx tabWidth
-        , "height" => "60px"
-        , "top" => "50%"
-        , "left" => intToPx -tabWidth
-        , "border-top-left-radius" => "3px"
-        , "border-bottom-left-radius" => "3px"
-        , "background" => colorToCss darkGrey
-        ]
-    , onClick addr (SidebarVisible <| not state.sidebarVisible)
-    ]
-    []
 
 
 viewErrors : Signal.Address Message -> ErrorState -> Html
@@ -210,85 +155,70 @@ viewErrors addr errors =
       ]
 
 
-viewSidebar : Signal.Address Message -> Model -> Html
-viewSidebar addr state =
-  let
-    constantStyles =
-      [ "background-color" => colorToCss darkGrey
-      , "width" => intToPx sidebarWidth
-      , "position" => "absolute"
-      , "top" => "0"
-      , "bottom" => "0"
-      , "transition-duration" => "0.3s"
-      , "opacity" => "0.97"
-      , "z-index" => "1"
-      ]
-    
-    toggleStyles =
-      if state.sidebarVisible then
-        [ "right" => "0" ]
-      else
-        [ "right" => intToPx -sidebarWidth ]
-
-    dividerBar =
+view : Signal.Address Message -> Model -> Html
+view addr state =
+  case state.serviceState of
+    Just activeState ->
       div
         [ style
-            [ "height" => "1px"
-            , "width" => intToPx sidebarWidth
-            , "opacity" => "0.3"
-            , "background-color" => colorToCss Color.lightGrey
+            [ "display" => "flex" 
+            , "flex-direction" => "row"
             ]
         ]
+        [ -- left sidebar
+          div
+            [ style
+                [ "display" => "flex"
+                , "flex-direction" => "column"
+                ]
+            ]
+            [ div
+                []
+                [ Controls.view
+                    addr
+                    state
+                    activeState
+                , Logs.view
+                    (Signal.forwardTo addr LogsMessage)
+                    Controls.totalHeight
+                    state.logsState
+                    activeState
+                , case state.swapSocket of
+                    Just _ ->
+                      text "socket connected"
+
+                    Nothing ->
+                      text "socket not connected"
+                , exportImport addr
+                ]
+            ]
+          -- main area
+        , div
+            [ style
+                [ "display" => "flex"
+                , "flex-direction" => "row"
+                ]
+            ]
+            [ div
+                []
+                [ text "main area"
+                ]
+            ]
+        ]
+
+    Nothing ->
+      -- TODO: prettify
+      div
         []
-
-    body =
-      case state.serviceState of
-        Just activeState ->
-          [ case state.swapSocket of
-              Just _ ->
-                text "socket connected"
-
-              Nothing ->
-                text "socket not connected"
-
-          , Controls.view
-              addr
-              state
-              activeState
-          , Logs.view
-              (Signal.forwardTo addr LogsMessage)
-              Controls.totalHeight
-              state.logsState
-              activeState
-          , exportImport addr
-          ]
-
-        Nothing ->
-          -- TODO: prettify
-          [ div
-              [ style [ "color" => "white" ] ]
-              [ text "Initialzing..." ]
-          ]
-  in
-    div
-      [ id "elm-reactor-side-bar"
-      -- TODO in JS: cancelBubble / stopPropagation on this
-      , style (constantStyles ++ toggleStyles)
-      ]
-      ([toggleTab addr state] ++ body)
+        [ text "Initialzing..." ]
 
 
 exportImport : Signal.Address Message -> Html
 exportImport addr =
   div
     [ style
-        [ "bottom" => "0"
-        , "position" => "absolute"
-        , "border-top" => "1px solid lightgrey"
-        , "width" => "100%"
-        , "display" => "flex"
+        [ "display" => "flex"
         , "justify-content" => "space-around"
-        , "color" => colorToCss lightGrey
         , "text-decoration" => "underline"
         ]
     ]
@@ -339,7 +269,7 @@ update msg state =
               | serviceState <- serviceState
               , logsState <- fst (Logs.update logMsg state.logsState)
           }
-        , none
+        , Effects.none
         )
 
     PlayPauseButtonAction buttonMsg ->

@@ -77,10 +77,10 @@ notificationsMailbox =
 
 
 update : Message -> Model -> (Model, Effects Message)
-update msg model =
+update msg state =
   case msg of
     Initialized session initValues window_ ->
-      case model of
+      case state of
         Just _ ->
           Debug.crash "already initialized"
 
@@ -90,14 +90,13 @@ update msg model =
           )
 
     ActiveMessage actMsg ->
-      case model of
+      case state of
         Just activeModel ->
           let
             (newActiveModel, activeFx) =
               Active.update actMsg activeModel
 
           in
-            -- TODO: tag
             ( Just newActiveModel
             , Effects.map ActiveMessage activeFx
             )
