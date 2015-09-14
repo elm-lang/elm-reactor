@@ -31,7 +31,7 @@ debuggerInterfaceJs =
 
 debuggerInterfaceHtml :: IO BS.ByteString
 debuggerInterfaceHtml =
-  BS.readFile ("frontend" </> "debugger.html")
+  BS.readFile ("frontend" </> "debug-interface.html")
 
 
 navigationPage :: FilePath -> IO BS.ByteString
