@@ -1,4 +1,4 @@
-module SideBar.Controls where
+module Controls where
 
 import Color
 import Html exposing (..)

@@ -1,4 +1,4 @@
-module SideBar.Logs where
+module Logs where
 
 import Html exposing (..)
 import Html.Attributes exposing (..)

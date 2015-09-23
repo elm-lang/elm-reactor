@@ -7,7 +7,7 @@ import Html.File as File
 
 import Debugger.Service as Service
 import Debugger.Active as Active
-import SideBar.Logs as Logs
+import Logs
 import Button
 import Debugger.RuntimeApi as API
 import Debugger.Model as DM

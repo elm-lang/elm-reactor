@@ -26,8 +26,8 @@ import Debugger.Model as DM
 import Debugger.Active as Active
 import Debugger.Service as Service
 import SessionRecord as SessionRecord
-import SideBar.Controls as Controls
-import SideBar.Logs as Logs
+import Controls
+import Logs
 import DataUtils exposing (..)
 
 
@@ -178,11 +178,9 @@ view addr state =
                     addr
                     state
                     activeState
-                , Logs.view
-                    (Signal.forwardTo addr LogsMessage)
-                    Controls.totalHeight
-                    state.logsState
-                    activeState
+                , div
+                    [] 
+                    [ text "Action Log" ]
                 , case state.swapSocket of
                     Just _ ->
                       text "socket connected"
@@ -201,7 +199,11 @@ view addr state =
             ]
             [ div
                 []
-                [ text "main area"
+                [ Logs.view
+                    (Signal.forwardTo addr LogsMessage)
+                    Controls.totalHeight
+                    state.logsState
+                    activeState
                 ]
             ]
         ]
