@@ -325,7 +325,7 @@ update msg state =
                 ( { state
                       | numFrames <- state.numFrames + 1
                       , exprLogs <- newExprLogs
-                      , nodeLogs <- Debug.log "newNodeLogs" newNodeLogs
+                      , nodeLogs <- newNodeLogs
                   }
                 , none
                 )
