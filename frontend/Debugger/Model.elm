@@ -15,6 +15,10 @@ type alias JsElmValue =
   JsEnc.Value
 
 
+type Window =
+  Window
+
+
 type DebugSession
   = DebugSession
 
@@ -51,6 +55,7 @@ type alias NewFrameNotification =
   { event : Event
   , flaggedExprValues : List (ExprTag, JsElmValue)
   , subscribedNodeValues : ValueSet
+  , updatedNodes : List NodeId
   }
 
 

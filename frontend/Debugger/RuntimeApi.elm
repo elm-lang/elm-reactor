@@ -1,6 +1,8 @@
 module Debugger.RuntimeApi where
 
 import Task exposing (Task)
+import Dict
+import Set
 import Debug
 
 import DataUtils exposing (..)
@@ -14,7 +16,8 @@ import Native.Debugger.RuntimeApi
 
 -- starting, pausing, disposing
 
-start : ElmModule
+start : Window
+     -> ElmModule
      -> Signal.Address NewFrameNotification
      -> (SGShape -> List NodeId)
      -> Task x (DebugSession, ValueSet)
@@ -22,7 +25,8 @@ start =
   Native.Debugger.RuntimeApi.start
 
 
-swap : ElmModule
+swap : Window
+    -> ElmModule
     -> Signal.Address NewFrameNotification
     -> (SGShape -> List NodeId)
     -> InputHistory
@@ -43,7 +47,8 @@ SessionRecord. The new instance's delay is calculated from
 the SessionRecord's paused time and the current time.
 
 Error: SessionRecord's name is different than given module's. -}
-play : ImmediateSessionRecord
+play : Window
+    -> ImmediateSessionRecord
     -> Signal.Address NewFrameNotification
     -> (SGShape -> List NodeId)
     -> Task x (DebugSession, ValueSet)
@@ -88,6 +93,38 @@ subscribeToAll session nodesFun =
 justMain : SGShape -> List NodeId
 justMain shape =
   [shape.mainId]
+
+
+mainAndFoldpParents : SGShape -> List NodeId
+mainAndFoldpParents shape =
+  let
+    isFoldp nodeInfo =
+      case nodeInfo.nodeType of
+        InternalNode ->
+          nodeInfo.name == "foldp"
+
+        _ ->
+          False
+
+    foldpIds =
+      shape.nodes
+        |> Dict.filter (\_ nodeInfo -> isFoldp nodeInfo)
+        |> Dict.keys
+        |> Set.fromList
+
+    parentOfAFoldp nodeInfo =
+      nodeInfo.kids
+        |> Set.fromList
+        |> Set.intersect foldpIds
+        |> Set.isEmpty
+        |> not
+
+    foldpParents =
+      shape.nodes
+        |> Dict.filter (\_ nodeInfo -> parentOfAFoldp nodeInfo)
+        |> Dict.keys
+  in
+    [shape.mainId] ++ foldpParents
 
 
 {-| Forces the module to render the given value (expected to be Html
@@ -146,23 +183,28 @@ getNodeStateSingle session frameIdx nodes =
 
 
 {-| Fails with an error message if the given name is not in scope -}
-getFromGlobalScope : ModuleName -> Task String ElmModule
+getFromGlobalScope : Window -> ModuleName -> Task String ElmModule
 getFromGlobalScope =
   Native.Debugger.RuntimeApi.getFromGlobalScope
 
 
-evalCompiledModule : CompiledElmModule -> Task x ()
+evalCompiledModule : Window -> CompiledElmModule -> Task x ()
 evalCompiledModule =
   Native.Debugger.RuntimeApi.evalCompiledModule
 
 
-instantiateModule : CompiledElmModule -> Task x ElmModule
-instantiateModule compiled =
-  (evalCompiledModule compiled)
+instantiateModule : Window -> CompiledElmModule -> Task x ElmModule
+instantiateModule window_ compiled =
+  (evalCompiledModule window_ compiled)
   `Task.andThen` (\_ ->
-    getFromGlobalScope compiled.name
+    getFromGlobalScope window_ compiled.name
       |> Task.mapError (\err -> Debug.crash <| "name wasn't in scope: " ++ err)
   )
+
+
+opener : Window
+opener =
+  Native.Debugger.RuntimeApi.opener
 
 
 splitRecord : FrameIndex

@@ -1,4 +1,4 @@
-module SideBar.Logs where
+module Logs where
 
 import Html exposing (..)
 import Html.Attributes exposing (..)
@@ -89,13 +89,7 @@ view addr controlsHeight state activeState =
   in
     div
       [ style
-          [ "overflow-y" => "auto"
-          , "overflow-x" => "hidden"
-          , "padding" => ("0 " ++ intToPx sidePadding)
-          , "position" => "absolute"
-          , "bottom" => "30px"
-          , "top" => intToPx (controlsHeight + 1)
-          , "width" => intToPx (sidebarWidth - 2*sidePadding)
+          [ "padding" => ("0 " ++ intToPx sidePadding)
           ]
       ]
       ( if Dict.isEmpty activeState.exprLogs then
@@ -105,7 +99,6 @@ view addr controlsHeight state activeState =
               [ style
                   [ "list-style" => "none"
                   , "padding-left" => "0"
-                  , "color" => "white"
                   ]
               ]
               (activeState.exprLogs
@@ -183,7 +176,7 @@ viewLogItem addr highlighted idx val =
     [ onClick addr (ScrubTo idx)
     , style
         ( [ "cursor" => "pointer" ]
-          ++ (if highlighted then ["color" => "yellow"] else [])
+          ++ (if highlighted then ["color" => "red"] else [])
         )
     ]
     [ text <| (toString idx) ++ ": "
@@ -208,9 +201,7 @@ noLogs : Html
 noLogs =
   div
     [ style
-        [ "font-family" => textTypefaces
-        , "color" => "rgb(170, 170, 170)" -- dark grey
-        ]
+        [ "font-family" => textTypefaces ]
     ]
     [ noLogBlurb ]
 
@@ -219,15 +210,15 @@ noLogs =
 noLogBlurb : Html
 noLogBlurb = Markdown.toHtml """
 
-### <span style="font-size: 12pt"> You don't have any watches! </span>
+### <span style="font-size: 12pt"> You don't have any logs! </span>
 
 <span style="font-size: 10pt">
-Use [<span style="text-decoration:underline; color: rgb(170, 170, 170)">Debug.watch</span>](http://package.elm-lang.org/packages/elm-lang/core/latest/Debug#watch)
+Use [<span style="text-decoration:underline">Debug.watch</span>](http://package.elm-lang.org/packages/elm-lang/core/latest/Debug#watch)
 to show any value. <br>
 `watch : String -> a -> a`
 
 <span style="font-size: 10pt">
-Use [<span style="text-decoration:underline; color: rgb(170, 170, 170)">Debug.watchSummary</span>](http://package.elm-lang.org/packages/elm-lang/core/latest/Debug#watchSummary) to show a
+Use [<span style="text-decoration:underline">Debug.watchSummary</span>](http://package.elm-lang.org/packages/elm-lang/core/latest/Debug#watchSummary) to show a
 summary or subvalue of any value. </span><br>
 
 """

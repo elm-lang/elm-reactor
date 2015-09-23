@@ -1,4 +1,4 @@
-module SideBar.Controls where
+module Controls where
 
 import Color
 import Html exposing (..)
@@ -57,15 +57,13 @@ restartButtonColor =
 
 
 eventNumberTextStyle =
-  [ "color" => colorToCss lightGrey
-  , "font-family" => textTypefaces
+  [ "font-family" => textTypefaces
   , "font-size" => "12px"
   ]
 
 
 swapButtonTextStyle =
-  [ "color" => colorToCss lightGrey
-  , "font-family" => textTypefaces
+  [ "font-family" => textTypefaces
   , "font-size" => "14px"
   ]
 
@@ -125,7 +123,7 @@ view addr state activeState =
     div
       [ style
           [ "padding" => intToPx margin
-          , "border-bottom" => "1px solid lightgrey"
+          , "background-color" => "darkgrey"
           ]
       ]
       [ buttonContainer

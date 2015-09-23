@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Debugger</title>
+		<script src="/_reactor/debug-interface.js"></script>
+	</head>
+	<body style="margin: 0;">
+		<script type="text/javascript">
+			Elm.fullscreen(Elm.Debugger, {
+				windowLocationHost: window.location.host,
+				moduleName: window.opener.MODULE_INFO.moduleName,
+				fileName: window.opener.MODULE_INFO.fileName
+			});
+		</script>
+	</body>
+</html>

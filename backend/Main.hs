@@ -152,17 +152,28 @@ serveAssets =
         Nothing ->
           pass
 
-        Just content ->
-          do  modifyResponse (setContentType "application/javascript")
+        Just (content, mimeType) ->
+          do  modifyResponse (setContentType $ BSC.pack (mimeType ++ ";charset=utf-8"))
               writeBS content
 
 
-staticAssets :: [(FilePath, BSC.ByteString)]
+type MimeType =
+  String
+
+
+staticAssets :: [(FilePath, (BSC.ByteString, MimeType))]
 staticAssets =
-    [ "favicon.ico" ==> undefined
-    , StaticFiles.debuggerPath ==> StaticFiles.debugger
-    , StaticFiles.indexPath ==> StaticFiles.index
-    , StaticFiles.notFoundPath ==> StaticFiles.notFound
+    [ "favicon.ico" ==> (undefined, "image/x-icon")
+    , StaticFiles.debuggerAgentPath ==>
+        (StaticFiles.debuggerAgent, "application/javascript")
+    , StaticFiles.debuggerInterfaceJsPath ==>
+        (StaticFiles.debuggerInterfaceJs, "application/javascript")
+    , StaticFiles.debuggerInterfaceHtmlPath ==>
+        (StaticFiles.debuggerInterfaceHtml, "text/html")
+    , StaticFiles.indexPath ==>
+        (StaticFiles.index, "application/javascript")
+    , StaticFiles.notFoundPath ==>
+        (StaticFiles.notFound, "application/javascript")
     ]
 
 

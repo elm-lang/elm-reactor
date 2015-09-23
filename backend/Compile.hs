@@ -75,7 +75,7 @@ toHtml debug filePath =
                 do  H.script $ Blaze.preEscapedToMarkup code
 
                     when debug $ do
-                        script "/_reactor/debug.js"
+                        script "/_reactor/debug-agent.js"
 
                     H.script $ Blaze.preEscapedToMarkup (initialize debug name filePath)
 

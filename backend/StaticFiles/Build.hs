@@ -1,5 +1,8 @@
 {-# OPTIONS_GHC -Wall #-}
-module StaticFiles.Build (debugger, navigationPage) where
+module StaticFiles.Build
+    ( debuggerAgent, debuggerInterfaceJs, debuggerInterfaceHtml
+    , navigationPage
+    ) where
 
 import qualified Data.ByteString as BS
 import System.Directory (removeFile)
@@ -9,18 +12,26 @@ import System.IO (hPutStrLn, stderr)
 import System.Process (readProcessWithExitCode)
 
 
-debugger :: IO BS.ByteString
-debugger =
+debuggerAgent :: IO BS.ByteString
+debuggerAgent =
+  BS.readFile ("frontend" </> "debug-agent.js")
+
+
+debuggerInterfaceJs :: IO BS.ByteString
+debuggerInterfaceJs =
   let
     tempFile =
       "temp-debug.js"
   in
     do  compile "Debugger.elm" tempFile
-        part1 <- BS.readFile tempFile
-        part2 <- BS.readFile ("frontend" </> "debugger-implementation.js")
-        let result = BS.concat [ part1, part2 ]
+        result <- BS.readFile tempFile
         seq (BS.length result) (removeFile tempFile)
         return result
+
+
+debuggerInterfaceHtml :: IO BS.ByteString
+debuggerInterfaceHtml =
+  BS.readFile ("frontend" </> "debug-interface.html")
 
 
 navigationPage :: FilePath -> IO BS.ByteString
