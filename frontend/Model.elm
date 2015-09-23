@@ -8,6 +8,7 @@ import Html.File as File
 import Debugger.Service as Service
 import Debugger.Active as Active
 import Logs
+import ActionLog
 import Button
 import Debugger.RuntimeApi as API
 import Debugger.Model as DM
@@ -60,6 +61,7 @@ type Message
   | PlayPauseButtonAction (Button.Message Active.Command)
   | RestartButtonAction (Button.Message Active.Command)
   | LogsMessage Logs.Message
+  | ActionLogMessage ActionLog.Message
   | ConnectSocket (Maybe WebSocket.WebSocket)
   | ExportSession
   | ImportSession (List File.File)

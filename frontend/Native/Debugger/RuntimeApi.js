@@ -108,7 +108,9 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 						session.snapshots.push(takeSnapshot(session.sgNodes));
 					}
 					
-					var subscribedNodeValues = session.subscribedNodeIds.map(function(nodeId) {
+					var subscribedNodeValues = session.subscribedNodeIds.filter(function(nodeId) {
+						return session.sgNodes[nodeId].updatedThisFrame;
+					}).map(function(nodeId) {
 						var node = session.sgNodes[nodeId];
 						return Utils.Tuple2(nodeId, node.value);
 					});

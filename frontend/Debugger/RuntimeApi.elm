@@ -1,6 +1,8 @@
 module Debugger.RuntimeApi where
 
 import Task exposing (Task)
+import Dict
+import Set
 import Debug
 
 import DataUtils exposing (..)
@@ -91,6 +93,38 @@ subscribeToAll session nodesFun =
 justMain : SGShape -> List NodeId
 justMain shape =
   [shape.mainId]
+
+
+mainAndFoldpParents : SGShape -> List NodeId
+mainAndFoldpParents shape =
+  let
+    isFoldp nodeInfo =
+      case nodeInfo.nodeType of
+        InternalNode ->
+          nodeInfo.name == "foldp"
+
+        _ ->
+          False
+
+    foldpIds =
+      shape.nodes
+        |> Dict.filter (\_ nodeInfo -> isFoldp nodeInfo)
+        |> Dict.keys
+        |> Set.fromList
+
+    parentOfAFoldp nodeInfo =
+      nodeInfo.kids
+        |> Set.fromList
+        |> Set.intersect foldpIds
+        |> Set.isEmpty
+        |> not
+
+    foldpParents =
+      shape.nodes
+        |> Dict.filter (\_ nodeInfo -> parentOfAFoldp nodeInfo)
+        |> Dict.keys
+  in
+    [shape.mainId] ++ foldpParents
 
 
 {-| Forces the module to render the given value (expected to be Html

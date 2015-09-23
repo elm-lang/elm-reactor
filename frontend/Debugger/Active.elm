@@ -189,7 +189,7 @@ update msg state =
                       state.window_
                       newMod
                       (API.getAddress state.session)
-                      API.justMain
+                      API.mainAndFoldpParents
                       record.inputHistory
                       (Just (API.getSgShape state.session))
                       API.shapesEqual
@@ -264,32 +264,28 @@ update msg state =
                     state.window_
                     currentModule
                     (API.getAddress state.session)
-                    API.justMain
+                    API.mainAndFoldpParents
                     sessionRecord.inputHistory
                     Nothing
                     (API.shapesEqual)
                   |> Task.mapError (\_ -> Debug.crash "replay error"))
                   `Task.andThen` (\(newSession, exprLogs, nodeLogs) ->
-                    (API.subscribeToAll newSession API.justMain
-                      |> Task.mapError (\_ -> Debug.crash "already subscribed"))
-                    `Task.andThen` (\_ ->
-                      let
-                        numFrames =
-                          JsArray.length sessionRecord.inputHistory - 1
-                      in
-                        API.getNodeStateSingle
-                          newSession
-                          numFrames
-                          [API.getSgShape newSession |> .mainId]
-                        |> Task.mapError (Debug.crash << toString)
-                        |> Task.map (\valueSet ->
-                              Response <|
-                                StartWithHistoryResponse
-                                  newSession
-                                  (getMainVal newSession valueSet)
-                                  numFrames
-                                  exprLogs)
-                    )
+                    let
+                      numFrames =
+                        JsArray.length sessionRecord.inputHistory - 1
+                    in
+                      API.getNodeStateSingle
+                        newSession
+                        numFrames
+                        [API.getSgShape newSession |> .mainId]
+                      |> Task.mapError (Debug.crash << toString)
+                      |> Task.map (\valueSet ->
+                            Response <|
+                              StartWithHistoryResponse
+                                newSession
+                                (getMainVal newSession valueSet)
+                                numFrames
+                                exprLogs)
                   )
                 )
           in
@@ -306,10 +302,6 @@ update msg state =
 
             Playing ->
               let
-                newMainVal =
-                  newFrameNot.subscribedNodeValues
-                    |> getMainVal state.session
-
                 currentFrameIndex =
                   state.numFrames
 
@@ -333,7 +325,7 @@ update msg state =
                 ( { state
                       | numFrames <- state.numFrames + 1
                       , exprLogs <- newExprLogs
-                      , nodeLogs <- newNodeLogs
+                      , nodeLogs <- Debug.log "newNodeLogs" newNodeLogs
                   }
                 , none
                 )
@@ -406,7 +398,7 @@ playFrom window_ session record frameIdx =
       (beforeRecord, _) =
         API.splitRecord frameIdx record
     in
-      API.play window_ beforeRecord (API.getAddress session) API.justMain
+      API.play window_ beforeRecord (API.getAddress session) API.mainAndFoldpParents
       |> Task.map (\(newSession, valueSet) ->
           Response <|
             ForkResponse

@@ -11,6 +11,7 @@ import Json.Encode as JsEnc
 import Color
 import Maybe
 import Result
+import Dict
 import Debug
 
 import Effects exposing (..)
@@ -28,6 +29,7 @@ import Debugger.Service as Service
 import SessionRecord as SessionRecord
 import Controls
 import Logs
+import ActionLog
 import DataUtils exposing (..)
 
 
@@ -178,16 +180,35 @@ view addr state =
                     addr
                     state
                     activeState
-                , div
-                    [] 
-                    [ text "Action Log" ]
-                , case state.swapSocket of
-                    Just _ ->
-                      text "socket connected"
+                , ActionLog.view
+                    (Signal.forwardTo addr ActionLogMessage)
+                    (case activeState.nodeLogs |> Dict.toList of
+                      [(foldpParentId, actionLog)] ->
+                        actionLog
 
-                    Nothing ->
-                      text "socket not connected"
-                , exportImport addr
+                      -- TODO: it's always this on the first frame, but shouldn't be
+                      -- need to refactor initialization process somehow
+                      [] ->
+                        []
+                        --Debug.crash "no foldps"
+
+                      -- TODO: handle these cases gracefully
+                      _ ->
+                        Debug.crash "multiple foldps"
+                    )
+                    (Active.curFrameIdx activeState)
+                , div
+                    [ style
+                        [ ("background-color" => "darkgrey") ]
+                    ]
+                    [ case state.swapSocket of
+                        Just _ ->
+                          text "socket connected"
+
+                        Nothing ->
+                          text "socket not connected"
+                    , exportImport addr
+                    ]
                 ]
             ]
           -- main area
@@ -331,6 +352,19 @@ update msg state =
       in
         ( { state | logsState <- newLogsState }
         , sendEffect
+        )
+
+    ActionLogMessage (ActionLog.GoToFrame frameIdx) ->
+      let
+        sendScrubEffect =
+          Signal.send
+            (Service.commandsMailbox ()).address
+            (Active.ScrubTo frameIdx)
+          |> Task.map (always NoOp)
+          |> task
+      in
+        ( state
+        , sendScrubEffect
         )
 
     ConnectSocket maybeSocket ->

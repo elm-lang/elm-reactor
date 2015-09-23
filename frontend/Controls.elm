@@ -123,7 +123,7 @@ view addr state activeState =
     div
       [ style
           [ "padding" => intToPx margin
-          , "border-bottom" => "1px solid"
+          , "background-color" => "darkgrey"
           ]
       ]
       [ buttonContainer
