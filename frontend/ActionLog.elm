@@ -35,8 +35,9 @@ viewAction addr curFrameIdx (frameIdx, value) =
     li
       [ onClick addr (GoToFrame frameIdx)
       , style
-          [ ("color" => if onThisFrame then "red" else "black")
-          , ("cursor" => "pointer")
+          [ "color" => if onThisFrame then "red" else "black"
+          , "cursor" => "pointer"
+          , "font-family" => "monospace"
           ]
       ]
       [ API.prettyPrint value |> text ]
