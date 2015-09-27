@@ -154,7 +154,7 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 				};
 
 				debugeeLocalRuntime.setInterval = function(thunk, interval) {
-					var intervalId = window.setInterval(function() {
+					var intervalId = setInterval(function() {
 						if(session.playing)
 						{
 							thunk();
@@ -260,7 +260,6 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 
 					session.flaggedExprValues = [];
 					session.originalNotify(event.nodeId, event.value);
-					session.index++;
 					var frameIdx = session.index + 1;
 					session.flaggedExprValues.forEach(function(tagAndVal) {
 						var tag = tagAndVal._0;
@@ -271,8 +270,12 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 						flaggedExprLogs[tag].push(Utils.Tuple2(frameIdx, value));
 					});
 					session.subscribedNodeIds.forEach(function(nodeId) {
-						var value = session.sgNodes[nodeId].value;
-						nodeLogs[nodeId].push(Utils.Tuple2(frameIdx, value));
+						var node = session.sgNodes[nodeId];
+						if(node.updatedThisFrame)
+						{
+							var value = node.value;
+							nodeLogs[nodeId].push(Utils.Tuple2(frameIdx, value));
+						}
 					});
 
 					if(session.index != 0 && session.index % eventsPerSnapshot == 0)
@@ -303,7 +306,7 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 					_2: nodeLogsList
 				};
 
-				session.playing = false;
+				session.playing = true;
 
 				callback(Task.succeed(result));
 			}
@@ -404,7 +407,7 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 		return Task.asyncFunction(function(callback) {
 			var mainNode = session.sgNodes[session.shape.mainId];
 			mainNode.value = mainValue;
-			mainNode.notify(session.runtime.timer.now(), true, mainNode.parents[0].id);
+			mainNode.notify(Date.now(), true, mainNode.parents[0].id);
 			callback(Task.succeed(Utils.Tuple0));
 		});
 	}

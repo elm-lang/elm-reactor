@@ -270,24 +270,18 @@ update msg state =
                     Nothing
                     (API.shapesEqual)
                   |> Task.mapError (\_ -> Debug.crash "replay error"))
-                  `Task.andThen` (\(newSession, exprLogs, nodeLogs) ->
+                  |> Task.map (\(newSession, exprLogs, nodeLogs) ->
                     let
                       numFrames =
-                        JsArray.length sessionRecord.inputHistory - 1
+                        JsArray.length sessionRecord.inputHistory
                     in
-                      API.getNodeStateSingle
-                        newSession
-                        numFrames
-                        [API.getSgShape newSession |> .mainId]
-                      |> Task.mapError (Debug.crash << toString)
-                      |> Task.map (\valueSet ->
-                            Response <|
-                              StartWithHistoryResponse
-                                newSession
-                                (getMainVal newSession valueSet)
-                                numFrames
-                                exprLogs
-                                nodeLogs)
+                      Response <|
+                        StartWithHistoryResponse
+                          newSession
+                          (getLatestMainVal newSession nodeLogs)
+                          numFrames
+                          exprLogs
+                          nodeLogs
                   )
                 )
           in
@@ -376,6 +370,7 @@ update msg state =
                   | session <- newSession
                   , numFrames <- numFrames
                   , exprLogs <- Dict.fromList exprLogs
+                  , runningState <- Playing
                   , nodeLogs <-
                       nodeLogs
                         |> List.filter (\(nodeId, _) -> nodeId /= mainId)
@@ -452,6 +447,23 @@ getMainVal session values =
       |> List.filter (\(id, val) -> id == mainId)
       |> List.head
       |> getMaybe "no value with main id"
+      |> snd
+
+
+getLatestMainVal : DM.DebugSession -> List (DM.NodeId, DM.ValueLog) -> DM.JsElmValue
+getLatestMainVal session logs =
+  let
+    mainId =
+      (API.getSgShape session).mainId
+
+  in
+    logs
+      |> List.filter (\(id, log) -> id == mainId)
+      |> List.head
+      |> getMaybe "no log with main id"
+      |> snd
+      |> getLast
+      |> getMaybe "empty log"
       |> snd
 
 
