@@ -172,6 +172,7 @@ view addr state =
             [ style
                 [ "display" => "flex"
                 , "flex-direction" => "column"
+                , "width" => "350px"
                 ]
             ]
             [ div

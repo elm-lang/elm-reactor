@@ -90,11 +90,6 @@ subscribeToAll session nodesFun =
     |> Task.map (always ())
 
 
-justMain : SGShape -> List NodeId
-justMain shape =
-  [shape.mainId]
-
-
 mainAndFoldpParents : SGShape -> List NodeId
 mainAndFoldpParents shape =
   let
@@ -124,7 +119,7 @@ mainAndFoldpParents shape =
         |> Dict.filter (\_ nodeInfo -> parentOfAFoldp nodeInfo)
         |> Dict.keys
   in
-    [shape.mainId] ++ foldpParents
+    shape.mainId :: foldpParents
 
 
 {-| Forces the module to render the given value (expected to be Html
