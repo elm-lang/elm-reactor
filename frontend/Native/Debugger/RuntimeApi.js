@@ -60,7 +60,6 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 	// not exposed
 	function initializeFullscreen(_window, module, delay, notificationAddress)
 	{
-		console.log('C', _window);
 		var session;
 		var moduleBeingDebugged = _window.Elm.fullscreen({
 			make: function(debugeeLocalRuntime) {
@@ -206,7 +205,6 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 	function start(_window, module, address, subscribedNodesFun)
 	{
 		return Task.asyncFunction(function(callback) {
-			console.log('B', _window);
 			var session = initializeFullscreen(_window, module, 0, address);
 			session.subscribedNodeIds =
 				List.toArray(subscribedNodesFun(session.shape));
@@ -305,7 +303,7 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 					_2: nodeLogsList
 				};
 
-				session.playing = true;
+				session.playing = false;
 
 				callback(Task.succeed(result));
 			}

@@ -93,6 +93,7 @@ type Response
       DM.JsElmValue
       Int
       (List (DM.ExprTag, DM.ValueLog))
+      (List (DM.NodeId, DM.ValueLog))
 
 
 update : Message -> Model -> (Model, Effects Message)
@@ -285,7 +286,8 @@ update msg state =
                                 newSession
                                 (getMainVal newSession valueSet)
                                 numFrames
-                                exprLogs)
+                                exprLogs
+                                nodeLogs)
                   )
                 )
           in
@@ -365,16 +367,24 @@ update msg state =
               |> task
           )
 
-        StartWithHistoryResponse newSession mainVal numFrames logs ->
-          ( { state
-                | session <- newSession
-                , numFrames <- numFrames
-                , exprLogs <- Dict.fromList logs
-            }
-          , API.renderMain state.session mainVal
-              |> Task.map (always NoOp)
-              |> task
-          )
+        StartWithHistoryResponse newSession mainVal numFrames exprLogs nodeLogs ->
+          let
+            mainId =
+              (API.getSgShape newSession).mainId
+          in
+            ( { state
+                  | session <- newSession
+                  , numFrames <- numFrames
+                  , exprLogs <- Dict.fromList exprLogs
+                  , nodeLogs <-
+                      nodeLogs
+                        |> List.filter (\(nodeId, _) -> nodeId /= mainId)
+                        |> Dict.fromList
+              }
+            , API.renderMain state.session mainVal
+                |> Task.map (always NoOp)
+                |> task
+            )
 
         PausedResponse frameIdx record ->
           ( { state | runningState <- Paused frameIdx record }
