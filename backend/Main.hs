@@ -8,7 +8,6 @@ import Control.Monad (guard)
 import Control.Monad.Trans (MonadIO(liftIO))
 import Data.Maybe (isJust)
 import qualified Data.ByteString.Char8 as BSC
-import qualified Data.Version as Version
 import qualified Network.WebSockets.Snap as WSS
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html.Renderer.Utf8 as Blaze
@@ -23,8 +22,8 @@ import Index
 import qualified Compile
 import qualified Socket
 import qualified Utils
-import Paths_elm_reactor (version)
 import qualified Elm.Compiler as Compiler
+import qualified Elm.Package as Pkg
 import Elm.Utils ((|>))
 
 
@@ -54,7 +53,7 @@ flags = Flags
         ]
     &= versionArg
         [ explicit, name "version", name "v"
-        , summary (Version.showVersion version)
+        , summary (Pkg.versionToString Compiler.version)
         ]
     &= summary startupMessage
 
@@ -83,8 +82,7 @@ main =
 
 startupMessage :: String
 startupMessage =
-  "Elm Reactor " ++ Version.showVersion version
-  ++ " (Elm Platform " ++ Compiler.version ++ ")"
+  "elm reactor " ++ Pkg.versionToString Compiler.version
 
 
 directoryConfig :: MonadSnap m => DirectoryConfig m
