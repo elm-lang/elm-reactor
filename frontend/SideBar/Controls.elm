@@ -5,7 +5,7 @@ import Graphics.Collage exposing (..)
 import Graphics.Element exposing (..)
 import Graphics.Input exposing (..)
 import List
-import Signal as S exposing (Signal, (<~), (~))
+import Signal as S exposing (Signal)
 import Slider exposing (..)
 import Text
 
@@ -30,9 +30,9 @@ dataStyle typefaces height string =
     let default = Text.defaultStyle
         myStyle =
              { default |
-                typeface <- typefaces,
-                color <- lightGrey,
-                height <- Just height
+                typeface = typefaces,
+                color = lightGrey,
+                height = Just height
              }
     in
         Text.style myStyle (Text.fromString string)
@@ -141,9 +141,9 @@ scrubSlider (w,_) state =
 
         sliderStyle =
             { defaultSlider |
-                length <- sliderLength,
-                max <- toFloat state.totalEvents,
-                value <- toFloat state.scrubPosition
+                length = sliderLength,
+                max = toFloat state.totalEvents,
+                value = toFloat state.scrubPosition
             }
     in
         slider (\n -> Signal.message scrubMailbox.address (round n)) sliderStyle
@@ -168,7 +168,7 @@ sliderEventText w state =
         midWidth =
             toFloat w - sideMargin - textWidthOffset
 
-        leftDistance = 
+        leftDistance =
             case totalEvents of
               0 -> sideMargin/2 + textWidthOffset/2
               _ -> scrubPosition / totalEvents * midWidth + sideMargin/2 + textWidthOffset/2

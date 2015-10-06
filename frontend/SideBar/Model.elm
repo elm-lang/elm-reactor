@@ -28,26 +28,26 @@ update action state =
   case action of
     Restart ->
         { state |
-            totalEvents <- 0,
-            scrubPosition <- 0
+            totalEvents = 0,
+            scrubPosition = 0
         }
 
     Pause pause ->
         { state |
-            paused <- pause,
-            totalEvents <-
+            paused = pause,
+            totalEvents =
                 if pause then state.totalEvents else state.scrubPosition
         }
 
     TotalEvents n ->
         { state |
-            totalEvents <- n,
-            scrubPosition <- n
+            totalEvents = n,
+            scrubPosition = n
         }
 
     ScrubPosition pos ->
         { state |
-            scrubPosition <- pos,
-            paused <- True
+            scrubPosition = pos,
+            paused = True
         }
 
