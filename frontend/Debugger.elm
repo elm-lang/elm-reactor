@@ -163,7 +163,7 @@ view addr state =
     Just activeState ->
       div
         [ style
-            [ "display" => "flex" 
+            [ "display" => "flex"
             , "flex-direction" => "row"
             ]
         ]
@@ -266,17 +266,17 @@ exportImport addr =
 update : Message -> Model -> (Model, Effects Message)
 update msg state =
   case msg of
-    SidebarVisible visible -> 
-      ( { state | sidebarVisible <- visible }
+    SidebarVisible visible ->
+      ( { state | sidebarVisible = visible }
       , none
       )
 
-    PermitSwaps permit -> 
-      ( { state | permitSwaps <- permit }
+    PermitSwaps permit ->
+      ( { state | permitSwaps = permit }
       , none
       )
 
-    NewServiceState serviceState -> 
+    NewServiceState serviceState ->
       let
         logMsg =
           case serviceState of
@@ -290,8 +290,8 @@ update msg state =
               Logs.NoOp
       in
         ( { state
-              | serviceState <- serviceState
-              , logsState <- fst (Logs.update logMsg state.logsState)
+              | serviceState = serviceState
+              , logsState = fst (Logs.update logMsg state.logsState)
           }
         , Effects.none
         )
@@ -311,7 +311,7 @@ update msg state =
             Nothing ->
               none
       in
-        ( { state | playPauseButtonState <- newState }
+        ( { state | playPauseButtonState = newState }
         , sendEffects
         )
 
@@ -330,7 +330,7 @@ update msg state =
             Nothing ->
               none
       in
-        ( { state | restartButtonState <- newState }
+        ( { state | restartButtonState = newState }
         , sendEffects
         )
 
@@ -351,7 +351,7 @@ update msg state =
             Nothing ->
               none
       in
-        ( { state | logsState <- newLogsState }
+        ( { state | logsState = newLogsState }
         , sendEffect
         )
 
@@ -369,7 +369,7 @@ update msg state =
         )
 
     ConnectSocket maybeSocket ->
-      ( { state | swapSocket <- maybeSocket }
+      ( { state | swapSocket = maybeSocket }
       , none
       )
 
@@ -377,7 +377,7 @@ update msg state =
       if state.permitSwaps then
         case swapEvt of
           NewModuleEvent compiledMod ->
-            ( { state | errorState <- NoErrors }
+            ( { state | errorState = NoErrors }
             , Signal.send
                 (Service.commandsMailbox ()).address
                 (Active.Swap compiledMod)
@@ -386,13 +386,13 @@ update msg state =
             )
 
           CompilationErrorsEvent errs ->
-            ( { state | errorState <- CompilationErrors errs }
+            ( { state | errorState = CompilationErrors errs }
             , none
             )
       else
         ( state, none )
 
-    ServiceCommand serviceCmd -> 
+    ServiceCommand serviceCmd ->
       ( state
       , Signal.send (Service.commandsMailbox ()).address serviceCmd
           |> Task.map (always NoOp)
@@ -449,7 +449,7 @@ update msg state =
         ( state, sendTask |> task )
 
     SessionInputErrorMessage error ->
-      ( { state | errorState <- SessionInputError error }, none )
+      ( { state | errorState = SessionInputError error }, none )
 
     CommandResponse responseMsg ->
       let
@@ -470,12 +470,12 @@ update msg state =
             Active.NoOpResponse ->
               state.errorState
       in
-        ( { state | errorState <- newErrorState }, none )
+        ( { state | errorState = newErrorState }, none )
 
     CloseErrors ->
-      ( { state | errorState <- NoErrors }, none )
+      ( { state | errorState = NoErrors }, none )
 
-    NoOp -> 
+    NoOp ->
      ( state, none )
 
 

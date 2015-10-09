@@ -51,14 +51,14 @@ update msg state =
     CollapseLog logId collapsed ->
       case logId of
         NodeLog nodeId ->
-          ( { state | nodeExpansion <-
+          ( { state | nodeExpansion =
                 collapseLog nodeId collapsed state.nodeExpansion
             }
           , Nothing
           )
 
         ExprLog exprTag ->
-          ( { state | exprExpansion <-
+          ( { state | exprExpansion =
                 collapseLog exprTag collapsed state.exprExpansion
             }
           , Nothing
@@ -66,9 +66,9 @@ update msg state =
 
     UpdateLogs {newExprLogs, newNodeLogs} ->
       ( { state
-            | exprExpansion <-
+            | exprExpansion =
                 updateExpansion state.exprExpansion newExprLogs
-            , nodeExpansion <-
+            , nodeExpansion =
                 updateExpansion state.nodeExpansion newNodeLogs
         }
       , Nothing
@@ -130,12 +130,12 @@ viewExprLog addr collapsed logId frameIdx log =
     colButton =
       span
         [ style
-            ([ "padding-right" => "5px"  
+            ([ "padding-right" => "5px"
              , "font-size" => "12px"
              ] ++ unselectable)
         ]
         [ text <| if collapsed then "▶" else "▼" ]
-  in 
+  in
     if collapsed then
       let
         maybeItem =

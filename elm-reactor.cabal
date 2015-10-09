@@ -1,5 +1,5 @@
 Name: elm-reactor
-Version: 0.3.2
+Version: 0.16
 
 
 Synopsis:
@@ -64,14 +64,13 @@ Executable elm-reactor
     blaze-markup,
     bytestring,
     cmdargs,
-    containers >= 0.3,
+    containers,
     directory >= 1.2,
-    elm-compiler >= 0.15.1 && < 0.16,
+    elm-compiler >= 0.16 && < 0.17,
     elm-package,
     file-embed,
     filepath,
     fsnotify >= 0.2,
-    HTTP,
     mtl,
     process,
     snap-core,
@@ -80,6 +79,5 @@ Executable elm-reactor
     text,
     time,
     transformers,
-    unordered-containers,
     websockets >= 0.9 && < 0.10,
     websockets-snap >= 0.8.2.1

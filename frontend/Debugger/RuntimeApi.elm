@@ -217,20 +217,20 @@ splitRecord idx record =
       JsArray.split snapshotIdx record.snapshots
   in
     ( { record
-          | inputHistory <- beforeHistory
-          , snapshots <- beforeSnaps
-          , pausedAt <-
+          | inputHistory = beforeHistory
+          , snapshots = beforeSnaps
+          , pausedAt =
               JsArray.get -1 beforeHistory
                 |> Maybe.map .time
                 |> Maybe.map (\x -> x + record.delay)
                 |> Maybe.withDefault record.startedAt
       }
     , { record
-          | inputHistory <- afterHistory
-          , snapshots <- afterSnaps
+          | inputHistory = afterHistory
+          , snapshots = afterSnaps
       }
     )
-      
+
 
 
 -- PRETTY PRINT
