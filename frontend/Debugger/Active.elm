@@ -101,10 +101,13 @@ update msg state =
   case msg of
     Command cmd ->
       case cmd of
+        NoOpCommand ->
+          ( state, none )
+
         Play ->
           case state.runningState of
             Paused pausedIdx record ->
-              ( { state | runningState <- Playing }
+              ( { state | runningState = Playing }
               , playFrom state.window_ state.session record pausedIdx
                   |> task
               )
@@ -161,7 +164,7 @@ update msg state =
                     |> fst
                     |> Task.succeed
           in
-            ( { state | runningState <- Playing }
+            ( { state | runningState = Playing }
             , getRecord
               `Task.andThen` (\record ->
                 playFrom state.window_ state.session record 0)
@@ -285,7 +288,7 @@ update msg state =
                   )
                 )
           in
-            ( { state | runningState <- Playing }
+            ( { state | runningState = Playing }
             , initTask |> task
             )
 
@@ -319,9 +322,9 @@ update msg state =
                     (\id -> id /= mainNodeId)
               in
                 ( { state
-                      | numFrames <- state.numFrames + 1
-                      , exprLogs <- newExprLogs
-                      , nodeLogs <- newNodeLogs
+                      | numFrames = state.numFrames + 1
+                      , exprLogs = newExprLogs
+                      , nodeLogs = newNodeLogs
                   }
                 , none
                 )
@@ -332,7 +335,7 @@ update msg state =
     Response resp ->
       case resp of
         ScrubResponse frameIdx record mainVal ->
-          ( { state | runningState <- Paused frameIdx record }
+          ( { state | runningState = Paused frameIdx record }
           , API.renderMain state.session mainVal
               |> Task.map (always NoOp)
               |> task
@@ -340,10 +343,10 @@ update msg state =
 
         ForkResponse newSession frameIdx mainVal ->
           ( { state
-                | session <- newSession
-                , numFrames <- frameIdx + 1
-                , exprLogs <- truncateLogs frameIdx state.exprLogs
-                , nodeLogs <- truncateLogs frameIdx state.nodeLogs
+                | session = newSession
+                , numFrames = frameIdx + 1
+                , exprLogs = truncateLogs frameIdx state.exprLogs
+                , nodeLogs = truncateLogs frameIdx state.nodeLogs
             }
           , API.renderMain state.session mainVal
               |> Task.map (always NoOp)
@@ -352,9 +355,9 @@ update msg state =
 
         SwapResponse newSession mainVal logs newRunningState ->
           ( { state
-                | session <- newSession
-                , runningState <- newRunningState
-                , exprLogs <- Dict.fromList logs
+                | session = newSession
+                , runningState = newRunningState
+                , exprLogs = Dict.fromList logs
             }
           , API.renderMain state.session mainVal
               |> Task.map (always NoOp)
@@ -367,11 +370,11 @@ update msg state =
               (API.getSgShape newSession).mainId
           in
             ( { state
-                  | session <- newSession
-                  , numFrames <- numFrames
-                  , exprLogs <- Dict.fromList exprLogs
-                  , runningState <- Playing
-                  , nodeLogs <-
+                  | session = newSession
+                  , numFrames = numFrames
+                  , exprLogs = Dict.fromList exprLogs
+                  , runningState = Playing
+                  , nodeLogs =
                       nodeLogs
                         |> List.filter (\(nodeId, _) -> nodeId /= mainId)
                         |> Dict.fromList
@@ -382,7 +385,7 @@ update msg state =
             )
 
         PausedResponse frameIdx record ->
-          ( { state | runningState <- Paused frameIdx record }
+          ( { state | runningState = Paused frameIdx record }
           , none
           )
 

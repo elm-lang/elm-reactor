@@ -5,3 +5,6 @@
    path = elm-websockets
    url = git@github.com:vilterp/elm-websockets.git
 
+[submodule "elm-font-awesome"]
+	path = elm-font-awesome
+	url = git@github.com:rtfeldman/elm-font-awesome.git

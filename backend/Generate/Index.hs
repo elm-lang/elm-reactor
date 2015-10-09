@@ -11,11 +11,10 @@ import qualified Data.List as List
 import qualified Data.Map as Map
 import qualified Data.Text as Text
 import qualified Data.Text.IO as Text
+import qualified Elm.Package as Pkg
 import qualified Elm.Package.Description as Desc
-import qualified Elm.Package.Name as N
 import qualified Elm.Package.Paths as Paths
 import qualified Elm.Package.Solution as S
-import qualified Elm.Package.Version as V
 import System.Directory (doesDirectoryExist, doesFileExist, getDirectoryContents)
 import System.FilePath ((</>), splitDirectories, takeExtension)
 
@@ -35,10 +34,10 @@ data Info = Info
 
 
 data PackageInfo = PackageInfo
-    { _version :: V.Version
+    { _version :: Pkg.Version
     , _repository :: String
     , _summary :: String
-    , _dependencies :: [(N.Name, V.Version)]
+    , _dependencies :: [(Pkg.Name, Pkg.Version)]
     }
 
 

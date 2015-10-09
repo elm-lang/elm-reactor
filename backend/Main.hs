@@ -3,17 +3,16 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main where
 
-import Control.Applicative ((<$>),(<|>))
+import Control.Applicative ((<|>))
 import Control.Monad (guard)
 import Control.Monad.Trans (MonadIO(liftIO))
+import qualified Data.List as List
 import Data.Maybe (isJust)
 import qualified Data.ByteString.Char8 as BSC
-import qualified Data.List as List
-import qualified Data.Version as Version
 import qualified Elm.Compiler as Compiler
+import qualified Elm.Package as Pkg
 import Elm.Utils ((|>))
 import qualified Network.WebSockets.Snap as WSS
-import Paths_elm_reactor (version)
 import System.Console.CmdArgs
 import System.Directory
 import System.FilePath
@@ -56,7 +55,7 @@ flags = Flags
         ]
     &= versionArg
         [ explicit, name "version", name "v"
-        , summary (Version.showVersion version)
+        , summary (Pkg.versionToString Compiler.version)
         ]
     &= summary startupMessage
 
@@ -85,8 +84,7 @@ main =
 
 startupMessage :: String
 startupMessage =
-  "Elm Reactor " ++ Version.showVersion version
-  ++ " (Elm Platform " ++ Compiler.version ++ ")"
+  "elm reactor " ++ Pkg.versionToString Compiler.version
 
 
 directoryConfig :: MonadSnap m => DirectoryConfig m
