@@ -18,7 +18,6 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 	var List = Elm.Native.List.make (localRuntime);
 	var Dict = Elm.Dict.make (localRuntime);
 	var JsArray = Elm.Native.JsArray.make (localRuntime);
-	var Show = Elm.Native.Show.make (localRuntime);
 
 	// not exposed
 	function jumpTo(session, frameIdx)
@@ -106,7 +105,7 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 					{
 						session.snapshots.push(takeSnapshot(session.sgNodes));
 					}
-					
+
 					var subscribedNodeValues = session.subscribedNodeIds.filter(function(nodeId) {
 						return session.sgNodes[nodeId].updatedThisFrame;
 					}).map(function(nodeId) {
@@ -172,7 +171,7 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 								: session.record.pausedAt
 								;
 						return t;
-						
+
 					}
 					return Date.now() - session.delay;
 				};
@@ -244,7 +243,7 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 				session.subscribedNodeIds =
 					List.toArray(subscribedNodesFun(session.shape));
 				session.playing = false;
-				
+
 				var flaggedExprLogs = {};
 				var nodeLogs = {};
 				session.subscribedNodeIds.forEach(function(nodeId) {
@@ -625,7 +624,7 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 
 	function prettyPrint(value)
 	{
-		return Show.toString(value);
+		return Utils.toString(value);
 	}
 
 
@@ -638,14 +637,14 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 		dispose: dispose,
 		setSubscribedToNode: F3(setSubscribedToNode),
 		renderMain: F2(renderMain),
-		
+
 		getSgShape: getSgShape,
 		getModule: getModule,
 		getAddress: getAddress,
 		getSubscriptions: getSubscriptions,
 		getNodeState: F3(getNodeState),
 		getSessionRecord: getSessionRecord,
-		
+
 		getFromGlobalScope: F2(getFromGlobalScope),
 		evalCompiledModule: F2(evalCompiledModule),
 		opener: opener,
