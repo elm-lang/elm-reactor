@@ -161,7 +161,8 @@ type MimeType =
 
 staticAssets :: [(FilePath, (BSC.ByteString, MimeType))]
 staticAssets =
-    [ "favicon.ico" ==> (undefined, "image/x-icon")
+    [ StaticFiles.faviconPath ==>
+        (StaticFiles.favicon, "image/x-icon")
     , StaticFiles.debuggerAgentPath ==>
         (StaticFiles.debuggerAgent, "application/javascript")
     , StaticFiles.debuggerInterfaceJsPath ==>
