@@ -5,7 +5,7 @@ module StaticFiles
     , debuggerInterfaceJs, debuggerInterfaceJsPath
     , debuggerInterfaceHtml, debuggerInterfaceHtmlPath
     , index, indexPath
-    , notFound, notFoundPath
+    , notFound, notFoundPath, favicon, faviconPath
     )
     where
 
@@ -39,6 +39,16 @@ index =
 notFound :: BS.ByteString
 notFound =
   $(bsToExp =<< runIO (Build.navigationPage "NotFound.elm"))
+
+
+faviconPath :: FilePath
+faviconPath =
+  "_reactor/favicon.ico"
+
+
+favicon :: BS.ByteString
+favicon =
+  $(bsToExp =<< runIO Build.favicon)
 
 
 debuggerAgentPath :: FilePath

@@ -1,7 +1,7 @@
 {-# OPTIONS_GHC -Wall #-}
 module StaticFiles.Build
     ( debuggerAgent, debuggerInterfaceJs, debuggerInterfaceHtml
-    , navigationPage
+    , navigationPage, favicon
     ) where
 
 import qualified Data.ByteString as BS
@@ -32,6 +32,11 @@ debuggerInterfaceJs =
 debuggerInterfaceHtml :: IO BS.ByteString
 debuggerInterfaceHtml =
   BS.readFile ("frontend" </> "debug-interface.html")
+
+
+favicon :: IO BS.ByteString
+favicon =
+  BS.readFile ("assets" </> "favicon.ico")
 
 
 navigationPage :: FilePath -> IO BS.ByteString

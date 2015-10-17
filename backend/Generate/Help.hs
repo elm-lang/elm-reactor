@@ -11,6 +11,7 @@ makeHtml title jsFile initCode =
     , ""
     , "<head>"
     , "  <title>" ++ title ++ "</title>"
+    , "  <link rel='icon' href='/_reactor/favicon.ico' sizes='32x32'>"
     , "  <script src=\"" ++ jsFile ++ "\"></script>"
     , "  <style>"
     , "    @import url(http://fonts.googleapis.com/css?family=Source+Sans+Pro:400,700,400italic,700italic|Source+Code+Pro);"
