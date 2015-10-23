@@ -41,7 +41,7 @@ getName filePath sourceCode =
     Left errors ->
         let
           toString err =
-            Compiler.errorToString Compiler.dummyDealiaser filePath sourceCode err
+            Compiler.errorToString Compiler.dummyLocalizer filePath sourceCode err
         in
           Left (concatMap toString errors)
 
