@@ -7,4 +7,4 @@
 
 [submodule "elm-font-awesome"]
 	path = elm-font-awesome
-	url = git@github.com:rtfeldman/elm-font-awesome.git
+	url = git@github.com:vilterp/elm-font-awesome.git
