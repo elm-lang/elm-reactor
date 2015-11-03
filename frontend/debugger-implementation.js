@@ -721,7 +721,11 @@ function flattenSignalGraph(nodes)
 	function addAllToDict(node)
 	{
 		nodesById[node.id] = node;
-		node.kids.forEach(addAllToDict);
+
+		if (!node.isOutput)
+		{
+			node.kids.forEach(addAllToDict);
+		}
 	}
 	nodes.forEach(addAllToDict);
 
