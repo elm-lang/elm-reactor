@@ -305,7 +305,7 @@ update msg state =
                   state.numFrames
 
                 mainNodeId =
-                  mainId state
+                  (API.getSgShape state.session).mainId
 
                 newExprLogs =
                   updateLogs
@@ -520,11 +520,6 @@ isPlaying model =
 
     _ ->
       False
-
-
-mainId : Model -> DM.NodeId
-mainId model =
-  (API.getSgShape model.session).mainId
 
 
 curFrameIdx : Model -> DM.FrameIndex

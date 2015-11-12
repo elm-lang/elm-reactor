@@ -238,7 +238,7 @@ getAtIdx idx log =
     |> Maybe.map snd
 
 
-emptyExpansionModel : ExpansionModel comparable
+--emptyExpansionModel : ExpansionModel comparable
 emptyExpansionModel =
   Dict.empty
 
