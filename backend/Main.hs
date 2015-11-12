@@ -9,9 +9,6 @@ import Control.Monad.Trans (MonadIO(liftIO))
 import qualified Data.List as List
 import Data.Maybe (isJust)
 import qualified Data.ByteString.Char8 as BSC
-import qualified Elm.Compiler as Compiler
-import qualified Elm.Package as Pkg
-import Elm.Utils ((|>))
 import qualified Network.WebSockets.Snap as WSS
 import System.Console.CmdArgs
 import System.Directory
@@ -22,11 +19,14 @@ import Snap.Util.FileServe
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html.Renderer.Utf8 as Blaze
 
+import qualified StaticFiles
 import qualified Compile
 import qualified Generate.Index as Index
 import qualified Generate.NotFound as NotFound
 import qualified Socket
-import qualified StaticFiles
+import qualified Elm.Compiler as Compiler
+import qualified Elm.Package as Pkg
+import Elm.Utils ((|>))
 
 
 data Flags = Flags
