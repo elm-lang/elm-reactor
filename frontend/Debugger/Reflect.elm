@@ -5,6 +5,8 @@ import Json.Encode as JsEnc
 import Dict exposing (Dict)
 import Set exposing (Set)
 import Array exposing (Array)
+--import List.Extra
+--import Maybe.Extra
 
 import Native.Debugger.Reflect
 
@@ -23,7 +25,7 @@ type ElmValue
   | TupleV (List ElmValue)
   -- other
   | Constructor String (List ElmValue)
-  | Record (List (String, ElmValue)) -- TODO: wut is really going on here
+  | Record (List (String, ElmValue)) -- TODO: super-records?
   | Function String
   -- when we give up
   | NativeVal JsEnc.Value

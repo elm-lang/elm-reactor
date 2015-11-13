@@ -2,22 +2,117 @@ module ElmValueView where
 
 import Html exposing (..)
 import Html.Attributes exposing (..)
-import Dict
-import Array
-import Set
+import Dict exposing (Dict)
+import Array exposing (Array)
+import Set exposing (Set)
 import Signal
 import Debug
 import String
+import Json.Encode as JsEnc
 
 import TreeView
 import Debugger.Reflect as Reflect
 import StartApp.Simple as StartApp
+import DataUtils
 
 
 type alias Model =
   { val : Reflect.ElmValue
-  , expansionModel : TreeView.ExpansionModel
+  , expansion : Expansion
   }
+
+
+-- TODO: use from List.Extra
+find : (a -> Bool) -> List a -> Maybe a
+find predicate list =
+  case list of
+      [] ->
+          Nothing
+
+      first::rest ->
+          if predicate first then
+              Just first
+          else
+              find predicate rest
+
+
+type Expansion
+  = NotExpandable
+  | ListExpansion (Dict Int Expansion)
+  | ArrayExpansion (Dict Int Expansion)
+  | DictExpansion (List (Reflect.ElmValue, Expansion, Expansion))
+  | SetExpansion (List (Reflect.ElmValue, Expansion))
+  | RecordExpansion (Dict String Expansion)
+  | ConstructorExpansion String (Dict Int Expansion)
+
+
+reconcile : Reflect.ElmValue -> Expansion -> Expansion
+reconcile newValue previousExpansion =
+  let
+    byIndex : Dict Int Expansion -> List Reflect.ElmValue -> Dict Int Expansion
+    byIndex expandedIndices values =
+      values
+        |> List.indexedMap (,)
+        |> List.filterMap (\(idx, val) ->
+              expandedIndices
+                |> Dict.get idx
+                |> Maybe.map (\oldExp -> (idx, reconcile val oldExp)))
+        |> Dict.fromList
+  in
+    case (previousExpansion, newValue) of
+      (NotExpandable, _) ->
+        NotExpandable
+
+      (ListExpansion expandedIndices, Reflect.ListV values) ->
+        byIndex expandedIndices values
+          |> ListExpansion
+
+      (ArrayExpansion expandedIndices, Reflect.ArrayV values) ->
+        byIndex expandedIndices values
+          |> ArrayExpansion
+
+      (DictExpansion expansion, Reflect.DictV keyValuePairs) ->
+        let
+          findOldExpansion : Reflect.ElmValue -> Maybe (Expansion, Expansion)
+          findOldExpansion key =
+            expansion
+              |> find (\(oldKey, keyExp, valueExp) -> key == oldKey)
+              |> Maybe.map (\(_, keyExp, valueExp) -> (keyExp, valueExp))
+        in
+          keyValuePairs
+            |> List.filterMap (\(key, value) ->
+                findOldExpansion key
+                  |> Maybe.map (\(keyExp, valueExp) ->
+                      (key, reconcile key keyExp, reconcile value valueExp)))
+            |> DictExpansion
+
+      (SetExpansion expandedValues, Reflect.SetV values) ->
+        values
+          |> List.filterMap (\value ->
+              find (\(expValue, expansion) -> expValue == value) expandedValues)
+          |> SetExpansion
+
+      (RecordExpansion expandedFields, Reflect.Record fieldsAndValues) ->
+        fieldsAndValues
+          |> List.filterMap (\(field, newFieldVal) ->
+                expandedFields
+                  |> Dict.get field
+                  |> Maybe.map (\oldFieldExp ->
+                        (field, reconcile newFieldVal oldFieldExp)))
+          |> Dict.fromList
+          |> RecordExpansion
+
+      (ConstructorExpansion oldName expandedArgIndices, Reflect.Constructor newName args) ->
+        if newName == oldName then
+          byIndex expandedArgIndices args
+            |> ConstructorExpansion oldName
+        else
+          ConstructorExpansion newName Dict.empty
+
+      (_, _) ->
+        Debug.crash <|
+          "mismatched expansion model & value: " ++
+            (toString (previousExpansion, newValue))
 
 
 initModel =
@@ -41,7 +136,7 @@ initModel =
 
   in
     { val = val
-    , expansionModel = TreeView.allExpanded asTree
+    , expansion = TreeView.allExpanded asTree
     }
 
 
@@ -61,9 +156,9 @@ update : TreeView.Action -> Model -> Model
 update msg state =
   let
     newTreeViewState =
-      TreeView.update msg { tree = toTree state.val, expansionModel = state.expansionModel }
+      TreeView.update msg { tree = toTree state.val, expansion = state.expansion }
   in
-    { state | expansionModel = newTreeViewState.expansionModel }
+    { state | expansion = newTreeViewState.Expansion }
 
 
 view : Signal.Address TreeView.Action -> Model -> Html
@@ -72,7 +167,7 @@ view addr state =
     tree =
       toTree state.val
   in
-    TreeView.view addr render { tree = tree, expansionModel = state.expansionModel }
+    TreeView.view addr render { tree = tree, expansion = state.expansion }
 
 
 type ValueView
