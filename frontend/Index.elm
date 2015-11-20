@@ -8,10 +8,11 @@ import Html.Attributes exposing (..)
 import Markdown
 import Signal exposing (Signal, Address)
 import String
-import Util exposing (..)
+
 
 
 -- MAIN
+
 
 main : Html
 main =
@@ -21,7 +22,9 @@ main =
 port info : Model
 
 
+
 -- MODEL
+
 
 type alias Model =
     { pwd : List String
@@ -40,14 +43,23 @@ type alias PackageInfo =
     }
 
 
+
 -- CONSTANTS
+
 
 (=>) = (,)
 
 
-pageWidth = "960px"
-smallBoxWidth = "300px"
-largeBoxWidth = "600px"
+pageWidth =
+  "960px"
+
+
+smallBoxWidth =
+  "300px"
+
+
+largeBoxWidth =
+  "600px"
 
 
 floatLeft =
@@ -86,7 +98,9 @@ clearfix =
   div [ style [ "clear" => "both" ] ] []
 
 
+
 -- VIEW
+
 
 view : Model -> Html
 view model =
@@ -117,7 +131,6 @@ view model =
           ]
           contents
       ]
-
 
 
 pageHeader : Model -> Html
@@ -180,6 +193,7 @@ elmFileLinks isElmFile file =
       [ a [ href (file ++ "?debug"), style jumpLinkStyle ]
           [ text "debug" ]
       ]
+
     else
       []
 
@@ -222,7 +236,9 @@ navigatorSeparator =
   span [ style [ "padding" => "0 8px" ] ] [ text "/" ]
 
 
+
 -- DEPENDENCIES
+
 
 packageUrl : String -> String -> String
 packageUrl name version =
@@ -258,8 +274,6 @@ dependencyView (name, version) =
     ]
 
 
---
-
 viewPackageInfo : PackageInfo -> Html
 viewPackageInfo pkgInfo =
   div
@@ -274,7 +288,9 @@ viewPackageInfo pkgInfo =
     ]
 
 
+
 -- ICONS
+
 
 getIcon : String -> Html
 getIcon filename =
@@ -315,4 +331,35 @@ makeIcon icon =
   span
     [ style [ "display" => "inline-block", "vertical-align" => "middle", "padding-right" => "0.5em" ] ]
     [ icon darkGrey 16 ]
+
+
+
+-- HELPERS
+
+
+(</>) : String -> String -> String
+(</>) directory file =
+  if String.endsWith "/" directory then
+    directory ++ file
+
+  else
+    directory ++ "/" ++ file
+
+
+takeExtension : String -> String
+takeExtension str =
+  last (String.split "." str)
+
+
+last : List String -> String
+last list =
+  case list of
+    [] ->
+      ""
+
+    [finalElement] ->
+      finalElement
+
+    _ :: rest ->
+      last rest
 
