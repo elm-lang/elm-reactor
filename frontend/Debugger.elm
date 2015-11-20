@@ -223,7 +223,6 @@ view addr state =
                 []
                 [ Logs.view
                     (Signal.forwardTo addr LogsMessage)
-                    Controls.totalHeight
                     state.logsState
                     activeState
                 ]
