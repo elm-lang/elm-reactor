@@ -8,14 +8,14 @@ import Html.Lazy exposing (..)
 
 
 type Model
-  = Up
-  | Down
-  | Hover
+    = Up
+    | Down
+    | Hover
 
 
 type Message a
-  = MouseUpdate Model
-  | Click a
+    = MouseUpdate Model
+    | Click a
 
 
 update : Message a -> Model -> (Model, Maybe a)
@@ -28,7 +28,8 @@ update msg state =
       (state, Just clickMsg)
 
 
-view : Signal.Address (Message a)
+view
+    : Signal.Address (Message a)
     -> a
     -> Model
     -> (Model -> Html)
@@ -41,4 +42,6 @@ view addr clickMsg state render =
     , onMouseLeave addr (MouseUpdate Up)
     , onClick addr (Click clickMsg)
     ]
-    [ lazy render state ]
+    [ lazy render state
+    ]
+

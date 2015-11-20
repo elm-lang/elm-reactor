@@ -8,8 +8,10 @@ import Debugger.RuntimeApi as API
 import Debugger.Model as DM
 import Styles exposing (..)
 
-type Message =
-  GoToFrame DM.FrameIndex
+
+type Message
+    = GoToFrame DM.FrameIndex
+
 
 view : Signal.Address Message -> DM.ValueLog -> DM.FrameIndex -> Html
 view addr actions curFrameIdx =
@@ -19,14 +21,14 @@ view addr actions curFrameIdx =
         , ("margin" => "0")
         ]
     ]
-    (actions
-      |> List.map (viewAction addr curFrameIdx))
+    (List.map (viewAction addr curFrameIdx) actions)
 
 
-viewAction : Signal.Address Message
-          -> DM.FrameIndex
-          -> (DM.FrameIndex, DM.JsElmValue)
-          -> Html
+viewAction
+    : Signal.Address Message
+    -> DM.FrameIndex
+    -> (DM.FrameIndex, DM.JsElmValue)
+    -> Html
 viewAction addr curFrameIdx (frameIdx, value) =
   let
     onThisFrame =
@@ -40,4 +42,5 @@ viewAction addr curFrameIdx (frameIdx, value) =
           , "font-family" => "monospace"
           ]
       ]
-      [ API.prettyPrint value |> text ]
+      [ text (API.prettyPrint value)
+      ]

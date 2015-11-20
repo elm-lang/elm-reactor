@@ -142,7 +142,7 @@ playPauseButton addr isPlay state =
 
     render state =
       iconButton (playPauseButtonColor state) icon
-  in 
+  in
     Button.view
       addr
       (if isPlay then Active.Play else Active.Pause)
@@ -157,7 +157,7 @@ restartButton addr state =
       iconButton
         (restartButtonColor st)
         (FontAwesome.undo darkGrey buttonIconSize)
-  in 
+  in
     Button.view
       addr
       Active.Reset
