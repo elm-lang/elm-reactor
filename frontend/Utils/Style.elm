@@ -1,4 +1,4 @@
-module Styles where
+module Utils.Style where
 
 import Color
 import String

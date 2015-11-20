@@ -5,13 +5,12 @@ import Html exposing (..)
 import Html.Attributes as Attr exposing (..)
 import Html.Events exposing (..)
 import Markdown
-import Maybe
 
 import Debugger.Active as Active
 import Debugger.Model as DM
 import Debugger.RuntimeApi as API
-import Styles exposing (..)
 import Utils.Helpers exposing (last, unsafe)
+import Utils.Style exposing ((=>), textTypefaces, unselectable)
 
 
 type alias Model =

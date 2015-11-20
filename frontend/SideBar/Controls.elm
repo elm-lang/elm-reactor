@@ -8,10 +8,10 @@ import Html.Events exposing (..)
 import Json.Decode exposing (..)
 import String
 
-import Model
 import Debugger.Active as Active
+import Model
 import SideBar.Button as Button
-import Styles exposing (..)
+import Utils.Style exposing ((=>))
 
 
 

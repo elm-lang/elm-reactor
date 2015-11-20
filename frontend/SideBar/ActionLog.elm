@@ -6,7 +6,7 @@ import Html.Events exposing (..)
 
 import Debugger.RuntimeApi as API
 import Debugger.Model as DM
-import Styles exposing (..)
+import Utils.Style exposing ((=>))
 
 
 type Message

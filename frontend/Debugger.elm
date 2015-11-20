@@ -1,35 +1,31 @@
 module Debugger where
 
+import Color
+import Dict
 import Html exposing (..)
 import Html.Attributes as Attr exposing (..)
 import Html.Events exposing (..)
-import Html.Lazy
-import Signal
-import Task exposing (Task)
 import Json.Decode as JsDec
 import Json.Encode as JsEnc
-import Color
-import Maybe
-import Result
-import Dict
-import Debug
+import Task exposing (Task)
 
 import Effects exposing (..)
 import StartApp
 import WebSocket
 import Html.File as File
 
-import Model exposing (..)
-import Styles exposing (..)
-import Debugger.RuntimeApi as API
-import Debugger.Model as DM
 import Debugger.Active as Active
+import Debugger.Model as DM
+import Debugger.RuntimeApi as API
 import Debugger.Service as Service
 import Explorer.Logs as Logs
+import Model exposing (..)
 import SideBar.Button as Button
 import SideBar.Controls as Controls
 import SideBar.ActionLog as ActionLog
 import Utils.Helpers exposing (unsafe, unsafeResult)
+import Utils.Style exposing (colorToCss, darkGrey, lightGrey)
+
 
 
 serviceApp : StartApp.App Service.Model

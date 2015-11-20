@@ -1,11 +1,9 @@
 module TreeView where
 
 import Dict exposing (Dict)
-import Signal
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
-import Debug
 
 
 type alias Model a =
@@ -87,14 +85,14 @@ view addr render state =
         heading =
           div
             [ style
-                [ "display" => "flex" 
+                [ "display" => "flex"
                 , "align-items" => "center"
                 ]
             ]
             [ div
                 [ onClick addr (ChangeExpansion (not expanded))
                 , style
-                    [ "cursor" => "default" 
+                    [ "cursor" => "default"
                     , "font-size" => "13px"
                     , "width" => "13px"
                     , "height" => "13px"
