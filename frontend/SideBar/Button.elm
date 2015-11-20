@@ -1,6 +1,5 @@
-module Button where
+module SideBar.Button where
 
-import Signal
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)

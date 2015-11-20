@@ -5,13 +5,13 @@ import Json.Decode exposing (..)
 import WebSocket
 import Html.File as File
 
-import Debugger.Service as Service
 import Debugger.Active as Active
-import Logs
-import ActionLog
-import Button
-import Debugger.RuntimeApi as API
 import Debugger.Model as DM
+import Debugger.RuntimeApi as API
+import Debugger.Service as Service
+import SideBar.ActionLog as ActionLog
+import SideBar.Button as Button
+import Logs
 
 
 type alias Model =

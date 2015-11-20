@@ -21,15 +21,15 @@ import Html.File as File
 
 import Model exposing (..)
 import Styles exposing (..)
-import Button
 import Debugger.RuntimeApi as API
 import Debugger.Model as DM
 import Debugger.Active as Active
 import Debugger.Service as Service
 import SessionRecord as SessionRecord
-import Controls
+import SideBar.Button as Button
+import SideBar.Controls as Controls
+import SideBar.ActionLog as ActionLog
 import Logs
-import ActionLog
 import DataUtils exposing (..)
 
 

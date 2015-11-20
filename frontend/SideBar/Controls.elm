@@ -1,18 +1,17 @@
-module Controls where
+module SideBar.Controls where
 
 import Color
+import FontAwesome
 import Html exposing (..)
 import Html.Attributes as Attr exposing (..)
 import Html.Events exposing (..)
 import Json.Decode exposing (..)
 import String
 
-import FontAwesome
-
 import Model
 import Debugger.Active as Active
+import SideBar.Button as Button
 import Styles exposing (..)
-import Button
 
 
 

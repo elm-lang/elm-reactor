@@ -1,4 +1,4 @@
-module ActionLog where
+module SideBar.ActionLog where
 
 import Html exposing (..)
 import Html.Attributes exposing (..)
