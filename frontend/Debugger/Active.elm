@@ -2,16 +2,15 @@ module Debugger.Active where
 
 import Dict exposing (Dict)
 import Set exposing (Set)
-import Debug
 import Task exposing (Task)
 import Time exposing (Time)
 
 import Effects exposing (..)
 
-import JsArray
 import Debugger.RuntimeApi as API
 import Debugger.Model as DM
-import DataUtils exposing (..)
+import Utils.Helpers exposing (last, unsafe)
+import Utils.JsArray as JsArray
 
 
 type alias Model =
@@ -223,10 +222,10 @@ update msg state =
                                   |> List.filter (\(nodeId, log) ->
                                         nodeId == (API.getSgShape newSession).mainId)
                                   |> List.head
-                                  |> getMaybe "no log for main"
+                                  |> unsafe "no log for main"
                                   |> snd
-                                  |> getLast
-                                  |> getMaybe "no values in main log"
+                                  |> last
+                                  |> unsafe "no values in main log"
                                   |> snd
                             in
                               Task.succeed <|
@@ -449,7 +448,7 @@ getMainVal session values =
     values
       |> List.filter (\(id, val) -> id == mainId)
       |> List.head
-      |> getMaybe "no value with main id"
+      |> unsafe "no value with main id"
       |> snd
 
 
@@ -463,10 +462,10 @@ getLatestMainVal session logs =
     logs
       |> List.filter (\(id, log) -> id == mainId)
       |> List.head
-      |> getMaybe "no log with main id"
+      |> unsafe "no log with main id"
       |> snd
-      |> getLast
-      |> getMaybe "empty log"
+      |> last
+      |> unsafe "empty log"
       |> snd
 
 

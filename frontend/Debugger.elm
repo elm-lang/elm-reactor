@@ -29,7 +29,7 @@ import Explorer.Logs as Logs
 import SideBar.Button as Button
 import SideBar.Controls as Controls
 import SideBar.ActionLog as ActionLog
-import DataUtils exposing (..)
+import Utils.Helpers exposing (unsafe, unsafeResult)
 
 
 serviceApp : StartApp.App Service.Model
@@ -420,7 +420,7 @@ update msg state =
         sessionRecordTask =
           files
             |> List.head
-            |> getMaybe "files list empty"
+            |> unsafe "files list empty"
             |> File.readAsText
             |> Task.mapError IoError
             |> Task.toResult
@@ -504,7 +504,7 @@ connectSocket =
           WebSocket.Message msg ->
             msg
               |> JsDec.decodeString swapEvent
-              |> getResult
+              |> unsafeResult
               |> SwapEvent
 
           WebSocket.Close ->

@@ -1,19 +1,16 @@
 module ElmValueView where
 
+import Array exposing (Array)
+import Dict exposing (Dict)
 import Html exposing (..)
 import Html.Attributes exposing (..)
-import Dict exposing (Dict)
-import Array exposing (Array)
-import Set exposing (Set)
-import Signal
-import Debug
-import String
 import Json.Encode as JsEnc
+import Set exposing (Set)
+import String
 
-import TreeView
 import Debugger.Reflect as Reflect
 import StartApp.Simple as StartApp
-import DataUtils
+import TreeView
 
 
 type alias Model =

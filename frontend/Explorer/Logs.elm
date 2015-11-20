@@ -7,11 +7,11 @@ import Html.Events exposing (..)
 import Markdown
 import Maybe
 
-import DataUtils exposing (..)
 import Debugger.Active as Active
 import Debugger.Model as DM
 import Debugger.RuntimeApi as API
 import Styles exposing (..)
+import Utils.Helpers exposing (last, unsafe)
 
 
 type alias Model =
@@ -83,33 +83,30 @@ view addr state activeState =
   let
     curFrame =
       Active.curFrameIdx activeState
+
+    viewExprLogHelp (tag, log) =
+      viewExprLog
+        addr
+        (unsafe "log not found" (Dict.get tag state.exprExpansion))
+        (ExprLog tag)
+        curFrame
+        log
+
+    children =
+      if Dict.isEmpty activeState.exprLogs then
+        [noLogs]
+
+      else
+        [ ul
+            [ style
+                [ "list-style" => "none"
+                , "padding-left" => "0"
+                ]
+            ]
+            (List.map viewExprLogHelp (Dict.toList activeState.exprLogs))
+        ]
   in
-    div
-      [ style
-          [ "padding" => ("0 " ++ intToPx sidePadding)
-          ]
-      ]
-      ( if Dict.isEmpty activeState.exprLogs then
-          [noLogs]
-        else
-          [ ul
-              [ style
-                  [ "list-style" => "none"
-                  , "padding-left" => "0"
-                  ]
-              ]
-              (activeState.exprLogs
-                |> Dict.toList
-                |> List.map (\(tag, log) ->
-                      viewExprLog
-                        addr
-                        (Dict.get tag state.exprExpansion |> getMaybe "log not found")
-                        (ExprLog tag)
-                        curFrame
-                        log)
-              )
-          ]
-      )
+    div [] children
 
 
 sidePadding =
@@ -231,7 +228,7 @@ getAtIdx : DM.FrameIndex -> DM.ValueLog -> Maybe DM.JsElmValue
 getAtIdx idx log =
   log
     |> List.filter (\(itemIdx, val) -> itemIdx <= idx)
-    |> getLast
+    |> last
     |> Maybe.map snd
 
 

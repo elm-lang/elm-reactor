@@ -1,15 +1,13 @@
 module Debugger.RuntimeApi where
 
-import Task exposing (Task)
 import Dict
 import Set
-import Debug
+import Task exposing (Task)
 
-import DataUtils exposing (..)
 import Debugger.Model exposing (..)
-import JsArray
-
 import Native.Debugger.RuntimeApi
+import Utils.Helpers exposing (unsafe)
+import Utils.JsArray as JsArray
 
 
 ---- COMMANDS ----
@@ -168,10 +166,14 @@ getNodeState =
 
 getNodeStateSingle : DebugSession -> FrameIndex -> List NodeId -> Task StateError ValueSet
 getNodeStateSingle session frameIdx nodes =
-  getNodeState session {start=frameIdx, end=frameIdx} nodes
-    |> Task.map (\logs ->
-        logs |> List.map (\(id, log) ->
-            (id, List.head log |> getMaybe "head of empty" |> snd)))
+  let
+    extract (id, log) =
+      ( id
+      , snd (unsafe "corrupted node state" (List.head log))
+      )
+  in
+    getNodeState session { start = frameIdx, end = frameIdx } nodes
+      |> Task.map (List.map extract)
 
 
 -- GETTING MODULE FROM JS

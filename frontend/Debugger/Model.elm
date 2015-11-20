@@ -5,7 +5,7 @@ import Json.Decode as JsDec exposing ((:=))
 import Json.Encode as JsEnc
 import Time exposing (Time)
 
-import JsArray exposing (..)
+import Utils.JsArray as JsArray
 
 
 type alias FrameIndex =
@@ -131,14 +131,14 @@ type alias SessionRecord =
 
 
 type alias InputHistory =
-  JsArray Event
+  JsArray.JsArray Event
 
 
 -- TODO: better name
 type alias ImmediateSessionRecord =
   { sgShape : SGShape
   , modul : ElmModule
-  , snapshots : JsArray Snapshot
+  , snapshots : JsArray.JsArray Snapshot
   , inputHistory : InputHistory
   , delay : Time
   , startedAt : Time

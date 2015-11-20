@@ -1,4 +1,4 @@
-module JsArray where
+module Utils.JsArray where
 
 import Json.Decode as JsDec
 import Json.Encode as JsEnc
