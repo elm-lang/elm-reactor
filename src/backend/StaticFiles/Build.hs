@@ -70,7 +70,7 @@ debuggerInterfaceJs =
     tempFile =
       "temp-debug.js"
   in
-    do  compile ("src" </> "debugger" </> "Debugger.elm") tempFile
+    do  compile ("src" </> "debugger" </> "Main.elm") tempFile
         result <- BS.readFile tempFile
         seq (BS.length result) (removeFile tempFile)
         return result

@@ -1,4 +1,4 @@
-module Debugger where
+module Main where
 
 import Color
 import Dict
