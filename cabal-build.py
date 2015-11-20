@@ -17,7 +17,9 @@ def mostRecentModification(directory):
 	return mostRecent
 
 
-mostRecent = mostRecentModification('frontend')
+pageTime = mostRecentModification('src/pages')
+debuggerTime = mostRecentModification('src/debugger')
+mostRecent = max(pageTime, debuggerTime)
 
 
 ## FIGURE OUT OLD MODIFICATION TIME
@@ -37,9 +39,13 @@ with open('last-modified', 'r+') as handle:
 ## TOUCH FILES IF NECESSARY
 
 if mostRecent > prevMostRecent:
-	print "Some frontend file has been modified. Touching 'backend/StaticFiles.hs' to"
+	print ""
+	print "--------------------------------------------------------------------------------"
+	print "Some frontend file has been modified. Touching 'src/backend/StaticFiles.hs' to"
 	print "trigger a recompilation of the Template Haskell stuff."
-	os.utime('backend/StaticFiles.hs', None)
+	print "--------------------------------------------------------------------------------"
+	print ""
+	os.utime('src/backend/StaticFiles.hs', None)
 	with open('last-modified', 'w') as handle:
 		handle.write(str(mostRecent))
 

@@ -6,9 +6,9 @@
     "source-directories": [
         "src/debugger",
         "src/pages",
-        "elm-html-file",
-        "elm-font-awesome/src",
-        "elm-websockets"
+        "src/submodules/elm-font-awesome/src",
+        "src/submodules/elm-html-file",
+        "src/submodules/elm-websockets"
     ],
     "exposed-modules": [],
     "native-modules": true,

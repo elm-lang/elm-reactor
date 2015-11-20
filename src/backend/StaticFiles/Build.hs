@@ -18,12 +18,12 @@ import System.Process (readProcessWithExitCode)
 
 debuggerAgent :: IO BS.ByteString
 debuggerAgent =
-  BS.readFile ("frontend" </> "debug-agent.js")
+  BS.readFile ("src" </> "debugger" </> "debug-agent.js")
 
 
 debuggerInterfaceHtml :: IO BS.ByteString
 debuggerInterfaceHtml =
-  BS.readFile ("frontend" </> "debug-interface.html")
+  BS.readFile ("src" </> "debugger" </> "debug-interface.html")
 
 
 favicon :: IO BS.ByteString
@@ -70,7 +70,7 @@ debuggerInterfaceJs =
     tempFile =
       "temp-debug.js"
   in
-    do  compile ("frontend" </> "Debugger.elm") tempFile
+    do  compile ("src" </> "debugger" </> "Debugger.elm") tempFile
         result <- BS.readFile tempFile
         seq (BS.length result) (removeFile tempFile)
         return result
