@@ -45,3 +45,9 @@ maybeToList maybe =
 
     Nothing ->
       []
+
+
+intersect : List a -> List a -> List a
+intersect xs ys =
+  xs |> List.filter (\x -> List.member x ys)
+
