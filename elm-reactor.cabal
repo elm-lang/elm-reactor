@@ -43,7 +43,7 @@ Executable elm-reactor
     -threaded -O2 -W -Werror
 
   hs-source-dirs:
-    backend
+    src/backend
 
   Main-is:
     Main.hs
