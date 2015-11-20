@@ -81,8 +81,8 @@ update msg state =
       (state, Nothing)
 
 
-view : Signal.Address Message -> Int -> Model -> Active.Model -> Html
-view addr controlsHeight state activeState =
+view : Signal.Address Message -> Model -> Active.Model -> Html
+view addr state activeState =
   let
     curFrame =
       Active.curFrameIdx activeState
