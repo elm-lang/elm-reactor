@@ -38,8 +38,8 @@ data Flags = Flags
 
 flags :: Flags
 flags = Flags
-  { address = "0.0.0.0"
-      &= help "set the address of the server (0.0.0.0, localhost, 127.0.0.1)"
+  { address = "localhost"
+      &= help "set the address of the server (e.g. look into 0.0.0.0 if you want to try stuff on your phone)"
       &= typ "ADDRESS"
 
   , port = 8000
