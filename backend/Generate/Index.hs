@@ -103,12 +103,18 @@ toPwd directory =
 getPackageInfo :: IO (Maybe PackageInfo)
 getPackageInfo =
   fmap (either (const Nothing) Just) $ runExceptT $
-    do  exists <- liftIO (doesFileExist Paths.description)
-        when (not exists) (throwError "file not found")
+    do
+        descExists <- liftIO (doesFileExist Paths.description)
+        when (not descExists) (throwError "file not found")
         desc <- Desc.read Paths.description
+
+        solutionExists <- liftIO (doesFileExist Paths.solvedDependencies)
+        when (not solutionExists) (throwError "file not found")
         solution <- S.read Paths.solvedDependencies
+
         let publicSolution =
               Map.intersection solution (Map.fromList (Desc.dependencies desc))
+
         return $ PackageInfo
           { _version = Desc.version desc
           , _repository = Desc.repo desc
