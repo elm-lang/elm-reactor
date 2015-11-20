@@ -48,8 +48,3 @@ maybeToList maybe =
       []
 
 
-intersect : List a -> List a -> List a
-intersect xs ys =
-  List.filter (\x -> List.member x ys) xs
-
-
