@@ -1,20 +1,17 @@
-module Logs where
+module Explorer.Logs where
 
-import Html exposing (..)
-import Html.Attributes exposing (..)
-import Markdown
-import Signal
 import Dict exposing (Dict)
-import Maybe
 import Html exposing (..)
 import Html.Attributes as Attr exposing (..)
 import Html.Events exposing (..)
+import Markdown
+import Maybe
 
-import Styles exposing (..)
+import DataUtils exposing (..)
 import Debugger.Active as Active
 import Debugger.Model as DM
 import Debugger.RuntimeApi as API
-import DataUtils exposing (..)
+import Styles exposing (..)
 
 
 type alias Model =

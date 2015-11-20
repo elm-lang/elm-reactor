@@ -25,11 +25,10 @@ import Debugger.RuntimeApi as API
 import Debugger.Model as DM
 import Debugger.Active as Active
 import Debugger.Service as Service
-import SessionRecord as SessionRecord
+import Explorer.Logs as Logs
 import SideBar.Button as Button
 import SideBar.Controls as Controls
 import SideBar.ActionLog as ActionLog
-import Logs
 import DataUtils exposing (..)
 
 
@@ -414,7 +413,7 @@ update msg state =
       let
         parseHistory : String -> Result SessionInputError DM.SessionRecord
         parseHistory str =
-          JsDec.decodeString SessionRecord.decodeSessionRecord str
+          JsDec.decodeString DM.decodeSessionRecord str
             |> Result.formatError ParseError
 
         sessionRecordTask : Task x (Result SessionInputError DM.SessionRecord)
@@ -525,10 +524,14 @@ exportHistory session =
   let
     fileName =
       "reactor-history-" ++ moduleName ++ ".json"
+
+    getContents =
+      API.getSessionRecord session
+        |> Task.map (JsEnc.encode 4 << DM.encodeSessionRecord)
+
+    downloadContents contents =
+      File.download contents exportMimeType fileName
   in
-    (API.getSessionRecord session
-      |> Task.map (\record ->
-          SessionRecord.encodeSessionRecord record
-            |> JsEnc.encode 4))
-    `Task.andThen` (\contents ->
-      File.download contents exportMimeType fileName)
+    getContents `Task.andThen` downloadContents
+
+

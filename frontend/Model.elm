@@ -9,9 +9,9 @@ import Debugger.Active as Active
 import Debugger.Model as DM
 import Debugger.RuntimeApi as API
 import Debugger.Service as Service
+import Explorer.Logs as Logs
 import SideBar.ActionLog as ActionLog
 import SideBar.Button as Button
-import Logs
 
 
 type alias Model =
