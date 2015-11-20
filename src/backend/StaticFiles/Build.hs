@@ -12,21 +12,13 @@ import System.IO (hPutStrLn, stderr)
 import System.Process (readProcessWithExitCode)
 
 
+
+-- READ STATIC FILES
+
+
 debuggerAgent :: IO BS.ByteString
 debuggerAgent =
   BS.readFile ("frontend" </> "debug-agent.js")
-
-
-debuggerInterfaceJs :: IO BS.ByteString
-debuggerInterfaceJs =
-  let
-    tempFile =
-      "temp-debug.js"
-  in
-    do  compile "Debugger.elm" tempFile
-        result <- BS.readFile tempFile
-        seq (BS.length result) (removeFile tempFile)
-        return result
 
 
 debuggerInterfaceHtml :: IO BS.ByteString
@@ -39,13 +31,17 @@ favicon =
   BS.readFile ("assets" </> "favicon.ico")
 
 
+
+-- COMPILE ELM CODE
+
+
 navigationPage :: FilePath -> IO BS.ByteString
 navigationPage fileName =
   let
     tempFile =
       "temp-" ++ replaceExtension fileName "js"
   in
-    do  compile fileName tempFile
+    do  compile ("src" </> "pages" </> fileName) tempFile
         result <- BS.readFile tempFile
         seq (BS.length result) (removeFile tempFile)
         return result
@@ -56,7 +52,7 @@ compile source target =
   do  (exitCode, out, err) <-
           readProcessWithExitCode
               "elm-make"
-              [ "--yes", "frontend" </> source, "--output=" ++ target ]
+              [ "--yes", source, "--output=" ++ target ]
               ""
 
       case exitCode of
@@ -66,3 +62,15 @@ compile source target =
         ExitFailure _ ->
           do  hPutStrLn stderr (unlines ["Failed to build" ++ source, "", out, err])
               exitFailure
+
+
+debuggerInterfaceJs :: IO BS.ByteString
+debuggerInterfaceJs =
+  let
+    tempFile =
+      "temp-debug.js"
+  in
+    do  compile ("frontend" </> "Debugger.elm") tempFile
+        result <- BS.readFile tempFile
+        seq (BS.length result) (removeFile tempFile)
+        return result

@@ -4,6 +4,7 @@
     "repository": "https://github.com/elm-lang/elm-reactor.git",
     "license": "BSD3",
     "source-directories": [
+        "src/pages",
         "frontend",
         "elm-html-file",
         "elm-font-awesome/src",
