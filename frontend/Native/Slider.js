@@ -76,4 +76,4 @@ Elm.Native.Slider.make = function(localRuntime) {
     return localRuntime.Native.Slider.values = {
         slider: F2(slider)
     };
-}
+};
