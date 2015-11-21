@@ -18,6 +18,7 @@ type alias Model =
   { serviceState : Service.Model
   , sidebarVisible : Bool
   , permitSwaps : Bool
+  , shouldAutoscroll : Bool
   , restartButtonState : Button.Model
   , playPauseButtonState : Button.Model
   , errorState : ErrorState
@@ -47,6 +48,7 @@ initModel =
   { serviceState = Service.initModel
   , sidebarVisible = True
   , permitSwaps = True
+  , shouldAutoscroll = True
   , restartButtonState = Button.Up
   , playPauseButtonState = Button.Up
   , errorState = NoErrors

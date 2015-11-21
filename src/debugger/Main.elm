@@ -261,24 +261,34 @@ update ports msg state =
       )
 
     NewServiceState serviceState ->
-      let
-        logMsg =
-          case serviceState of
-            Just active ->
+      case serviceState of
+        Just active ->
+          let
+            logMsg =
               Logs.UpdateLogs
                 { newNodeLogs = active.nodeLogs
                 , newExprLogs = active.exprLogs
                 }
 
-            Nothing ->
-              Logs.NoOp
-      in
-        ( { state
-              | serviceState = serviceState
-              , logsState = fst (Logs.update logMsg state.logsState)
-          }
-        , Effects.none
-        )
+            nextEffects =
+              if state.shouldAutoscroll then
+                Signal.send ports.autoscrollLog "#action-log"
+                  |> Task.map (\_ -> NoOp)
+                  |> Effects.task
+              else
+                Effects.none
+          in
+            ( { state
+                  | serviceState = serviceState
+                  , logsState = fst (Logs.update logMsg state.logsState)
+              }
+            , nextEffects
+            )
+
+        Nothing ->
+          ( { state | serviceState = serviceState }
+          , Effects.none
+          )
 
     PlayPauseButtonAction buttonMsg ->
       let

@@ -16,7 +16,7 @@
 			ports.autoscrollLog.subscribe(function(selector) {
 				var log = document.querySelector(selector);
 
-				console.log("autoscrollLog ", selector, log);
+				log.scrollTop = log.scrollHeight - log.clientHeight;
 			});
 
 			ports.openFileChooser.subscribe(function(selector) {

@@ -28,6 +28,14 @@ styles = """
   overflow-y: scroll;
 }
 
+.action-log-entry {
+  cursor: pointer;
+  font-family: monospace;
+}
+
+.action-log-entry-active {
+  background-color: cyan;
+}
 """
 
 
@@ -50,10 +58,9 @@ viewAction addr curFrameIdx (frameIdx, value) =
   in
     li
       [ onClick addr (GoToFrame frameIdx)
-      , style
-          [ "color" => if onThisFrame then "red" else "black"
-          , "cursor" => "pointer"
-          , "font-family" => "monospace"
+      , classList
+          [ "action-log-entry" => True
+          , "action-log-entry-active" => onThisFrame
           ]
       ]
       [ text (API.prettyPrint value)
