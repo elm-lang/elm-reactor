@@ -43,8 +43,39 @@ styles = """
 }
 
 .scrubber {
-  margin: 0;
   width: 100%;
+  -webkit-appearance: none;
+}
+
+.scrubber:focus {
+  outline: none;
+}
+
+.scrubber::-webkit-slider-thumb:hover {
+  background: rgb(213, 213, 213);
+}
+
+.scrubber::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  height: 16px;
+  width: 16px;
+  border-radius: 100%;
+  cursor: -webkit-grab;
+  background: rgb(132, 132, 132);
+  margin-top: -6px;
+}
+
+.scrubber::-webkit-slider-runnable-track {
+  width: 100%;
+  height: 4px;
+  cursor: pointer;
+  background: rgb(114, 114, 114);
+  border: 0px solid transparent;
+  outline: none;
+}
+
+.scrubber::-webkit-slider-runnable-track:hover {
+  background: rgb(132, 132, 132);
 }
 
 .scrubber-container {
