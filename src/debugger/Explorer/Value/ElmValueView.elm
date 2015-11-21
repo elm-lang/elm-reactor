@@ -1,4 +1,4 @@
-module ElmValueView where
+module Explorer.Value.ElmValueView where
 
 import Array exposing (Array)
 import Dict exposing (Dict)
@@ -10,7 +10,7 @@ import String
 
 import Debugger.Reflect as Reflect
 import StartApp.Simple as StartApp
-import TreeView
+import Explorer.Value.TreeView
 
 
 type alias Model =
