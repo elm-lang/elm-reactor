@@ -19,6 +19,7 @@ type alias Model =
   , totalTimeLost : Time
   , runningState : RunningState
   , numFrames : Int
+  , isScrubbing : Bool
   , exprLogs : Dict DM.ExprTag DM.ValueLog
   , nodeLogs : Dict DM.NodeId DM.ValueLog
   , subscribedNodes : Set DM.NodeId
@@ -32,6 +33,7 @@ initModel window_ session =
   , totalTimeLost = 0
   , runningState = Playing
   , numFrames = 1
+  , isScrubbing = False
   , exprLogs = Dict.empty
   , nodeLogs = Dict.empty
   , subscribedNodes = Set.empty
@@ -67,6 +69,7 @@ type Command
   | Reset
   | Swap DM.CompiledElmModule
   | StartWithHistory DM.SessionRecord
+  | SetScrubbing Bool
   | NoOpCommand
 
 
@@ -169,6 +172,11 @@ update msg state =
                 playFrom state.window_ state.session record 0)
               |> task
             )
+
+        SetScrubbing isScrubbing ->
+          ( { state | isScrubbing =  isScrubbing }
+          , none
+          )
 
         Swap compiledMod ->
           let

@@ -65,6 +65,10 @@ styles = """
   margin-top: -6px;
 }
 
+.scrubber.state-is-scrubbing::-webkit-slider-thumb {
+  cursor: -webkit-grabbing !important;
+}
+
 .scrubber::-webkit-slider-runnable-track {
   width: 100%;
   height: 4px;
@@ -132,8 +136,7 @@ view addr state activeState =
     sliderContainer =
       div
         [ class "scrubber-container"]
-        [ scrubSlider (Signal.forwardTo addr Model.ServiceCommand) activeState
-        ]
+        [ scrubSlider (Signal.forwardTo addr Model.ServiceCommand) activeState ]
   in
     div
       [ class "left-sidebar-header" ]
@@ -169,13 +172,21 @@ scrubSlider addr activeState =
 
     curFrame =
       Active.curFrameIdx activeState
+
+    setScrubbing isScrubbing =
+      Signal.message addr (Active.SetScrubbing isScrubbing)
   in
     input
       [ type' "range"
-      , class "scrubber"
+      , classList
+          [ "scrubber" => True
+          , "state-is-scrubbing" => activeState.isScrubbing
+          ]
       , Attr.min "0"
       , Attr.max <| toString <| numFrames - 1
       , Attr.value <| toString <| curFrame
+      , on "mousedown" (succeed True) setScrubbing
+      , on "mouseup" (succeed False) setScrubbing
       , on "input"
           (at ["target","value"] (customDecoder string String.toInt))
           (\idx ->
