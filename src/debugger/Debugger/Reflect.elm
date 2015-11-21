@@ -1,19 +1,21 @@
 module Debugger.Reflect
     ( ElmValue(..)
     , SeqType(..)
-    , getHtml
     , toElmValue
     )
     where
 
 
-import Dict exposing (Dict)
+import Dict
 import Html
-import Json.Encode as JsEnc
-import Set exposing (Set)
+import Json.Decode as Json exposing (..)
+import Set
 
-import Native.Debugger.Reflect
+import Native.Reflect
 
+
+
+-- MODEL
 
 
 type ElmValue
@@ -37,25 +39,100 @@ type SeqType
     | Tag String
 
 
-type alias JsElmValue =
-  JsEnc.Value
+
+-- CREATE REIFIED ELM VALUES
 
 
-getHtml : JsElmValue -> Html.Html
-getHtml =
-  Native.Debugger.Reflect.getHtml
-
-
-toElmValue : a -> ElmValue
+toElmValue : Json.Value -> ElmValue
 toElmValue jsValue =
-  decode (jsRepr jsValue)
+  case Json.decodeValue elmValueDecoder jsValue of
+    Ok elmValue ->
+      elmValue
+
+    Err _ ->
+      VBuiltIn "???"
 
 
-jsRepr : a -> JsElmValue
-jsRepr =
-  Native.Debugger.Reflect.jsRepr
+elmValueDecoder : Json.Decoder ElmValue
+elmValueDecoder =
+  oneOf
+    [ map VInt int
+    , map VFloat float
+    , map VChar char
+    , map VString string
+    , map VBool bool
+    , objectDecoder
+    ]
 
 
-decode : JsElmValue -> ElmValue
-decode =
-  Native.Debugger.Reflect.decode
+char : Json.Decoder Char
+char =
+  string `andThen` \str ->
+    case String.uncons str of
+      Nothing ->
+        fail "not a char"
+
+      Just (chr, _) ->
+        succeed chr
+
+
+objectDecoder : Json.Decoder ElmValue
+objectDecoder =
+  object2 (,) value dict `andThen` \(rawValue, keyValues) ->
+    case Dict.get "ctor" keyValues of
+      Nothing ->
+        case Maybe.map2 (\_ _ -> ()) (Dict.get "id" keyValues) (Dict.get "notify" keyValues) of
+          Just _ ->
+            VBuiltIn "signal"
+
+          Nothing ->
+            VRecord (mapSnd toElmValue (Dict.toList keyValues))
+
+      Just "Set_elm_builtin" ->
+        VSeq Set (List.map toElmValue (Set.toList (unsafeCast rawValue)))
+
+      Just "RBNode_elm_builtin" ->
+        VDict (mapBoth toElmValue (Dict.toList (unsafeCast rawValue)))
+
+      Just "RBEmpty_elm_builtin" ->
+        VDict []
+
+      Just "::" ->
+        VSeq List (List.map toElmValue (unsafeCast rawValue))
+
+      Just "[]" ->
+        VSeq List []
+
+      Just "Element_elm_builtin" ->
+        VBuiltIn "element"
+
+      Just "Form_elm_builtin" ->
+        VBuiltIn "form"
+
+      Just tag ->
+        if String.left 5 tag == "Text:" then
+          VBuiltIn "text"
+
+        else if String.left 6 tag == "_Tuple" then
+          VSeq Tuple (List.map (toElmValue << snd) (Dict.toList keyValues))
+
+        else
+          VSeq (Tag tag) (List.map (toElmValue << snd) (Dict.toList keyValues))
+
+
+
+mapSnd : (a -> b) -> List (k, a) -> List (k, b)
+mapSnd func list =
+  List.map (\(k,v) -> (k, func v)) list
+
+
+mapBoth : (a -> b) -> List (a, a) -> List (b, b)
+mapBoth func list =
+  List.map (\(k,v) -> (func k, func v)) list
+
+
+unsafeCast : a -> b
+unsafeCast =
+  Native.Reflect.unsafeCast
+
+
