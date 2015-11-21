@@ -58,10 +58,11 @@ elmValueDecoder =
   oneOf
     [ map VInt int
     , map VFloat float
-    , map VChar char
     , map VString string
-    , map VBool bool
     , objectDecoder
+    , map VChar char
+    , map VBool bool
+    , functionDecoder
     ]
 
 
@@ -74,6 +75,17 @@ char =
 
       Just (chr, _) ->
         succeed chr
+
+
+functionDecoder : Json.Decoder ElmValue
+functionDecoder =
+  Json.value `andThen` \val ->
+    case getFunctionName val of
+      Nothing ->
+        fail "not a function"
+
+      Just name ->
+        VFunction name
 
 
 objectDecoder : Json.Decoder ElmValue
@@ -131,8 +143,17 @@ mapBoth func list =
   List.map (\(k,v) -> (func k, func v)) list
 
 
+
+-- NATIVE STUFF
+
+
 unsafeCast : a -> b
 unsafeCast =
   Native.Cast.unsafeCast
+
+
+getFunctionName : Json.Value -> Maybe String
+getFunctionName =
+  Native.Cast.getFunctionName
 
 

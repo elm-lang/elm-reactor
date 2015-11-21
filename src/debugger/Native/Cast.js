@@ -7,13 +7,24 @@ Elm.Native.Cast.make = function(localRuntime) {
 	{
 		return localRuntime.Native.Cast.values;
 	}
+	var Maybe = Elm.Maybe.make(localRuntime);
 
 	function unsafeCast(x)
 	{
 		return x;
 	}
 
+	function getFunctionName(value)
+	{
+		if (typeof value === 'function')
+		{
+			return Maybe.Just(value.name);
+		}
+		return Maybe.Nothing;
+	}
+
 	return localRuntime.Native.Cast.values = {
-		unsafeCast: unsafeCast
+		unsafeCast: unsafeCast,
+		getFunctionName: getFunctionName
 	};
 };
