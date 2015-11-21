@@ -42,6 +42,10 @@ styles = """
   background-color: rgb(46, 46, 46);
 }
 
+.left-sidebar-header.state-is-scrubbing {
+  cursor: -webkit-grabbing !important;
+}
+
 .scrubber {
   width: 100%;
   -webkit-appearance: none;
@@ -65,8 +69,8 @@ styles = """
   margin-top: -6px;
 }
 
-.scrubber.state-is-scrubbing::-webkit-slider-thumb {
-  cursor: -webkit-grabbing !important;
+.scrubber.state-is-not-scrubbing::-webkit-slider-thumb {
+  cursor: -webkit-grab;
 }
 
 .scrubber::-webkit-slider-runnable-track {
@@ -139,7 +143,11 @@ view addr state activeState =
         [ scrubSlider (Signal.forwardTo addr Model.ServiceCommand) activeState ]
   in
     div
-      [ class "left-sidebar-header" ]
+      [ classList
+          [ "left-sidebar-header" => True
+          , "state-is-scrubbing" => activeState.isScrubbing
+          ]
+      ]
       [ buttonContainer
       , sliderContainer
       ]
@@ -180,7 +188,7 @@ scrubSlider addr activeState =
       [ type' "range"
       , classList
           [ "scrubber" => True
-          , "state-is-scrubbing" => activeState.isScrubbing
+          , "state-is-not-scrubbing" => not activeState.isScrubbing
           ]
       , Attr.min "0"
       , Attr.max <| toString <| numFrames - 1
