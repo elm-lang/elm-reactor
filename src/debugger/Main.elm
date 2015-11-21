@@ -152,61 +152,71 @@ viewErrors addr errors =
       ]
 
 
+-- TODO: generate with (Stylesheets.prettyPrint 4 HomepageStylesheet.exports)
+styleStr : String
+styleStr = """
+html, body, body > div, .container, .left-sidebar {
+  height: 100%;
+}
+
+.container {
+  display: flex;
+  flex-direction: row;
+}
+
+.left-sidebar {
+  display: flex;
+  flex-direction: column;
+  width: 350px;
+}
+"""
+
+
 view : Signal.Address Message -> Model -> Html
 view addr state =
   case state.serviceState of
     Just activeState ->
       div
-        [ style
-            [ "display" => "flex"
-            , "flex-direction" => "row"
-            ]
-        ]
-        [ -- left sidebar
-          div
-            [ style
-                [ "display" => "flex"
-                , "flex-direction" => "column"
-                , "width" => "350px"
+        [ class "container" ]
+        [ node "style" [ Attr.property "innerHTML" (JsEnc.string styleStr) ] []
+
+          -- left sidebar
+        , div
+            [ class "left-sidebar" ]
+            [ Controls.view
+                addr
+                state
+                activeState
+            , ActionLog.view
+                (Signal.forwardTo addr ActionLogMessage)
+                (case activeState.nodeLogs |> Dict.toList of
+                  [(foldpParentId, actionLog)] ->
+                    actionLog
+
+                  -- TODO: it's always this on the first frame, but shouldn't be
+                  -- need to refactor initialization process somehow
+                  [] ->
+                    []
+                    --Debug.crash "no foldps"
+
+                  -- TODO: handle these cases gracefully
+                  _ ->
+                    Debug.crash "multiple foldps"
+                )
+                (Active.curFrameIdx activeState)
+            , div
+                [ style
+                    [ ("background-color" => "darkgrey") ]
                 ]
+                [ case state.swapSocket of
+                    Just _ ->
+                      text "socket connected"
+
+                    Nothing ->
+                      text "socket not connected"
+                , exportImport addr
             ]
-            [ div
-                []
-                [ Controls.view
-                    addr
-                    state
-                    activeState
-                , ActionLog.view
-                    (Signal.forwardTo addr ActionLogMessage)
-                    (case activeState.nodeLogs |> Dict.toList of
-                      [(foldpParentId, actionLog)] ->
-                        actionLog
-
-                      -- TODO: it's always this on the first frame, but shouldn't be
-                      -- need to refactor initialization process somehow
-                      [] ->
-                        []
-                        --Debug.crash "no foldps"
-
-                      -- TODO: handle these cases gracefully
-                      _ ->
-                        Debug.crash "multiple foldps"
-                    )
-                    (Active.curFrameIdx activeState)
-                , div
-                    [ style
-                        [ ("background-color" => "darkgrey") ]
-                    ]
-                    [ case state.swapSocket of
-                        Just _ ->
-                          text "socket connected"
-
-                        Nothing ->
-                          text "socket not connected"
-                    , exportImport addr
-                    ]
-                ]
-            ]
+          ]
           -- main area
         , div
             [ style
