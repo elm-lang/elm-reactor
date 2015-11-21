@@ -121,12 +121,20 @@ elm-package install
 cd packages/elm-lang/core
 rm -rf 3.0.0
 ln -s ../../../../core 3.0.0
-cd ../../../../..
+cd ../../../..
 
-cabal install elm-compiler/ elm-package/ elm-make/ elm-reactor/
+cd ../elm-compiler
+cabal install
+cd ../elm-package
+cabal install
+cd ../elm-make
+cabal install
+cd ../elm-reactor
+git submodule init
+git submodule update
 ```
 
-Then most of your work will be in elm-reactor, where you recompile with this:
+Then most of your work will be in `elm-reactor/`, where you recompile with this:
 
 ```
 ./cabal-build.py
