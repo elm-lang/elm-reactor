@@ -25,10 +25,31 @@ styles = """
   -moz-flex: 0 0 auto;
   -ms-flex: 0 0 auto;
   flex: 0 0 auto;
+
+  background-color: rgb(46, 46, 46);
+
+  font-family: monospace;
+  color: rgb(99, 99, 99);
+}
+
+.swap-status {
+  text-align: center;
+  padding-top: 8px;
+}
+
+.import-export-buttons {
+  display: flex;
+  justify-content: space-around;
 }
 
 .import-export-button {
   cursor: pointer;
+  text-decoration: underline;
+  padding: 8px 0;
+}
+
+.import-export-button:hover {
+  color: rgb(164, 164, 164);
 }
 
 #import-file-chooser {
@@ -52,7 +73,7 @@ view : Handlers -> String -> Html
 view handlers status =
   div
     [ class "left-sidebar-footer" ]
-    [ text status
+    [ div [ class "swap-status" ] [ text status ]
     , exportImport handlers
     ]
 
@@ -60,12 +81,7 @@ view handlers status =
 exportImport : Handlers -> Html
 exportImport handlers =
   div
-    [ style
-        [ "display" => "flex"
-        , "justify-content" => "space-around"
-        , "text-decoration" => "underline"
-        ]
-    ]
+    [ class "import-export-buttons" ]
     [ span
         [ class "import-export-button"
         , on "click" (succeed ()) (\_ -> handlers.clickExport)

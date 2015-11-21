@@ -40,6 +40,7 @@ view addr clickMsg state render =
     , onMouseUp addr (MouseUpdate Hover)
     , onMouseLeave addr (MouseUpdate Up)
     , onClick addr (Click clickMsg)
+    , class "play-pause-button"
     ]
     [ lazy render state
     ]

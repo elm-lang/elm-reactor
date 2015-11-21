@@ -105,7 +105,7 @@ view addr state activeState =
             (List.map viewExprLogHelp (Dict.toList activeState.exprLogs))
         ]
   in
-    div [] children
+    div [ style [ "padding" => "32px" ] ] children
 
 
 sidePadding =

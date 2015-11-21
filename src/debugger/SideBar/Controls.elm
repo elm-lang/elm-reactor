@@ -22,18 +22,61 @@ styles = """
   -webkit-flex-direction: row;
   -webkit-justify-content: space-between;
   -webkit-align-items: center;
-  padding: 16px;
-}
 
-.left-sidebar-header {
   -webkit-flex: 0 0 auto;
   -moz-flex: 0 0 auto;
   -ms-flex: 0 0 auto;
   flex: 0 0 auto;
+
+  padding: 12px;
+}
+
+.left-sidebar-header {
+  display: flex;
+
+  -webkit-flex: 0 0 auto;
+  -moz-flex: 0 0 auto;
+  -ms-flex: 0 0 auto;
+  flex: 0 0 auto;
+
+  background-color: rgb(46, 46, 46);
 }
 
 .scrubber {
   margin: 0;
+  width: 100%;
+}
+
+.scrubber-container {
+  position: relative;
+
+  -webkit-flex: 1 0 auto;
+  -moz-flex: 1 0 auto;
+  -ms-flex: 1 0 auto;
+  flex: 1 0 auto;
+
+  margin: auto 0;
+  padding-right: 16px;
+}
+
+.play-pause-button {
+  padding: 8px;
+  background-color: rgb(29, 134, 199);
+  border-radius: 16px;
+  width: 32px;
+  height: 32px;
+
+  cursor: pointer;
+}
+
+.play-pause-button:hover {
+  background-color: rgb(4, 109, 174);
+}
+
+.play-pause-button svg {
+  position: relative;
+  top: 4px;
+  left: 5px;
 }
 
 """
@@ -71,9 +114,9 @@ playPauseButton addr isPlay state =
   let
     icon =
       if isPlay then
-        FontAwesome.play Color.black 30
+        FontAwesome.play Color.white 24
       else
-        FontAwesome.pause Color.black 30
+        FontAwesome.pause Color.white 24
 
     render state =
       icon

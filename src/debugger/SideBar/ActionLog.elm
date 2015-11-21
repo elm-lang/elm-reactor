@@ -27,16 +27,28 @@ styles = """
   -ms-flex: 0 1 auto;
   flex: 0 1 auto;
 
+  flex-grow: 1;
+
+  background-color: rgb(61, 61, 61);
+
   overflow-y: scroll;
 }
 
 .action-log-entry {
   cursor: pointer;
   font-family: monospace;
+  color: rgb(99, 99, 99);
+  padding: 4px 8px;
+}
+
+.action-log-entry:hover {
+  background-color: rgb(41, 41, 41);
+  color: rgb(164, 164, 164);
+  padding: 4px 8px;
 }
 
 .action-log-entry-active {
-  background-color: cyan;
+  color: rgb(224, 224, 224);
 }
 """
 
