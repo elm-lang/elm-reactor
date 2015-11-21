@@ -17,7 +17,9 @@
 			ports.autoscrollLog.subscribe(function(selector) {
 				var log = document.querySelector(selector);
 
-				log.scrollTop = log.scrollHeight - log.clientHeight;
+				requestAnimationFrame(function() {
+					log.scrollTop = log.scrollHeight - log.clientHeight;
+				});
 			});
 
 			ports.logScrollCheck.subscribe(function(selector) {
