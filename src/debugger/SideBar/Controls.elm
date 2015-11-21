@@ -65,6 +65,7 @@ styles = """
   margin-top: -6px;
 }
 
+.left-sidebar-header.state-is-scrubbing,
 .scrubber.state-is-scrubbing::-webkit-slider-thumb {
   cursor: -webkit-grabbing !important;
 }
@@ -139,7 +140,11 @@ view addr state activeState =
         [ scrubSlider (Signal.forwardTo addr Model.ServiceCommand) activeState ]
   in
     div
-      [ class "left-sidebar-header" ]
+      [ classList
+          [ "left-sidebar-header" => True
+          , "state-is-scrubbing" => activeState.isScrubbing
+          ]
+      ]
       [ buttonContainer
       , sliderContainer
       ]
