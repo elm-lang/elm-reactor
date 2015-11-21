@@ -14,6 +14,30 @@ import SideBar.Button as Button
 import Utils.Style exposing ((=>))
 
 
+styles : String
+styles = """
+
+.controls {
+  display: -webkit-flex;
+  -webkit-flex-direction: row;
+  -webkit-justify-content: space-between;
+  -webkit-align-items: center;
+  padding: 16px;
+}
+
+.left-sidebar-header {
+  -webkit-flex: 0 0 auto;
+  -moz-flex: 0 0 auto;
+  -ms-flex: 0 0 auto;
+  flex: 0 0 auto;
+}
+
+.scrubber {
+  margin: 0;
+}
+
+"""
+
 
 -- VIEW
 
@@ -22,13 +46,7 @@ view addr state activeState =
   let
     buttonContainer =
       div
-        [ style
-            [ "display" => "-webkit-flex"
-            , "-webkit-flex-direction" => "row"
-            , "-webkit-justify-content" => "space-between"
-            , "-webkit-align-items" => "center"
-            ]
-        ]
+        [ class "controls" ]
         [ playPauseButton
             (Signal.forwardTo addr Model.PlayPauseButtonAction)
             (not <| Active.isPlaying activeState)
@@ -37,12 +55,12 @@ view addr state activeState =
 
     sliderContainer =
       div
-        []
+        [ class "scrubber-container"]
         [ scrubSlider (Signal.forwardTo addr Model.ServiceCommand) activeState
         ]
   in
     div
-      []
+      [ class "left-sidebar-header" ]
       [ buttonContainer
       , sliderContainer
       ]
@@ -78,9 +96,7 @@ scrubSlider addr activeState =
   in
     input
       [ type' "range"
-      , style
-          [ "margin" => "0"
-          ]
+      , class "scrubber"
       , Attr.min "0"
       , Attr.max <| toString <| numFrames - 1
       , Attr.value <| toString <| curFrame

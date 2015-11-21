@@ -13,14 +13,28 @@ type Message
     = GoToFrame DM.FrameIndex
 
 
+styles : String
+styles = """
+
+.action-log {
+  background-color: lightgrey;
+  margin: 0;
+
+  -webkit-flex: 0 1 auto;
+  -moz-flex: 0 1 auto;
+  -ms-flex: 0 1 auto;
+  flex: 0 1 auto;
+
+  overflow-y: scroll;
+}
+
+"""
+
+
 view : Signal.Address Message -> DM.ValueLog -> DM.FrameIndex -> Html
 view addr actions curFrameIdx =
   ul
-    [ style
-        [ ("background-color" => "lightgrey")
-        , ("margin" => "0")
-        ]
-    ]
+    [ class "action-log" ]
     (List.map (viewAction addr curFrameIdx) actions)
 
 

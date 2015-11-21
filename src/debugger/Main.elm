@@ -23,6 +23,7 @@ import Model exposing (..)
 import SideBar.Button as Button
 import SideBar.Controls as Controls
 import SideBar.ActionLog as ActionLog
+import SideBar.Footer as Footer
 import Utils.Helpers exposing (unsafe, unsafeResult)
 import Utils.Style exposing (colorToCss, darkGrey, lightGrey)
 
@@ -169,7 +170,8 @@ html, body, body > div, .container, .left-sidebar {
   flex-direction: column;
   width: 350px;
 }
-"""
+
+""" ++ Controls.styles ++ ActionLog.styles
 
 
 view : Signal.Address Message -> Model -> Html
@@ -204,18 +206,17 @@ view addr state =
                     Debug.crash "multiple foldps"
                 )
                 (Active.curFrameIdx activeState)
-            , div
-                [ style
-                    [ ("background-color" => "darkgrey") ]
-                ]
-                [ case state.swapSocket of
+            , Footer.view
+                { changeFile = (\files -> Signal.message addr (ImportSession files))
+                , clickExport = Signal.message addr ExportSession
+                }
+                (case state.swapSocket of
                     Just _ ->
-                      text "socket connected"
+                      "socket connected"
 
                     Nothing ->
-                      text "socket not connected"
-                , exportImport addr
-            ]
+                      "socket not connected"
+                )
           ]
           -- main area
         , div
@@ -239,32 +240,6 @@ view addr state =
       div
         []
         [ text "Initialzing..." ]
-
-
-exportImport : Signal.Address Message -> Html
-exportImport addr =
-  div
-    [ style
-        [ "display" => "flex"
-        , "justify-content" => "space-around"
-        , "text-decoration" => "underline"
-        ]
-    ]
-    [ span
-        [ style ["cursor" => "pointer"]
-        , onClick addr ExportSession
-        ]
-        [ text "export session" ]
-    , input
-        [ type' "file"
-        , accept "application/json"
-        , on
-            "change"
-            (JsDec.at ["target", "files"] <| File.domList File.file)
-            (\files -> Signal.message addr (ImportSession files))
-        ]
-        []
-    ]
 
 
 update : Message -> Model -> (Model, Effects Message)
