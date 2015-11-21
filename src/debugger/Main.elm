@@ -324,16 +324,16 @@ update ports msg state =
           Logs.update logMsg state.logsState
 
         sendEffect =
-          maybeFrame
-            |> Maybe.map
-                (\frameIdx -> Signal.send
-                  (Service.commandsMailbox ()).address
-                  (Active.ScrubTo frameIdx)
-                )
-            |> Maybe.withDefault
-                (Signal.send ports.autoscrollLog "#action-log")
-            |> Task.map (\_ -> NoOp)
-            |> task
+          case maybeFrame of
+            Just frameIdx ->
+              Signal.send
+                (Service.commandsMailbox ()).address
+                (Active.ScrubTo frameIdx)
+              |> Task.map (\_ -> NoOp)
+              |> task
+
+            Nothing ->
+              none
       in
         ( { state | logsState = newLogsState }
         , sendEffect
