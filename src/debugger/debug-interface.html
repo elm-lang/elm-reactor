@@ -7,10 +7,26 @@
 	</head>
 	<body style="margin: 0;">
 		<script type="text/javascript">
-			Elm.fullscreen(Elm.Main, {
+			var ports = Elm.fullscreen(Elm.Main, {
 				windowLocationHost: window.location.host,
 				moduleName: window.opener.MODULE_INFO.moduleName,
 				fileName: window.opener.MODULE_INFO.fileName
+			}).ports;
+
+			ports.autoscrollLog.subscribe(function(selector) {
+				var log = document.querySelector(selector);
+
+				console.log("autoscrollLog ", selector, log);
+			});
+
+			ports.openFileChooser.subscribe(function(selector) {
+				var chooser = document.querySelector(selector);
+
+				clickEvent = document.createEvent("MouseEvents");
+				clickEvent.initMouseEvent("click", true, true, window, 1, 0, 0, 0, 0,
+					false, false, false, false, 0, null);
+
+			  chooser.dispatchEvent(clickEvent);
 			});
 		</script>
 	</body>

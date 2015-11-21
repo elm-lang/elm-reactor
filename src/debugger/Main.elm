@@ -41,8 +41,8 @@ uiApp =
         ( initModel
         , connectSocket |> task
         )
-    , view = view
-    , update = update
+    , view = view { openFileChooser = openFileChooserMailbox.address }
+    , update = update { autoscrollLog = autoscrollLogMailbox.address }
     , inputs =
         [ Signal.map NewServiceState serviceApp.model
         , socketEventsMailbox.signal
@@ -65,7 +65,6 @@ port uiTasks =
 port serviceTasks : Signal (Task Never ())
 port serviceTasks =
   serviceApp.tasks
-
 
 (=>) = (,)
 
@@ -171,11 +170,13 @@ html, body, body > div, .container, .left-sidebar {
   width: 350px;
 }
 
-""" ++ Controls.styles ++ ActionLog.styles
+""" ++ Controls.styles ++ ActionLog.styles ++ Footer.styles
 
+type alias ViewPorts =
+  { openFileChooser : Signal.Address String }
 
-view : Signal.Address Message -> Model -> Html
-view addr state =
+view : ViewPorts -> Signal.Address Message -> Model -> Html
+view ports addr state =
   case state.serviceState of
     Just activeState ->
       div
@@ -209,6 +210,7 @@ view addr state =
             , Footer.view
                 { changeFile = (\files -> Signal.message addr (ImportSession files))
                 , clickExport = Signal.message addr ExportSession
+                , clickImport = Signal.message ports.openFileChooser
                 }
                 (case state.swapSocket of
                     Just _ ->
@@ -239,11 +241,14 @@ view addr state =
       -- TODO: prettify
       div
         []
-        [ text "Initialzing..." ]
+        [ text "Initializing..." ]
 
 
-update : Message -> Model -> (Model, Effects Message)
-update msg state =
+type alias UpdatePorts =
+  { autoscrollLog : Signal.Address String }
+
+update : UpdatePorts -> Message -> Model -> (Model, Effects Message)
+update ports msg state =
   case msg of
     SidebarVisible visible ->
       ( { state | sidebarVisible = visible }
@@ -319,16 +324,16 @@ update msg state =
           Logs.update logMsg state.logsState
 
         sendEffect =
-          case maybeFrame of
-            Just frameIdx ->
-              Signal.send
-                (Service.commandsMailbox ()).address
-                (Active.ScrubTo frameIdx)
-              |> Task.map (always NoOp)
-              |> task
-
-            Nothing ->
-              none
+          maybeFrame
+            |> Maybe.map
+                (\frameIdx -> Signal.send
+                  (Service.commandsMailbox ()).address
+                  (Active.ScrubTo frameIdx)
+                )
+            |> Maybe.withDefault
+                (Signal.send ports.autoscrollLog "#action-log")
+            |> Task.map (\_ -> NoOp)
+            |> task
       in
         ( { state | logsState = newLogsState }
         , sendEffect
@@ -456,6 +461,24 @@ update msg state =
 
     NoOp ->
      ( state, none )
+
+
+port autoscrollLog : Signal String
+port autoscrollLog =
+  autoscrollLogMailbox.signal
+
+autoscrollLogMailbox : Signal.Mailbox String
+autoscrollLogMailbox =
+  Signal.mailbox ""
+
+
+port openFileChooser : Signal String
+port openFileChooser =
+  openFileChooserMailbox.signal
+
+openFileChooserMailbox : Signal.Mailbox String
+openFileChooserMailbox =
+  Signal.mailbox ""
 
 
 -- Socket stuff

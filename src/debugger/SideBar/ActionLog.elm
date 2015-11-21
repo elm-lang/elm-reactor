@@ -16,7 +16,7 @@ type Message
 styles : String
 styles = """
 
-.action-log {
+#action-log {
   background-color: lightgrey;
   margin: 0;
 
@@ -34,7 +34,7 @@ styles = """
 view : Signal.Address Message -> DM.ValueLog -> DM.FrameIndex -> Html
 view addr actions curFrameIdx =
   ul
-    [ class "action-log" ]
+    [ id "action-log" ]
     (List.map (viewAction addr curFrameIdx) actions)
 
 
