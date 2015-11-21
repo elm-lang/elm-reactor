@@ -122,7 +122,7 @@ cd elm-reactor
 cabal sandbox init --sandbox ../.cabal-sandbox
 git checkout expando
 elm-package install
-cd packages/elm-lang/core
+cd elm-stuff/packages/elm-lang/core
 rm -rf 3.0.0
 ln -s ../../../../core 3.0.0
 cd ../../../..
@@ -156,9 +156,10 @@ want to point for testing.
 cd into the directory of the project you want to debug, then:
 
 ```
+elm-make --yes
 pushd elm-stuff/packages/elm-lang/core
 rm -rf 3.0.0
-ln -s <path to core on branch vilterp-new-debugger-api-support> 3.0.0
+ln -s <path to core on branch new-debugger-api-support from vilterp fork of core> 3.0.0
 popd
 ```
 
