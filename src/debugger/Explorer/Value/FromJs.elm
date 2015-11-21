@@ -10,6 +10,7 @@ import Dict
 import Html
 import Json.Decode as Json exposing (..)
 import Set
+import String
 
 import Native.Cast
 
@@ -85,52 +86,55 @@ functionDecoder =
         fail "not a function"
 
       Just name ->
-        VFunction name
+        succeed (VFunction name)
 
 
 objectDecoder : Json.Decoder ElmValue
 objectDecoder =
-  object2 (,) value dict `andThen` \(rawValue, keyValues) ->
-    case Dict.get "ctor" keyValues of
-      Nothing ->
-        case Maybe.map2 (\_ _ -> ()) (Dict.get "id" keyValues) (Dict.get "notify" keyValues) of
-          Just _ ->
-            VBuiltIn "signal"
+  object2 (,) value (dict value) `andThen` (destructObject >> succeed)
 
-          Nothing ->
-            VRecord (mapSnd toElmValue (Dict.toList keyValues))
 
-      Just "Set_elm_builtin" ->
-        VSeq Set (List.map toElmValue (Set.toList (unsafeCast rawValue)))
+destructObject : (Json.Value, Dict.Dict String Json.Value) -> ElmValue
+destructObject (rawValue, keyValues) =
+  case Dict.get "ctor" keyValues `Maybe.andThen` getString of
+    Nothing ->
+      case Maybe.map2 (\_ _ -> ()) (Dict.get "id" keyValues) (Dict.get "notify" keyValues) of
+        Just _ ->
+          VBuiltIn "signal"
 
-      Just "RBNode_elm_builtin" ->
-        VDict (mapBoth toElmValue (Dict.toList (unsafeCast rawValue)))
+        Nothing ->
+          VRecord (mapSnd toElmValue (Dict.toList keyValues))
 
-      Just "RBEmpty_elm_builtin" ->
-        VDict []
+    Just "Set_elm_builtin" ->
+      VSeq Set (List.map toElmValue (unsafeCast (Set.toList (unsafeCast rawValue))))
 
-      Just "::" ->
-        VSeq List (List.map toElmValue (unsafeCast rawValue))
+    Just "RBNode_elm_builtin" ->
+      VDict (mapBoth toElmValue (unsafeCast (Dict.toList (unsafeCast rawValue))))
 
-      Just "[]" ->
-        VSeq List []
+    Just "RBEmpty_elm_builtin" ->
+      VDict []
 
-      Just "Element_elm_builtin" ->
-        VBuiltIn "element"
+    Just "::" ->
+      VSeq List (List.map toElmValue (unsafeCast rawValue))
 
-      Just "Form_elm_builtin" ->
-        VBuiltIn "form"
+    Just "[]" ->
+      VSeq List []
 
-      Just tag ->
-        if String.left 5 tag == "Text:" then
-          VBuiltIn "text"
+    Just "Element_elm_builtin" ->
+      VBuiltIn "element"
 
-        else if String.left 6 tag == "_Tuple" then
-          VSeq Tuple (List.map (toElmValue << snd) (Dict.toList keyValues))
+    Just "Form_elm_builtin" ->
+      VBuiltIn "form"
 
-        else
-          VSeq (Tag tag) (List.map (toElmValue << snd) (Dict.toList keyValues))
+    Just tag ->
+      if String.left 5 tag == "Text:" then
+        VBuiltIn "text"
 
+      else if String.left 6 tag == "_Tuple" then
+        VSeq Tuple (List.map (toElmValue << snd) (Dict.toList keyValues))
+
+      else
+        VSeq (Tag tag) (List.map (toElmValue << snd) (Dict.toList keyValues))
 
 
 mapSnd : (a -> b) -> List (k, a) -> List (k, b)
@@ -141,6 +145,16 @@ mapSnd func list =
 mapBoth : (a -> b) -> List (a, a) -> List (b, b)
 mapBoth func list =
   List.map (\(k,v) -> (func k, func v)) list
+
+
+getString : Json.Value -> Maybe String
+getString value =
+  case Json.decodeValue string value of
+    Ok str ->
+      Just str
+
+    Err _ ->
+      Nothing
 
 
 

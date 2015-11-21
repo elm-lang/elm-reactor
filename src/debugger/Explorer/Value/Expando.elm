@@ -1,6 +1,13 @@
 module Explorer.Value.Expando where
 
+import Dict
+import Html exposing (..)
+import Html.Attributes exposing (style)
+import Html.Events exposing (..)
+import String
+
 import Explorer.Value.FromJs exposing (ElmValue(..), SeqType(..))
+import Utils.Style exposing ((=>))
 
 
 
@@ -34,11 +41,14 @@ showIf bool =
   if bool then Show else Hide
 
 
-swap : Visibility -> Visibility
-swap visibility =
-  case visibility of
-    Show -> Hide
-    Hide -> Show
+swap : Toggle -> Toggle
+swap toggle =
+  case toggle of
+    Show ->
+      Hide
+
+    Hide ->
+      Show
 
 
 
@@ -64,7 +74,7 @@ init value =
       ExBool bool
 
     VSeq seqType args ->
-      ExSeq Hide seqType (List.map init args)
+      ExSeq seqType Hide (List.map init args)
 
     VRecord fields ->
       ExRecord Hide (List.map (\(key, val) -> (key, init val)) fields)
@@ -107,6 +117,9 @@ updateSwap expando =
     ExFloat toggle float ->
       ExFloat (swap toggle) float
 
+    ExChar _ ->
+      expando
+
     ExString toggle str ->
       ExString (swap toggle) str
 
@@ -136,6 +149,9 @@ updateAt index action expando =
       expando
 
     ExFloat _ _ ->
+      expando
+
+    ExChar chr ->
       expando
 
     ExString _ _ ->
@@ -247,3 +263,113 @@ mergeFields fields exFields =
           (key, merge value exValue)
   in
     List.map mergeField fields
+
+
+
+-- VIEW
+
+
+view : Signal.Address Action -> Expando -> Html
+view address expando =
+  case expando of
+    ExInt int ->
+      literal (toString int)
+
+    ExFloat toggle float ->
+      case toggle of
+        Show ->
+          literal (toString float)
+
+        Hide ->
+          let
+            truncated =
+              toFloat (round (100 * float)) / 100
+          in
+            if truncated == float then
+              literal (toString truncated)
+
+            else
+              span []
+                [ literal (toString truncated)
+                , ellipsis address
+                ]
+
+    ExChar chr ->
+      literal (toString chr)
+
+    ExString toggle str ->
+      case toggle of
+        Show ->
+          literal (toString str)
+
+        Hide ->
+          let
+            len =
+              String.length str
+          in
+            if len > 40 then
+              span []
+                [ literal ("\"" ++ String.left (min 40 (len - 10)) str)
+                , ellipsis address
+                ]
+
+            else
+              literal (toString str)
+
+    ExBool bool ->
+      literal (toString bool)
+
+    ExSeq seqType toggle args ->
+      Debug.crash "TODO"
+
+    ExRecord toggle fields ->
+      case toggle of
+        Show ->
+          text "{ ... more stuff ... }"
+
+        Hide ->
+          span []
+            [ text "{ "
+            , ellipsis address
+            , text " }"
+            ]
+
+    ExDict toggle fields ->
+      Debug.crash "TODO"
+
+    ExFunction name ->
+      text <|
+        if String.isEmpty name then
+          "<function>"
+
+        else
+          "<function: " ++ name ++ ">"
+
+    ExBuiltIn name ->
+      text ("<" ++ name ++ ">")
+
+
+
+-- LITERAL VIEW
+
+
+literal : String -> Html
+literal str =
+  span [style ["color" => literalColor]] [text str]
+
+
+ellipsis : Signal.Address Action -> Html
+ellipsis address =
+  swapper address "..."
+
+
+literalColor : String
+literalColor =
+  "green"
+
+
+swapper : Signal.Address Action -> String -> Html
+swapper address str =
+  span [onClick address Swap] [text str]
+
+
