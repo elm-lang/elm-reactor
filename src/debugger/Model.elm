@@ -70,6 +70,7 @@ type Message
   | SessionInputErrorMessage SessionInputError
   | SwapEvent SwapEvent
   | NewServiceState Service.Model
+  | SetShouldAutoscrollLogs Bool
   | ServiceCommand Active.Command
   -- vv `Nothing` here means resetting the mismatch error
   | CommandResponse Active.CommandResponseMessage

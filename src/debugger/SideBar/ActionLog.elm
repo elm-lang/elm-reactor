@@ -7,10 +7,12 @@ import Html.Events exposing (..)
 import Debugger.RuntimeApi as API
 import Debugger.Model as DM
 import Utils.Style exposing ((=>))
+import Json.Decode as JsDec
 
 
 type Message
     = GoToFrame DM.FrameIndex
+    | ScrollLogs
 
 
 styles : String
@@ -41,8 +43,10 @@ styles = """
 
 view : Signal.Address Message -> DM.ValueLog -> DM.FrameIndex -> Html
 view addr actions curFrameIdx =
-  ul
-    [ id "action-log" ]
+  div
+    [ id "action-log"
+    , on "scroll" (JsDec.succeed ()) (\_ -> Signal.message addr ScrollLogs)
+    ]
     (List.map (viewAction addr curFrameIdx) actions)
 
 
@@ -56,7 +60,7 @@ viewAction addr curFrameIdx (frameIdx, value) =
     onThisFrame =
       curFrameIdx == frameIdx
   in
-    li
+    div
       [ onClick addr (GoToFrame frameIdx)
       , classList
           [ "action-log-entry" => True

@@ -9,6 +9,7 @@
 		<script type="text/javascript">
 			var ports = Elm.fullscreen(Elm.Main, {
 				windowLocationHost: window.location.host,
+				scrolledToEndOfLogs: true,
 				moduleName: window.opener.MODULE_INFO.moduleName,
 				fileName: window.opener.MODULE_INFO.fileName
 			}).ports;
@@ -17,6 +18,13 @@
 				var log = document.querySelector(selector);
 
 				log.scrollTop = log.scrollHeight - log.clientHeight;
+			});
+
+			ports.logScrollCheck.subscribe(function(selector) {
+				var log = document.querySelector(selector);
+				var isAtEnd = log.scrollTop === log.scrollHeight - log.clientHeight;
+
+				ports.scrolledToEndOfLogs.send(isAtEnd);
 			});
 
 			ports.openFileChooser.subscribe(function(selector) {

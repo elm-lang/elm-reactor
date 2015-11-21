@@ -42,9 +42,16 @@ uiApp =
         , connectSocket |> task
         )
     , view = view { openFileChooser = openFileChooserMailbox.address }
-    , update = update { autoscrollLog = autoscrollLogMailbox.address }
+    , update =
+        update
+          { autoscrollLog = autoscrollLogMailbox.address
+          , logScrollCheck = logScrollCheckMailbox.address
+          }
     , inputs =
         [ Signal.map NewServiceState serviceApp.model
+        , scrolledToEndOfLogs
+            |> Signal.dropRepeats
+            |> Signal.map SetShouldAutoscrollLogs
         , socketEventsMailbox.signal
         , (Active.commandResponseMailbox ()).signal
             |> Signal.map CommandResponse
@@ -245,7 +252,9 @@ view ports addr state =
 
 
 type alias UpdatePorts =
-  { autoscrollLog : Signal.Address String }
+  { autoscrollLog : Signal.Address String
+  , logScrollCheck : Signal.Address String
+  }
 
 update : UpdatePorts -> Message -> Model -> (Model, Effects Message)
 update ports msg state =
@@ -289,6 +298,11 @@ update ports msg state =
           ( { state | serviceState = serviceState }
           , Effects.none
           )
+
+    SetShouldAutoscrollLogs shouldAutoscroll ->
+      ( { state | shouldAutoscroll = shouldAutoscroll }
+      , Effects.none
+      )
 
     PlayPauseButtonAction buttonMsg ->
       let
@@ -349,18 +363,31 @@ update ports msg state =
         , sendEffect
         )
 
-    ActionLogMessage (ActionLog.GoToFrame frameIdx) ->
-      let
-        sendScrubEffect =
-          Signal.send
-            (Service.commandsMailbox ()).address
-            (Active.ScrubTo frameIdx)
-          |> Task.map (always NoOp)
-          |> task
-      in
-        ( state
-        , sendScrubEffect
-        )
+    ActionLogMessage message ->
+      case message of
+        ActionLog.GoToFrame frameIdx ->
+          let
+            sendScrubEffect =
+              Signal.send
+                (Service.commandsMailbox ()).address
+                (Active.ScrubTo frameIdx)
+              |> Task.map (always NoOp)
+              |> task
+          in
+            ( state
+            , sendScrubEffect
+            )
+
+        ActionLog.ScrollLogs ->
+          let
+            sendAutoscrollCheckEffect =
+              Signal.send ports.logScrollCheck "#action-log"
+                |> Task.map (always NoOp)
+                |> task
+          in
+            ( state
+            , sendAutoscrollCheckEffect
+            )
 
     ConnectSocket maybeSocket ->
       ( { state | swapSocket = maybeSocket }
@@ -472,6 +499,16 @@ update ports msg state =
     NoOp ->
      ( state, none )
 
+
+port logScrollCheck : Signal String
+port logScrollCheck =
+  logScrollCheckMailbox.signal
+
+logScrollCheckMailbox : Signal.Mailbox String
+logScrollCheckMailbox =
+  Signal.mailbox ""
+
+port scrolledToEndOfLogs : Signal Bool
 
 port autoscrollLog : Signal String
 port autoscrollLog =
