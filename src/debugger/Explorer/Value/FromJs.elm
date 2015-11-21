@@ -1,4 +1,4 @@
-module Debugger.Reflect
+module Explorer.Value.FromJs
     ( ElmValue(..)
     , SeqType(..)
     , toElmValue
@@ -11,7 +11,7 @@ import Html
 import Json.Decode as Json exposing (..)
 import Set
 
-import Native.Reflect
+import Native.Cast
 
 
 
@@ -133,6 +133,6 @@ mapBoth func list =
 
 unsafeCast : a -> b
 unsafeCast =
-  Native.Reflect.unsafeCast
+  Native.Cast.unsafeCast
 
 

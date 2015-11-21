@@ -1,6 +1,6 @@
 module Explorer.Value.Expando where
 
-import Debugger.Reflect exposing (ElmValue(..), SeqType(..))
+import Explorer.Value.FromJs exposing (ElmValue(..), SeqType(..))
 
 
 
