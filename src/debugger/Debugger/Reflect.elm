@@ -1,36 +1,28 @@
-module Debugger.Reflect where
+module Debugger.Reflect (getHtml, toElmValue) where
 
+import Dict exposing (Dict)
 import Html
 import Json.Encode as JsEnc
-import Dict exposing (Dict)
 import Set exposing (Set)
-import Array exposing (Array)
---import List.Extra
---import Maybe.Extra
 
 import Native.Debugger.Reflect
 
 
 type ElmValue
-  -- literals
-  = NumberV Int -- ???
-  | CharV Char
-  | StringV String
-  | BoolV Bool
-  -- special types
-  | ListV (List ElmValue)
-  | DictV (List (ElmValue, ElmValue))
-  | SetV (List ElmValue)
-  | ArrayV (List ElmValue)
-  | TupleV (List ElmValue)
-  -- other
-  | Constructor String (List ElmValue)
-  | Record (List (String, ElmValue)) -- TODO: super-records?
-  | Function String
-  -- when we give up
-  | NativeVal JsEnc.Value
-  | SignalV
-  | TextV -- ?
+    = VInt Int
+    | VFloat Float
+    | VChar Char
+    | VString String
+    | VBool Bool
+    | VRecord (List (String, ElmValue))
+    | VTag String (List ElmValue)
+    | VTuple (List ElmValue)
+    | VList (List ElmValue)
+    | VDict (List (ElmValue, ElmValue))
+    | VSet (List ElmValue)
+    | VArray (List ElmValue)
+    | VFunction String
+    | VBuiltIn String
 
 
 type alias JsElmValue =
@@ -42,9 +34,9 @@ getHtml =
   Native.Debugger.Reflect.getHtml
 
 
-reflect : a -> ElmValue
-reflect =
-  jsRepr >> decode
+toElmValue : a -> Value
+toElmValue jsValue =
+  decode (jsRepr jsValue)
 
 
 jsRepr : a -> JsElmValue
@@ -52,6 +44,6 @@ jsRepr =
   Native.Debugger.Reflect.jsRepr
 
 
-decode : JsElmValue -> ElmValue
+decode : JsElmValue -> Value
 decode =
   Native.Debugger.Reflect.decode
