@@ -85,22 +85,56 @@ but we always need to compile from the root file.
 
 ## Building from Source
 
-We do some tricks in this project to bundle some static files in the resulting
-executable. For this we use a feature called Template Haskell, which adds some
-extra complexity to the build process. Specifically, if you modify any of the
-`frontend/` files, they will not automatically trigger a recompile of the
-relevant Haskell code, making it so the changes do not get into the executable.
-So instead of doing a typical build with `cabal` we have a special
-`cabal-build.py` script that makes sure these changes trigger a change.
-
-So after you have used [the `BuildFromSource.hs` script][bfs] to set everything
-up, you will run the following command to recompile locally:
-
-[bfs]: https://github.com/elm-lang/elm-platform/blob/master/installers/BuildFromSource.hs
+If you are interesting in modifying this project, here is what you need to do
+as of 20 November 2015:
 
 ```bash
+mkdir sandbox
+cd sandbox
+cabal sandbox init
+
+git clone https://github.com/elm-lang/elm-compiler.git
+cd elm-compiler
+cabal sandbox init --sandbox ../.cabal-sandbox
+cd ..
+
+git clone https://github.com/elm-lang/elm-package.git
+cd elm-package
+cabal sandbox init --sandbox ../.cabal-sandbox
+cd ..
+
+git clone https://github.com/elm-lang/elm-make.git
+cd elm-make
+cabal sandbox init --sandbox ../.cabal-sandbox
+cd ..
+
+git clone https://github.com/elm-lang/core.git
+cd core
+git checkout pr/306
+cd ..
+
+git clone https://github.com/elm-lang/elm-reactor.git
+cd elm-reactor
+cabal sandbox init --sandbox ../.cabal-sandbox
+git checkout expando
+elm-package install
+cd packages/elm-lang/core
+rm -rf 3.0.0
+ln -s ../../../../core 3.0.0
+cd ../../../../..
+
+cabal install elm-compiler/ elm-package/ elm-make/ elm-reactor/
+```
+
+Then most of your work will be in elm-reactor, where you recompile with this:
+
+```
 ./cabal-build.py
 ```
 
-This will put the executable in `dist/build/elm-reactor/elm-reactor` which you
-can refer to directly to test how it works.
+This does an extra check to see if any Elm files have changed and recompiles
+accordingly. You will need to run this for any changes you make, whether they
+are in Haskell or Elm.
+
+The binaries will all go in `sandbox/.cabal-sandbox/bin` so that is where you
+want to point for testing.
