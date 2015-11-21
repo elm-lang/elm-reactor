@@ -88,6 +88,8 @@ but we always need to compile from the root file.
 If you are interesting in modifying this project, here is what you need to do
 as of 20 November 2015:
 
+### Build Elm Platform
+
 ```bash
 mkdir sandbox
 cd sandbox
@@ -110,7 +112,9 @@ cd ..
 
 git clone https://github.com/elm-lang/core.git
 cd core
-git checkout pr/306
+git remote add vilterp git@github.com:vilterp/core.git
+git fetch vilterp new-debugger-api-support
+git checkout new-debugger-api-support
 cd ..
 
 git clone https://github.com/elm-lang/elm-reactor.git
@@ -146,3 +150,16 @@ are in Haskell or Elm.
 
 The binaries will all go in `sandbox/.cabal-sandbox/bin` so that is where you
 want to point for testing.
+
+### Run Development Reactor
+
+cd into the directory of the project you want to debug, then:
+
+```
+pushd elm-stuff/packages/elm-lang/core
+rm -rf 3.0.0
+ln -s <path to core on branch vilterp-new-debugger-api-support> 3.0.0
+popd
+```
+
+...then invoke `elm-reactor` as normal and you should be able to use the new reactor. This linking step will be necessary until a version of core is published which has the changes on `vilterp-new-debugger-api-support` integrated.
