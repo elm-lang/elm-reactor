@@ -67,6 +67,8 @@ styles = """
   height: 32px;
 
   cursor: pointer;
+
+  transition: all 0.3s ease 0s;
 }
 
 .play-pause-button:hover {

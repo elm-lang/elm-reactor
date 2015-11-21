@@ -46,6 +46,8 @@ styles = """
   cursor: pointer;
   text-decoration: underline;
   padding: 8px 0;
+
+  transition: all 0.2s ease 0s;
 }
 
 .import-export-button:hover {
