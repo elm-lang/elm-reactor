@@ -1,9 +1,12 @@
-module TreeView where
+module Explorer.Value.TreeView where
 
-import Dict exposing (Dict)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
+
+
+
+-- MODEL
 
 
 type alias Model a =
@@ -27,12 +30,13 @@ type alias RenderFun a =
   a -> Bool -> Html
 
 
+
+-- UPDATE
+
+
 type Action
   = ChangeExpansion Bool
   | ChildAction Int Action
-
-
-(=>) = (,)
 
 
 update : Action -> Model a -> Model a
@@ -72,6 +76,13 @@ update msg state =
 
         _ ->
           Debug.crash "mismatched expansion model and tree"
+
+
+
+-- VIEW
+
+
+(=>) = (,)
 
 
 view : Signal.Address Action -> RenderFun a -> Model a -> Html
