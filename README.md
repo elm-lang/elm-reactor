@@ -124,7 +124,7 @@ git checkout expando
 elm-package install
 cd elm-stuff/packages/elm-lang/core
 rm -rf 3.0.0
-ln -s ../../../../core 3.0.0
+ln -s ../../../../../core 3.0.0
 cd ../../../..
 
 cd ../elm-compiler
