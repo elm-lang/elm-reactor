@@ -1,5 +1,11 @@
 module Explorer.Value.Expando where
 
+import Debugger.Reflect exposing (ElmValue(..), SeqType(..))
+
+
+
+-- MODEL
+
 
 type Expando
     = ExInt Int
@@ -7,13 +13,9 @@ type Expando
     | ExChar Char
     | ExString Toggle String
     | ExBool Bool
+    | ExSeq SeqType Toggle (List Expando)
     | ExRecord Toggle (List (String, Expando))
-    | ExTag Toggle String (List Expando)
-    | ExTuple (List Expando)
-    | ExList Toggle (List Expando)
     | ExDict Toggle (List (Expando, Expando))
-    | ExSet Toggle (List Expando)
-    | ExArray Toggle (List Expando)
     | ExFunction String
     | ExBuiltIn String
 
@@ -32,12 +34,19 @@ showIf bool =
   if bool then Show else Hide
 
 
+swap : Visibility -> Visibility
+swap visibility =
+  case visibility of
+    Show -> Hide
+    Hide -> Show
 
--- CREATE EXPANDOS
 
 
-toExpando : ElmValue -> Expando
-toExpando value =
+-- INITIALIZE EXPANDOS
+
+
+init : ElmValue -> Expando
+init value =
   case value of
     VInt int ->
       ExInt int
@@ -54,32 +63,120 @@ toExpando value =
     VBool bool ->
       ExBool bool
 
+    VSeq seqType args ->
+      ExSeq Hide seqType (List.map init args)
+
     VRecord fields ->
-      ExRecord Hide (List.map (\(key, val) -> (key, toExpando val)) fields)
-
-    VTag tag args ->
-      ExTag Hide tag (List.map toExpando args)
-
-    VTuple args ->
-      ExTuple (List.map toExpando args)
-
-    VList elements ->
-      ExList Hide (List.map toExpando elements)
+      ExRecord Hide (List.map (\(key, val) -> (key, init val)) fields)
 
     VDict fields ->
-      ExDict Hide (List.map (\(k,v) -> (toExpando k, toExpando v)) fields)
-
-    VSet elements ->
-      ExSet Hide (List.map toExpando elements)
-
-    VArray elements ->
-      ExArray Hide (List.map toExpando elements)
+      ExDict Hide (List.map (\(k,v) -> (init k, init v)) fields)
 
     VFunction name ->
       ExFunction name
 
     VBuiltIn name ->
       ExBuiltIn name
+
+
+
+-- UPDATE
+
+
+type Action
+    = Swap
+    | At Int Action
+
+
+update : Action -> Expando -> Expando
+update action expando =
+  case action of
+    Swap ->
+      updateSwap expando
+
+    At index subAction ->
+      updateAt index subAction expando
+
+
+updateSwap : Expando -> Expando
+updateSwap expando =
+  case expando of
+    ExInt _ ->
+      expando
+
+    ExFloat toggle float ->
+      ExFloat (swap toggle) float
+
+    ExString toggle str ->
+      ExString (swap toggle) str
+
+    ExBool _ ->
+      expando
+
+    ExSeq seqType toggle args ->
+      ExSeq seqType (swap toggle) args
+
+    ExRecord toggle fields ->
+      ExRecord (swap toggle) fields
+
+    ExDict toggle fields ->
+      ExDict (swap toggle) fields
+
+    ExFunction _ ->
+      expando
+
+    ExBuiltIn _ ->
+      expando
+
+
+updateAt : Int -> Action -> Expando -> Expando
+updateAt index action expando =
+  case expando of
+    ExInt _ ->
+      expando
+
+    ExFloat _ _ ->
+      expando
+
+    ExString _ _ ->
+      expando
+
+    ExBool _ ->
+      expando
+
+    ExSeq seqType toggle args ->
+      ExSeq seqType toggle (updateListAt index (update action) args)
+
+    ExRecord toggle fields ->
+      ExRecord toggle (updateListAt index (updateSnd action) fields)
+
+    ExDict toggle fields ->
+      ExDict toggle (updateListAt index (updateSnd action) fields)
+
+    ExFunction _ ->
+      expando
+
+    ExBuiltIn _ ->
+      expando
+
+
+updateListAt : Int -> (a -> a) -> List a -> List a
+updateListAt index func list =
+  case list of
+    [] ->
+      []
+
+    x :: xs ->
+      if index == 0 then
+        func x :: xs
+
+      else
+        x :: updateListAt (index - 1) func xs
+
+
+updateSnd : Action -> (key, Expando) -> (key, Expando)
+updateSnd action (key, value) =
+  (key, update action value)
 
 
 
@@ -95,50 +192,28 @@ merge newValue existingValue =
     (VString str, ExString toggle _) ->
       ExString toggle str
 
+    (VSeq seqType elements, ExSeq exSeqType toggle exElements) ->
+      ExSeq seqType toggle <|
+        case (seqType, exSeqType) of
+          (Tag tag, Tag exTag) ->
+            if tag == exTag then
+              List.map2 merge elements exElements
+
+            else
+              List.map init elements
+
+          _ ->
+            mergeList elements exElements
+
     (VRecord fields, ExRecord toggle exFields) ->
-      let
-        exFieldsDict =
-          Dict.fromList exFields
-
-        mergeField (key, value) =
-          case Dict.get key exFieldsDict of
-            Nothing ->
-              (key, toExpando value)
-
-            Just exValue ->
-              (key, merge value exValue)
-      in
-        ExRecord toggle (List.map mergeField fields)
-
-    (VTag tag args, ExTag toggle exTag exArgs) ->
-      let
-        newExArgs =
-          if tag == exTag then
-            List.map2 merge args exArgs
-
-          else
-            List.map toExpando args
-      in
-        ExTag toggle tag newExArgs
-
-    (VTuple elements, ExTuple exElements) ->
-      ExTuple (mergeList elements exElements)
-
-    (VList elements, ExList toggle exElements) ->
-      ExList toggle (mergeList elements exElements)
+      ExRecord toggle (mergeFields fields exFields)
 
     (VDict fields, ExDict toggle _) ->
       -- TODO: be more clever here
-      toExpando newValue
-
-    (VSet elements, ExSet toggle exElements) ->
-      ExSet toggle (mergeList elements exElements)
-
-    (VArray elements, ExArray toggle exElements) ->
-      ExArray toggle (mergeList elements exElements)
+      init newValue
 
     (_, _) ->
-      toExpando newValue
+      init newValue
 
 
 mergeList : List ElmValue -> List Expando -> List Expando
@@ -148,9 +223,27 @@ mergeList values expandos =
       merge v e :: mergeList vs es
 
     (_, []) ->
-      List.map toExpando values
+      List.map init values
 
     ([], _) ->
       []
 
 
+mergeFields
+    : List (String, ElmValue)
+    -> List (String, Expando)
+    -> List (String, Expando)
+mergeFields fields exFields =
+  let
+    exFieldsDict =
+      Dict.fromList exFields
+
+    mergeField (key, value) =
+      case Dict.get key exFieldsDict of
+        Nothing ->
+          (key, init value)
+
+        Just exValue ->
+          (key, merge value exValue)
+  in
+    List.map mergeField fields

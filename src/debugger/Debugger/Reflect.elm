@@ -1,4 +1,11 @@
-module Debugger.Reflect (getHtml, toElmValue) where
+module Debugger.Reflect
+    ( ElmValue(..)
+    , SeqType(..)
+    , getHtml
+    , toElmValue
+    )
+    where
+
 
 import Dict exposing (Dict)
 import Html
@@ -8,21 +15,26 @@ import Set exposing (Set)
 import Native.Debugger.Reflect
 
 
+
 type ElmValue
     = VInt Int
     | VFloat Float
     | VChar Char
     | VString String
     | VBool Bool
+    | VSeq SeqType (List ElmValue)
     | VRecord (List (String, ElmValue))
-    | VTag String (List ElmValue)
-    | VTuple (List ElmValue)
-    | VList (List ElmValue)
     | VDict (List (ElmValue, ElmValue))
-    | VSet (List ElmValue)
-    | VArray (List ElmValue)
     | VFunction String
     | VBuiltIn String
+
+
+type SeqType
+    = Tuple
+    | List
+    | Set
+    | Array
+    | Tag String
 
 
 type alias JsElmValue =
@@ -34,7 +46,7 @@ getHtml =
   Native.Debugger.Reflect.getHtml
 
 
-toElmValue : a -> Value
+toElmValue : a -> ElmValue
 toElmValue jsValue =
   decode (jsRepr jsValue)
 
@@ -44,6 +56,6 @@ jsRepr =
   Native.Debugger.Reflect.jsRepr
 
 
-decode : JsElmValue -> Value
+decode : JsElmValue -> ElmValue
 decode =
   Native.Debugger.Reflect.decode
