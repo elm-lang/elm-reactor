@@ -18,6 +18,7 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 	var List = Elm.Native.List.make (localRuntime);
 	var Dict = Elm.Dict.make (localRuntime);
 	var JsArray = Elm.Native.JsArray.make (localRuntime);
+	var DebuggerModel = Elm.Debugger.Model.make (localRuntime)
 
 	// not exposed
 	function jumpTo(session, frameIdx)
@@ -201,12 +202,12 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 		return session;
 	}
 
-	function start(_window, module, address, subscribedNodesFun)
+	function start(_window, module, address)
 	{
 		return Task.asyncFunction(function(callback) {
 			var session = initializeFullscreen(_window, module, 0, address);
 			session.subscribedNodeIds =
-				List.toArray(subscribedNodesFun(session.shape));
+				List.toArray(DebuggerModel.getSalientNodesAsList(session.shape));
 			var values = session.subscribedNodeIds.map(function(nodeId) {
 				return Utils.Tuple2(nodeId, session.sgNodes[nodeId].value);
 			});
@@ -215,7 +216,7 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 		})
 	}
 
-	function swap(_window, module, address, subscribedNodesFun, inputHistory, maybeShape, validator)
+	function swap(_window, module, address, inputHistory, maybeShape, validator)
 	{
 		return Task.asyncFunction(function(callback) {
 			var session = initializeFullscreen(_window, module, 0, address);
@@ -241,7 +242,7 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 
 				session.events = JsArray.toMutableArray(inputHistory);
 				session.subscribedNodeIds =
-					List.toArray(subscribedNodesFun(session.shape));
+					List.toArray(DebuggerModel.getSalientNodesAsList(session.shape));
 				session.playing = false;
 
 				var flaggedExprLogs = {};
@@ -312,7 +313,7 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 		});
 	}
 
-	function play(_window, record, address, subscribedNodesFun)
+	function play(_window, record, address)
 	{
 		return Task.asyncFunction(function (callback) {
 			var timePaused = Date.now() - record.pausedAt;
@@ -324,7 +325,7 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 			jumpTo(session, session.events.length);
 			session.playing = true;
 			session.subscribedNodeIds =
-				List.toArray(subscribedNodesFun(session.shape));
+				List.toArray(DebuggerModel.getSalientNodesAsList(session.shape));
 			var values = session.subscribedNodeIds.map(function(nodeId) {
 				return Utils.Tuple2(nodeId, session.sgNodes[nodeId].value);
 			});
@@ -630,9 +631,9 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 
 	return localRuntime.Native.Debugger.RuntimeApi.values = {
 
-		start: F4(start),
-		swap: F7(swap),
-		play: F4(play),
+		start: F3(start),
+		swap: F6(swap),
+		play: F3(play),
 		pause: pause,
 		dispose: dispose,
 		setSubscribedToNode: F3(setSubscribedToNode),

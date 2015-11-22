@@ -4,7 +4,7 @@ import Json.Encode as Json exposing (..)
 import StartApp.Simple as StartApp
 
 import Explorer.Value.Expando as Expando
-import Explorer.Value.FromJs exposing (ElmValue, toElmValue)
+import Explorer.Value.FromJs exposing (ElmValue, toElmValue, unsafeCast)
 
 
 main =
@@ -17,6 +17,4 @@ main =
 
 dummy : ElmValue
 dummy =
-  toElmValue (float 42.123491827450987)
-
-
+  toElmValue (unsafeCast [{x=2,y="sup"}, {x=3, y="bloop"}])

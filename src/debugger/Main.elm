@@ -199,21 +199,7 @@ view ports addr state =
                 activeState
             , ActionLog.view
                 (Signal.forwardTo addr ActionLogMessage)
-                (case activeState.nodeLogs |> Dict.toList of
-                  [(foldpParentId, actionLog)] ->
-                    actionLog
-
-                  -- TODO: it's always this on the first frame, but shouldn't be
-                  -- need to refactor initialization process somehow
-                  [] ->
-                    []
-                    --Debug.crash "no foldps"
-
-                  -- TODO: handle these cases gracefully
-                  _ ->
-                    Debug.crash "multiple foldps"
-                )
-                (Active.curFrameIdx activeState)
+                activeState
             , Footer.view
                 { changeFile = (\files -> Signal.message addr (ImportSession files))
                 , clickExport = Signal.message addr ExportSession
@@ -273,12 +259,6 @@ update ports msg state =
       case serviceState of
         Just active ->
           let
-            logMsg =
-              Logs.UpdateLogs
-                { newNodeLogs = active.nodeLogs
-                , newExprLogs = active.exprLogs
-                }
-
             nextEffects =
               if state.shouldAutoscroll then
                 Signal.send ports.autoscrollLog "#action-log"
@@ -287,10 +267,7 @@ update ports msg state =
               else
                 Effects.none
           in
-            ( { state
-                  | serviceState = serviceState
-                  , logsState = fst (Logs.update logMsg state.logsState)
-              }
+            ( { state | serviceState = serviceState }
             , nextEffects
             )
 
@@ -343,25 +320,9 @@ update ports msg state =
         )
 
     LogsMessage logMsg ->
-      let
-        (newLogsState, maybeFrame) =
-          Logs.update logMsg state.logsState
-
-        sendEffect =
-          case maybeFrame of
-            Just frameIdx ->
-              Signal.send
-                (Service.commandsMailbox ()).address
-                (Active.ScrubTo frameIdx)
-              |> Task.map (\_ -> NoOp)
-              |> task
-
-            Nothing ->
-              none
-      in
-        ( { state | logsState = newLogsState }
-        , sendEffect
-        )
+      ( { state | logsState = Logs.update logMsg state.logsState }
+      , Effects.none
+      )
 
     ActionLogMessage message ->
       case message of

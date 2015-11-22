@@ -1,13 +1,17 @@
 module SideBar.ActionLog where
 
+import Json.Decode as JsDec
+import Dict
+
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 
 import Debugger.RuntimeApi as API
 import Debugger.Model as DM
+import Debugger.Active as Active
 import Utils.Style exposing ((=>))
-import Json.Decode as JsDec
+import Utils.Helpers exposing (unsafe)
 
 
 type Message
@@ -53,13 +57,30 @@ styles = """
 """
 
 
-view : Signal.Address Message -> DM.ValueLog -> DM.FrameIndex -> Html
-view addr actions curFrameIdx =
-  div
-    [ id "action-log"
-    , on "scroll" (JsDec.succeed ()) (\_ -> Signal.message addr ScrollLogs)
-    ]
-    (List.map (viewAction addr curFrameIdx) actions)
+view : Signal.Address Message -> Active.Model -> Html
+view addr activeState =
+  let
+    curFrameIdx =
+      Active.curFrameIdx activeState
+
+    actionsNodeValueLog =
+      case activeState.salientNodes.foldps of
+        [{parent, foldp}] ->
+          Dict.get parent activeState.nodeLogs
+            |> Maybe.withDefault []
+
+        -- no foldps
+        [] ->
+          []
+
+        _ ->
+          Debug.crash "multiple foldps"
+  in
+    div
+      [ id "action-log"
+      , on "scroll" (JsDec.succeed ()) (\_ -> Signal.message addr ScrollLogs)
+      ]
+      (List.map (viewAction addr curFrameIdx) actionsNodeValueLog)
 
 
 viewAction

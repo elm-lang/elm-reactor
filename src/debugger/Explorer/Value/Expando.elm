@@ -320,7 +320,11 @@ view address expando =
       literal (toString bool)
 
     ExSeq seqType toggle args ->
-      Debug.crash "TODO"
+      div
+        []
+        [ strong [] [ text "TODO: don't just toString this. " ]
+        , text <| toString (seqType, toggle, args)
+        ]
 
     ExRecord toggle fields ->
       case toggle of

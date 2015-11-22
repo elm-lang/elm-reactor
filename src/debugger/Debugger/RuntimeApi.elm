@@ -17,7 +17,6 @@ import Utils.JsArray as JsArray
 start : Window
      -> ElmModule
      -> Signal.Address NewFrameNotification
-     -> (SGShape -> List NodeId)
      -> Task x (DebugSession, ValueSet)
 start =
   Native.Debugger.RuntimeApi.start
@@ -26,7 +25,6 @@ start =
 swap : Window
     -> ElmModule
     -> Signal.Address NewFrameNotification
-    -> (SGShape -> List NodeId)
     -> InputHistory
     -> Maybe SGShape
     -> (SGShape -> SGShape -> InputHistory -> Bool)
@@ -48,7 +46,6 @@ Error: SessionRecord's name is different than given module's. -}
 play : Window
     -> ImmediateSessionRecord
     -> Signal.Address NewFrameNotification
-    -> (SGShape -> List NodeId)
     -> Task x (DebugSession, ValueSet)
 play =
   Native.Debugger.RuntimeApi.play
@@ -76,48 +73,6 @@ dispose =
 setSubscribedToNode : DebugSession -> NodeId -> Bool -> Task () ()
 setSubscribedToNode =
   Native.Debugger.RuntimeApi.setSubscribedToNode
-
-
-subscribeToAll : DebugSession -> (SGShape -> List NodeId) -> Task () ()
-subscribeToAll session nodesFun =
-  session
-    |> getSgShape
-    |> nodesFun
-    |> List.map (\nodeId -> setSubscribedToNode session nodeId True)
-    |> Task.sequence
-    |> Task.map (always ())
-
-
-mainAndFoldpParents : SGShape -> List NodeId
-mainAndFoldpParents shape =
-  let
-    isFoldp nodeInfo =
-      case nodeInfo.nodeType of
-        InternalNode ->
-          nodeInfo.name == "foldp"
-
-        _ ->
-          False
-
-    foldpIds =
-      shape.nodes
-        |> Dict.filter (\_ nodeInfo -> isFoldp nodeInfo)
-        |> Dict.keys
-        |> Set.fromList
-
-    parentOfAFoldp nodeInfo =
-      nodeInfo.kids
-        |> Set.fromList
-        |> Set.intersect foldpIds
-        |> Set.isEmpty
-        |> not
-
-    foldpParents =
-      shape.nodes
-        |> Dict.filter (\_ nodeInfo -> parentOfAFoldp nodeInfo)
-        |> Dict.keys
-  in
-    shape.mainId :: foldpParents
 
 
 {-| Forces the module to render the given value (expected to be Html

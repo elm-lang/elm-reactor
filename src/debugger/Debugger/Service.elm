@@ -43,7 +43,6 @@ app moduleName =
               window_
               initModule
               (Signal.forwardTo notificationsMailbox.address Active.NewFrame)
-              API.mainAndFoldpParents
             |> Task.map (\(session, valueSet) -> Initialized session valueSet window_)
           )
           |> task

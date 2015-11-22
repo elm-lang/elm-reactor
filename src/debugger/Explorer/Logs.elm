@@ -9,182 +9,125 @@ import Markdown
 import Debugger.Active as Active
 import Debugger.Model as DM
 import Debugger.RuntimeApi as API
+import Explorer.Value.Expando as Expando exposing (Expando)
+import Explorer.Value.FromJs as FromJs
 import Utils.Helpers exposing (last, unsafe)
 import Utils.Style exposing ((=>), textTypefaces, unselectable)
 
 
 type alias Model =
-  { exprExpansion : ExpansionModel DM.ExprTag
-  , nodeExpansion : ExpansionModel DM.NodeId
+  { exprExpandos : Dict DM.ExprTag Expando
+  , nodeExpandos : Dict DM.NodeId Expando
   }
 
 
 initModel : Model
 initModel =
-  { exprExpansion = emptyExpansionModel
-  , nodeExpansion = emptyExpansionModel
+  { exprExpandos = Dict.empty
+  , nodeExpandos = Dict.empty
   }
 
 
 type Message
-  = CollapseLog LogId Bool
-  | UpdateLogs
-      { newExprLogs : Dict DM.ExprTag DM.ValueLog
-      , newNodeLogs : Dict DM.NodeId DM.ValueLog
-      }
-  | ScrubTo DM.FrameIndex
-  | NoOp
+  = ExprMessage DM.ExprTag Expando.Action
+  | NodeMessage DM.NodeId Expando.Action
 
 
-type LogId
-  = NodeLog DM.NodeId
-  | ExprLog DM.ExprTag
-
-
-update : Message -> Model -> (Model, Maybe DM.FrameIndex)
+update : Message -> Model -> Model
 update msg state =
   case msg of
-    CollapseLog logId collapsed ->
-      case logId of
-        NodeLog nodeId ->
-          ( { state | nodeExpansion =
-                collapseLog nodeId collapsed state.nodeExpansion
-            }
-          , Nothing
-          )
+    ExprMessage tag action ->
+      { state | exprExpandos =
+          Dict.update tag (Maybe.map (Expando.update action)) state.exprExpandos
+      }
 
-        ExprLog exprTag ->
-          ( { state | exprExpansion =
-                collapseLog exprTag collapsed state.exprExpansion
-            }
-          , Nothing
-          )
-
-    UpdateLogs {newExprLogs, newNodeLogs} ->
-      ( { state
-            | exprExpansion =
-                updateExpansion state.exprExpansion newExprLogs
-            , nodeExpansion =
-                updateExpansion state.nodeExpansion newNodeLogs
-        }
-      , Nothing
-      )
-
-    ScrubTo frameIdx ->
-      (state, Just frameIdx)
-
-    NoOp ->
-      (state, Nothing)
+    NodeMessage id action ->
+      { state | nodeExpandos =
+          Dict.update id (Maybe.map (Expando.update action)) state.nodeExpandos
+      }
 
 
 view : Signal.Address Message -> Model -> Active.Model -> Html
 view addr state activeState =
   let
-    curFrame =
+    d =
+      Debug.log "activeState.exprLogs" activeState.exprLogs
+
+    curFrameIdx =
       Active.curFrameIdx activeState
 
-    viewExprLogHelp (tag, log) =
-      viewExprLog
-        addr
-        (unsafe "log not found" (Dict.get tag state.exprExpansion))
-        (ExprLog tag)
-        curFrame
-        log
+    curExprValues =
+      activeState.exprLogs
+      |> Dict.map
+          (\tag valueLog ->
+            getAtIdx curFrameIdx valueLog
+              |> unsafe "index out of bounds")
+        
 
-    children =
-      if Dict.isEmpty activeState.exprLogs then
-        [noLogs]
+    curNodeValues =
+      activeState.nodeLogs
+      |> Dict.map
+          (\id valueLog ->
+            getAtIdx curFrameIdx valueLog
+              |> unsafe "index out of bounds")
+        
 
-      else
-        [ ul
-            [ style
-                [ "list-style" => "none"
-                , "padding-left" => "0"
-                ]
-            ]
-            (List.map viewExprLogHelp (Dict.toList activeState.exprLogs))
-        ]
+    merge : Dict comparable Expando -> Dict comparable DM.JsElmValue -> Dict comparable Expando
+    merge expandos values =
+      values
+      |> Dict.map
+          (\key value ->
+            let
+              elmValue =
+                FromJs.toElmValue value
+            in
+              case Dict.get key expandos of
+                Just prevExpando ->
+                  Expando.merge elmValue prevExpando
+
+                Nothing ->
+                  Expando.init elmValue)
+
+    curExprExpandos =
+      merge state.exprExpandos curExprValues
+        |> Dict.toList
+
+    curNodeExpandos =
+      merge state.nodeExpandos curNodeValues
+        |> Dict.toList
   in
-    div [ style [ "padding" => "32px" ] ] children
-
-
-sidePadding =
-  20
-
-
-viewExprLog : Signal.Address Message -> Bool -> LogId -> DM.FrameIndex -> DM.ValueLog -> Html
-viewExprLog addr collapsed logId frameIdx log =
-  let
-    clickAttrs =
-      [ onClick addr (CollapseLog logId (not collapsed))
-      , style ["cursor" => "pointer"]
+    div
+      []
+      [ h2 [] [ text "Signals" ]
+      , ul
+          []
+          (List.map
+            (\(tag, expando) ->
+              viewValue
+                (Signal.forwardTo addr (ExprMessage tag))
+                tag
+                expando)
+            curExprExpandos)
+      , h2 [] [ text "Logs" ]
+      , ul
+          []
+          (List.map
+            (\(id, expando) ->
+              viewValue
+                (Signal.forwardTo addr (NodeMessage id))
+                ("Node " ++ toString id)
+                expando)
+            curNodeExpandos)
       ]
 
-    colButton =
-      span
-        [ style
-            ([ "padding-right" => "5px"
-             , "font-size" => "12px"
-             ] ++ unselectable)
-        ]
-        [ text <| if collapsed then "▶" else "▼" ]
-  in
-    if collapsed then
-      let
-        maybeItem =
-          log |> getAtIdx frameIdx
-      in
-        case maybeItem of
-          Nothing ->
-            li
-              clickAttrs
-              [ colButton
-              , text <| logLabel logId
-              ]
 
-          Just item ->
-            li
-              clickAttrs
-              [ colButton
-              , text <| logLabel logId ++ ": "
-              , code []
-                  [ text <| API.prettyPrint item ]
-              ]
-    else
-      li []
-        [ span
-            clickAttrs
-            [ colButton
-            , text <| logLabel logId
-            ]
-        , ul []
-            (log |> List.map (\(idx, val) ->
-                viewLogItem addr (frameIdx == idx) idx val))
-        ]
-
-
-viewLogItem : Signal.Address Message -> Bool -> DM.FrameIndex -> DM.JsElmValue -> Html
-viewLogItem addr highlighted idx val =
-  li
-    [ onClick addr (ScrubTo idx)
-    , style
-        ( [ "cursor" => "pointer" ]
-          ++ (if highlighted then ["color" => "red"] else [])
-        )
+viewValue : Signal.Address Expando.Action -> String -> Expando -> Html
+viewValue addr label expando =
+  div
+    []
+    [ h3 [] [ text label ]
+    , Expando.view addr expando
     ]
-    [ text <| (toString idx) ++ ": "
-    , code [] [ text <| API.prettyPrint val ]
-    ]
-
-
-logLabel : LogId -> String
-logLabel logId =
-  case logId of
-    NodeLog id ->
-      toString id
-
-    ExprLog tag ->
-      tag
 
 
 -- NO WATCHES
@@ -216,12 +159,6 @@ summary or subvalue of any value. </span><br>
 
 """
 
-{- True means collapsed.
-(if/when expando-tree views are used to represent elm values, this
-type could be extended to model the expansion state of the whole tree.) -}
-type alias ExpansionModel comparable =
-  Dict comparable Bool
-
 
 getAtIdx : DM.FrameIndex -> DM.ValueLog -> Maybe DM.JsElmValue
 getAtIdx idx log =
@@ -229,30 +166,3 @@ getAtIdx idx log =
     |> List.filter (\(itemIdx, val) -> itemIdx <= idx)
     |> last
     |> Maybe.map snd
-
-
---emptyExpansionModel : ExpansionModel comparable
-emptyExpansionModel =
-  Dict.empty
-
-
-updateExpansion : ExpansionModel comparable -> Dict comparable b -> ExpansionModel comparable
-updateExpansion expansion items =
-  Dict.foldl
-    (\tag _ newEM ->
-      let expanded =
-        case Dict.get tag expansion of
-          Just exp ->
-            exp
-          Nothing ->
-            True
-      in
-        Dict.insert tag expanded newEM
-    )
-    emptyExpansionModel
-    items
-
-
-collapseLog : comparable -> Bool -> ExpansionModel comparable -> ExpansionModel comparable
-collapseLog tag collapsed model =
-  Dict.insert tag collapsed model

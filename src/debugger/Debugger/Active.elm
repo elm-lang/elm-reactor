@@ -23,6 +23,7 @@ type alias Model =
   , exprLogs : Dict DM.ExprTag DM.ValueLog
   , nodeLogs : Dict DM.NodeId DM.ValueLog
   , subscribedNodes : Set DM.NodeId
+  , salientNodes : DM.SalientSGNodes
   }
 
 
@@ -37,6 +38,7 @@ initModel window_ session =
   , exprLogs = Dict.empty
   , nodeLogs = Dict.empty
   , subscribedNodes = Set.empty
+  , salientNodes = session |> API.getSgShape |> DM.getSalientNodes
   }
 
 
@@ -200,7 +202,6 @@ update msg state =
                       state.window_
                       newMod
                       (API.getAddress state.session)
-                      API.mainAndFoldpParents
                       record.inputHistory
                       (Just (API.getSgShape state.session))
                       API.shapesEqual
@@ -275,7 +276,6 @@ update msg state =
                     state.window_
                     currentModule
                     (API.getAddress state.session)
-                    API.mainAndFoldpParents
                     sessionRecord.inputHistory
                     Nothing
                     (API.shapesEqual)
@@ -413,7 +413,7 @@ playFrom window_ session record frameIdx =
       (beforeRecord, _) =
         API.splitRecord frameIdx record
     in
-      API.play window_ beforeRecord (API.getAddress session) API.mainAndFoldpParents
+      API.play window_ beforeRecord (API.getAddress session)
       |> Task.map (\(newSession, valueSet) ->
           Response <|
             ForkResponse

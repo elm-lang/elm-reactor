@@ -54,13 +54,18 @@ toElmValue jsValue =
       VBuiltIn "???"
 
 
+objectDecoder : Json.Decoder ElmValue
+objectDecoder =
+  object2 (,) value (dict value) `andThen` (destructObject >> succeed)
+
+
 elmValueDecoder : Json.Decoder ElmValue
 elmValueDecoder =
   oneOf
     [ map VInt int
     , map VFloat float
     , map VString string
-    , objectDecoder
+    , object2 (,) value (dict value) `andThen` (destructObject >> succeed)
     , map VChar char
     , map VBool bool
     , functionDecoder
@@ -87,11 +92,6 @@ functionDecoder =
 
       Just name ->
         succeed (VFunction name)
-
-
-objectDecoder : Json.Decoder ElmValue
-objectDecoder =
-  object2 (,) value (dict value) `andThen` (destructObject >> succeed)
 
 
 destructObject : (Json.Value, Dict.Dict String Json.Value) -> ElmValue

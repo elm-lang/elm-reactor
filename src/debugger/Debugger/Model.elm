@@ -1,9 +1,11 @@
 module Debugger.Model where
 
 import Dict exposing (Dict)
+import Set exposing (Set)
 import Json.Decode as JsDec exposing ((:=))
 import Json.Encode as JsEnc
 import Time exposing (Time)
+import Utils.Helpers exposing (unsafe)
 
 import Utils.JsArray as JsArray
 
@@ -151,6 +153,57 @@ type alias ReplayError =
   , newShape : SGShape
   }
 
+
+type alias SalientSGNodes =
+  { main : NodeId
+  , foldps : List { parent : NodeId, foldp : NodeId }
+  }
+
+
+{-| Subscribe to main, foldps, and foldp parents -}
+getSalientNodes : SGShape -> SalientSGNodes
+getSalientNodes shape =
+  let
+    isFoldp nodeInfo =
+      case nodeInfo.nodeType of
+        InternalNode ->
+          nodeInfo.name == "foldp"
+
+        _ ->
+          False
+
+    foldps =
+      shape.nodes
+        |> Dict.filter (\_ nodeInfo -> isFoldp nodeInfo)
+        |> Dict.keys
+
+    parentOfFoldp foldpId =
+      shape.nodes
+        |> Dict.filter (\id nodeInfo -> foldpId `List.member` nodeInfo.kids)
+        |> Dict.toList
+        |> List.head
+        |> unsafe "parent not found"
+        |> fst
+
+    foldpsAndParents =
+      foldps
+      |> List.map (\foldpId ->
+        { parent = parentOfFoldp foldpId
+        , foldp = foldpId
+        })
+  in
+    { main = shape.mainId
+    , foldps = foldpsAndParents
+    }
+
+
+getSalientNodesAsList : SGShape -> List NodeId
+getSalientNodesAsList shape =
+  let
+    nodes =
+      getSalientNodes shape
+  in
+    [nodes.main] ++ (List.map .parent nodes.foldps) ++ (List.map .foldp nodes.foldps)
 
 
 -- JSON CONVERSIONS
