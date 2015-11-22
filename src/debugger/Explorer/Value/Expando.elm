@@ -271,7 +271,8 @@ mergeFields fields exFields =
 
 view : Signal.Address Action -> Expando -> Html
 view address expando =
-  case expando of
+  let d = Debug.log "expando" expando
+  in case expando of
     ExInt int ->
       literal (toString int)
 
@@ -320,11 +321,51 @@ view address expando =
       literal (toString bool)
 
     ExSeq seqType toggle args ->
-      div
-        []
-        [ strong [] [ text "TODO: don't just toString this. " ]
-        , text <| toString (seqType, toggle, args)
-        ]
+      case seqType of
+        Tuple ->
+          case toggle of
+            Show ->
+              Debug.crash "TODO"
+
+            Hide ->
+              text <|
+                "(" ++
+                String.join ", " (List.repeat (List.length args) "…") ++
+                ")"
+
+        List ->
+          case toggle of
+            Show ->
+              Debug.crash "TODO"
+
+            Hide ->
+              text <| "[.." ++ toString (List.length args) ++ "..]"
+
+        Set ->
+          case toggle of
+            Show ->
+              Debug.crash "TODO"
+
+            Hide ->
+              text <| "Set [.." ++ toString (List.length args) ++ "..]"
+
+        Array ->
+          case toggle of
+            Show ->
+              Debug.crash "TODO"
+
+            Hide ->
+              text <| "Array [.." ++ toString (List.length args) ++ "..]"
+
+        Tag ctor ->
+          case toggle of
+            Show ->
+              Debug.crash "TODO"
+
+            Hide ->
+              text <|
+                ctor ++ " " ++
+                String.join " " (List.repeat (List.length args) "…")
 
     ExRecord toggle fields ->
       case toggle of

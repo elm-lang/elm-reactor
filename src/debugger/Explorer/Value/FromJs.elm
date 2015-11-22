@@ -65,6 +65,7 @@ elmValueDecoder =
     [ map VInt int
     , map VFloat float
     , map VString string
+    -- vv this is `undefined` later if it's a top-level definition
     , object2 (,) value (dict value) `andThen` (destructObject >> succeed)
     , map VChar char
     , map VBool bool
@@ -103,7 +104,7 @@ destructObject (rawValue, keyValues) =
           VBuiltIn "signal"
 
         Nothing ->
-          VRecord (mapSnd toElmValue (Dict.toList keyValues))
+          VRecord (mapSnd toElmValue (keyValues |> Dict.remove "ctor" |> Dict.toList))
 
     Just "Set_elm_builtin" ->
       VSeq Set (List.map toElmValue (unsafeCast (Set.toList (unsafeCast rawValue))))
@@ -131,10 +132,10 @@ destructObject (rawValue, keyValues) =
         VBuiltIn "text"
 
       else if String.left 6 tag == "_Tuple" then
-        VSeq Tuple (List.map (toElmValue << snd) (Dict.toList keyValues))
+        VSeq Tuple (List.map (toElmValue << snd) (keyValues |> Dict.remove "ctor" |> Dict.toList))
 
       else
-        VSeq (Tag tag) (List.map (toElmValue << snd) (Dict.toList keyValues))
+        VSeq (Tag tag) (List.map (toElmValue << snd) (keyValues |> Dict.remove "ctor" |> Dict.toList))
 
 
 mapSnd : (a -> b) -> List (k, a) -> List (k, b)

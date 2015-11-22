@@ -35,7 +35,8 @@ type Message
 
 update : Message -> Model -> Model
 update msg state =
-  case msg of
+  let d = Debug.log "Logs.update msg" msg
+  in case msg of
     ExprMessage tag action ->
       { state | exprExpandos =
           Dict.update tag (Maybe.map (Expando.update action)) state.exprExpandos
@@ -50,26 +51,29 @@ update msg state =
 view : Signal.Address Message -> Model -> Active.Model -> Html
 view addr state activeState =
   let
-    d =
-      Debug.log "activeState.exprLogs" activeState.exprLogs
-
     curFrameIdx =
       Active.curFrameIdx activeState
 
+    -- TODO: dedup, optimize
     curExprValues =
       activeState.exprLogs
-      |> Dict.map
-          (\tag valueLog ->
-            getAtIdx curFrameIdx valueLog
-              |> unsafe "index out of bounds")
+      |> Dict.toList
+      |> List.filterMap
+          (\(tag, valueLog) ->
+            (getAtIdx curFrameIdx valueLog
+                |> Maybe.map (\value -> (tag, value))))
+      |> Dict.fromList
         
 
+    curNodeValues : Dict DM.NodeId DM.JsElmValue
     curNodeValues =
       activeState.nodeLogs
-      |> Dict.map
-          (\id valueLog ->
+      |> Dict.toList
+      |> List.filterMap
+          (\(id, valueLog) ->
             getAtIdx curFrameIdx valueLog
-              |> unsafe "index out of bounds")
+              |> Maybe.map (\value -> (id, value)))
+      |> Dict.fromList
         
 
     merge : Dict comparable Expando -> Dict comparable DM.JsElmValue -> Dict comparable Expando
@@ -95,10 +99,22 @@ view addr state activeState =
     curNodeExpandos =
       merge state.nodeExpandos curNodeValues
         |> Dict.toList
+
+    labelForNode nodeId =
+      activeState.salientNodes.foldps
+        |> List.filterMap (\{parent, foldp} ->
+            if nodeId == parent then
+              Just "Action"
+            else if nodeId == foldp then
+              Just "Model"
+            else
+              Nothing)
+        |> List.head
+        |> unsafe "not a salient node"
   in
     div
       []
-      [ h2 [] [ text "Signals" ]
+      [ h2 [] [ text "Logs" ]
       , ul
           []
           (List.map
@@ -108,14 +124,14 @@ view addr state activeState =
                 tag
                 expando)
             curExprExpandos)
-      , h2 [] [ text "Logs" ]
+      , h2 [] [ text "Signals" ]
       , ul
           []
           (List.map
             (\(id, expando) ->
               viewValue
                 (Signal.forwardTo addr (NodeMessage id))
-                ("Node " ++ toString id)
+                (labelForNode id)
                 expando)
             curNodeExpandos)
       ]
