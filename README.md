@@ -78,3 +78,10 @@ The second argument is the name of the source file for that module.
 The file name is needed so that we know which file to recompile when
 the Reactor detects that a file has changed. You may edit a dependency,
 but we always need to compile from the root file.
+
+If you have input ports in your program you may need to specify the
+initial values (the same way as you would do with Elm.fullscreen):
+
+```javascript
+var main = Elm.fullscreenDebug('MyProject.Main', 'MyProject/Main.elm', { port_name: {} });
+```

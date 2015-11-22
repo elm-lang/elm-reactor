@@ -180,8 +180,8 @@ function removeEventBlocker()
 
 // CODE TO SET UP A MODULE FOR DEBUGGING
 
-Elm.fullscreenDebug = function(moduleName, fileName) {
-	var result = initModuleWithDebugState(moduleName);
+Elm.fullscreenDebug = function(moduleName, fileName, initialValues) {
+	var result = initModuleWithDebugState(moduleName, initialValues);
 
 	document.body.appendChild(createSideBar());
 
@@ -245,7 +245,7 @@ Elm.fullscreenDebug = function(moduleName, fileName) {
 };
 
 
-function initModuleWithDebugState(moduleName)
+function initModuleWithDebugState(moduleName, initialValues)
 {
 	var debugState;
 
@@ -256,10 +256,19 @@ function initModuleWithDebugState(moduleName)
 		return result.values;
 	}
 
-	return {
-		module: Elm.fullscreen({ make: make }),
-		debugState: debugState
-	};
+  if (initialValues) {
+    return {
+      module: Elm.fullscreen({ make: make }, initialValues),
+      debugState: debugState,
+      initial: initialValues
+    };
+  } else {
+    return {
+      module: Elm.fullscreen({ make: make }),
+      debugState: debugState,
+      initial: {}
+    };
+  }
 }
 
 function getModule(moduleName)
@@ -439,7 +448,7 @@ function swap(rawJsonResponse, oldResult)
 	document.body.removeChild(oldResult.debugState.traceCanvas);
 	oldResult.module.dispose();
 
-	var result = initModuleWithDebugState(response.name);
+	var result = initModuleWithDebugState(response.name, oldResult.initial);
 	transferState(oldResult.debugState, result.debugState);
 	return result;
 }
@@ -721,7 +730,9 @@ function flattenSignalGraph(nodes)
 	function addAllToDict(node)
 	{
 		nodesById[node.id] = node;
-		node.kids.forEach(addAllToDict);
+    if (node.kids) {
+      node.kids.forEach(addAllToDict);
+    }
 	}
 	nodes.forEach(addAllToDict);
 
