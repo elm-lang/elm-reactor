@@ -256,19 +256,19 @@ function initModuleWithDebugState(moduleName, initialValues)
 		return result.values;
 	}
 
-  if (initialValues) {
-    return {
-      module: Elm.fullscreen({ make: make }, initialValues),
-      debugState: debugState,
-      initial: initialValues
-    };
-  } else {
-    return {
-      module: Elm.fullscreen({ make: make }),
-      debugState: debugState,
-      initial: {}
-    };
-  }
+	if (initialValues) {
+		return {
+			module: Elm.fullscreen({ make: make }, initialValues),
+			debugState: debugState,
+			initial: initialValues
+		};
+	} else {
+		return {
+			module: Elm.fullscreen({ make: make }),
+			debugState: debugState,
+			initial: {}
+		};
+	}
 }
 
 function getModule(moduleName)
@@ -730,9 +730,9 @@ function flattenSignalGraph(nodes)
 	function addAllToDict(node)
 	{
 		nodesById[node.id] = node;
-    if (node.kids) {
-      node.kids.forEach(addAllToDict);
-    }
+		if (node.kids) {
+			node.kids.forEach(addAllToDict);
+		}
 	}
 	nodes.forEach(addAllToDict);
 
@@ -889,7 +889,7 @@ function watchesAt(index, debugState)
 
 	for (var name in watches)
 	{
-		var value = prettyPrint(watches[name], "  ");
+		var value = prettyPrint(watches[name], "	");
 		watchSnapshot.push([ name, value ]);
 	}
 	return watchSnapshot;
@@ -1003,13 +1003,13 @@ var prettyPrint = function() {
 	function addSlashes(str)
 	{
 		return str.replace(/\\/g, '\\\\')
-				  .replace(/\n/g, '\\n')
-				  .replace(/\t/g, '\\t')
-				  .replace(/\r/g, '\\r')
-				  .replace(/\v/g, '\\v')
-				  .replace(/\0/g, '\\0')
-				  .replace(/\'/g, "\\'")
-				  .replace(/\"/g, '\\"');
+					.replace(/\n/g, '\\n')
+					.replace(/\t/g, '\\t')
+					.replace(/\r/g, '\\r')
+					.replace(/\v/g, '\\v')
+					.replace(/\0/g, '\\0')
+					.replace(/\'/g, "\\'")
+					.replace(/\"/g, '\\"');
 	}
 
 	function probablyPublic(v)
