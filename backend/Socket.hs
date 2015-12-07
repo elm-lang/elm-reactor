@@ -17,7 +17,7 @@ fileChangeApp :: FilePath -> WS.ServerApp
 fileChangeApp watchedFile pendingConnection =
   do  connection <- WS.acceptRequest pendingConnection
       Notify.withManager $ \notifyManager ->
-        do  _ <- NDevel.treeExtExists notifyManager "." "elm" (sendHotSwap watchedFile connection)
+        do  _ <- NDevel.treeExtExists notifyManager "." ".elm" (sendHotSwap watchedFile connection)
             keepAlive connection
 
 
