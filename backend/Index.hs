@@ -9,7 +9,7 @@ import Data.List (sort, partition, intercalate)
 import Data.Time.Clock (diffUTCTime, getCurrentTime)
 import System.Directory (doesDirectoryExist, doesFileExist, getDirectoryContents, getModificationTime)
 import System.FilePath ((</>), takeExtension, splitDirectories)
-import Snap.Core (MonadSnap, modifyResponse, setContentType, writeBS)
+import Snap.Core (MonadSnap, Response, modifyResponse, setContentType, setHeader, writeBS)
 
 indexStyle :: S.ByteString
 indexStyle =
@@ -67,6 +67,13 @@ writeLink href name =
     writeS name
     writeBS "</a>"
 
+setHeaders :: Response -> Response 
+setHeaders r =
+    setContentType "text/html; charset=utf-8" 
+    $ setHeader "Cache-Control" "no-cache, no-store, must-revalidate"
+    $ setHeader "Pragma" "no-cache"
+    $ setHeader "Expires" "0"
+    $ r
 
 timeSince :: MonadSnap m => FilePath -> m String
 timeSince filePath =
@@ -98,7 +105,7 @@ timeSince filePath =
 
 elmIndexGenerator :: MonadSnap m => FilePath -> m ()
 elmIndexGenerator directory =
- do modifyResponse $ setContentType "text/html; charset=utf-8"
+ do modifyResponse $ setHeaders
 
     let title =
           intercalate "/" $
