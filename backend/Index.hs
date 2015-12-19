@@ -68,12 +68,11 @@ writeLink href name =
     writeBS "</a>"
 
 setHeaders :: Response -> Response 
-setHeaders r =
+setHeaders =
     setContentType "text/html; charset=utf-8" 
-    $ setHeader "Cache-Control" "no-cache, no-store, must-revalidate"
-    $ setHeader "Pragma" "no-cache"
-    $ setHeader "Expires" "0"
-    $ r
+    . setHeader "Cache-Control" "no-cache, no-store, must-revalidate"
+    . setHeader "Pragma" "no-cache"
+    . setHeader "Expires" "0"
 
 timeSince :: MonadSnap m => FilePath -> m String
 timeSince filePath =
