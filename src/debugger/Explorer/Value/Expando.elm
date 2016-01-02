@@ -399,7 +399,7 @@ view address expando =
         viewRecordItem address (name, expando) =
           span []
             [ text name
-            , text " = "
+            , separator " = "
             , view address expando
             ]
       in
@@ -439,12 +439,13 @@ view address expando =
       text ("<" ++ name ++ ">")
 
 
-viewSeq : Signal.Address Action
-       -> Html
-       -> Html
-       -> Html
-       -> List Expando
-       -> Html
+viewSeq
+    : Signal.Address Action
+    -> Html
+    -> Html
+    -> Html
+    -> List Expando
+    -> Html
 viewSeq addr begin end delimiter args =
   [ [ begin ]
   , (args

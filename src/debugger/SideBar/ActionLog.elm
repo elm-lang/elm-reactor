@@ -12,7 +12,7 @@ import Debugger.Model as DM
 import Debugger.Active as Active
 import Utils.Style exposing ((=>))
 import Utils.Helpers exposing (unsafe)
-import Explorer.Value.Expando exposing (Expando)
+import Explorer.Value.Expando as Expando exposing (Expando)
 import Explorer.Value.FromJs exposing (ElmValue)
 
 
@@ -85,6 +85,10 @@ view addr activeState =
       (List.map (viewAction addr curFrameIdx) actionsNodeExpandoLog)
 
 
+throwawayMailbox =
+  Signal.mailbox Expando.Swap
+
+
 viewAction
     : Signal.Address Message
     -> DM.FrameIndex
@@ -102,5 +106,5 @@ viewAction addr curFrameIdx (frameIdx, (elmValue, expando)) =
           , "action-log-entry-active" => onThisFrame
           ]
       ]
-      [ text (toString elmValue) -- TODO: collapsed version
+      [ Expando.view throwawayMailbox.address expando
       ]
