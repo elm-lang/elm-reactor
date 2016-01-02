@@ -93,7 +93,7 @@ viewValue addr label maybeExpando =
           span [style ["font-family" => "monospace"]] [Expando.view addr expando]
 
         Nothing ->
-          p [] [ text "No value at this frame" ]
+          p [style ["font-style" => "italic"]] [ text "No value at this frame" ]
     ]
 
 

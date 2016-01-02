@@ -54,7 +54,7 @@ styles = """
 }
 
 .action-log-entry-active {
-  color: rgb(224, 224, 224);
+  background-color: rgb(224, 224, 224);
 }
 """
 
