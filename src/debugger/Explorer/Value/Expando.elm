@@ -62,7 +62,7 @@ init value =
       ExInt int
 
     VFloat float ->
-      ExFloat Hide float
+      ExFloat Show float
 
     VChar char ->
       ExChar char
@@ -74,13 +74,13 @@ init value =
       ExBool bool
 
     VSeq seqType args ->
-      ExSeq seqType Hide (List.map init args)
+      ExSeq seqType Show (List.map init args)
 
     VRecord fields ->
-      ExRecord Hide (List.map (\(key, val) -> (key, init val)) fields)
+      ExRecord Show (List.map (\(key, val) -> (key, init val)) fields)
 
     VDict fields ->
-      ExDict Hide (List.map (\(k,v) -> (init k, init v)) fields)
+      ExDict Show (List.map (\(k,v) -> (init k, init v)) fields)
 
     VFunction name ->
       ExFunction name
@@ -203,7 +203,7 @@ merge : ElmValue -> Expando -> Expando
 merge newValue existingValue =
   case (newValue, existingValue) of
     (VFloat float, ExFloat toggle _) ->
-      ExFloat toggle float
+       ExFloat toggle float
 
     (VString str, ExString toggle _) ->
       ExString toggle str
@@ -274,12 +274,12 @@ view address expando =
   let d = Debug.log "expando" expando
   in case expando of
     ExInt int ->
-      literal (toString int)
+      coloredText numberColor (toString int)
 
     ExFloat toggle float ->
       case toggle of
         Show ->
-          literal (toString float)
+          coloredText stringColor (toString float)
 
         Hide ->
           let
@@ -287,21 +287,21 @@ view address expando =
               toFloat (round (100 * float)) / 100
           in
             if truncated == float then
-              literal (toString truncated)
+              coloredText numberColor (toString truncated)
 
             else
               span []
-                [ literal (toString truncated)
+                [ coloredText numberColor (toString truncated)
                 , ellipsis address
                 ]
 
     ExChar chr ->
-      literal (toString chr)
+      coloredText stringColor (toString chr)
 
     ExString toggle str ->
       case toggle of
         Show ->
-          literal (toString str)
+          coloredText stringColor (toString str)
 
         Hide ->
           let
@@ -310,22 +310,27 @@ view address expando =
           in
             if len > 40 then
               span []
-                [ literal ("\"" ++ String.left (min 40 (len - 10)) str)
+                [ coloredText stringColor ("\"" ++ String.left (min 40 (len - 10)) str)
                 , ellipsis address
                 ]
 
             else
-              literal (toString str)
+              coloredText stringColor (toString str)
 
     ExBool bool ->
-      literal (toString bool)
+      coloredText constructorColor (toString bool)
 
     ExSeq seqType toggle args ->
       case seqType of
         Tuple ->
           case toggle of
             Show ->
-              Debug.crash "TODO"
+              viewSeq
+                address
+                (separator "(")
+                (separator ")")
+                (separator ", ")
+                args
 
             Hide ->
               text <|
@@ -336,7 +341,12 @@ view address expando =
         List ->
           case toggle of
             Show ->
-              Debug.crash "TODO"
+              viewSeq
+              address
+              (separator "[")
+              (separator "]")
+              (separator ", ")
+              args
 
             Hide ->
               text <| "[.." ++ toString (List.length args) ++ "..]"
@@ -344,7 +354,12 @@ view address expando =
         Set ->
           case toggle of
             Show ->
-              Debug.crash "TODO"
+              viewSeq
+              address
+              (separator "Set [")
+              (separator "]")
+              (separator ", ")
+              args
 
             Hide ->
               text <| "Set [.." ++ toString (List.length args) ++ "..]"
@@ -352,7 +367,12 @@ view address expando =
         Array ->
           case toggle of
             Show ->
-              Debug.crash "TODO"
+              viewSeq
+              address
+              (separator "Array [")
+              (separator "]")
+              (separator ", ")
+              args
 
             Hide ->
               text <| "Array [.." ++ toString (List.length args) ++ "..]"
@@ -360,7 +380,14 @@ view address expando =
         Tag ctor ->
           case toggle of
             Show ->
-              Debug.crash "TODO"
+              viewSeq
+                address
+                (span
+                  [style ["color" => constructorColor]]
+                  [text <| ctor ++ if List.length args > 0 then " " else ""])
+                (text "")
+                (text " ")
+                args
 
             Hide ->
               text <|
@@ -368,16 +395,34 @@ view address expando =
                 String.join " " (List.repeat (List.length args) "…")
 
     ExRecord toggle fields ->
-      case toggle of
-        Show ->
-          text "{ ... more stuff ... }"
-
-        Hide ->
+      let
+        viewRecordItem address (name, expando) =
           span []
-            [ text "{ "
-            , ellipsis address
-            , text " }"
+            [ text name
+            , text " = "
+            , view address expando
             ]
+      in
+        case toggle of
+          Show ->
+            [ [ separator "{ " ]
+            , (fields
+                |> List.indexedMap (\idx val ->
+                      viewRecordItem
+                        (Signal.forwardTo address (At idx))
+                        val)
+                |> List.intersperse (separator ", "))
+            , [ separator " }" ]
+            ]
+              |> List.concat
+              |> span []
+
+          Hide ->
+            span []
+              [ separator "{ "
+              , ellipsis address
+              , separator " }"
+              ]
 
     ExDict toggle fields ->
       Debug.crash "TODO"
@@ -394,13 +439,26 @@ view address expando =
       text ("<" ++ name ++ ">")
 
 
+viewSeq : Signal.Address Action
+       -> Html
+       -> Html
+       -> Html
+       -> List Expando
+       -> Html
+viewSeq addr begin end delimiter args =
+  [ [ begin ]
+  , (args
+      |> List.indexedMap (\idx val ->
+            view
+              (Signal.forwardTo addr (At idx))
+              val)
+      |> List.intersperse delimiter)
+  , [ end ]
+  ]
+    |> List.concat
+    |> span []
 
 -- LITERAL VIEW
-
-
-literal : String -> Html
-literal str =
-  span [style ["color" => literalColor]] [text str]
 
 
 ellipsis : Signal.Address Action -> Html
@@ -408,13 +466,32 @@ ellipsis address =
   swapper address "..."
 
 
-literalColor : String
-literalColor =
+separator : String -> Html
+separator sep =
+  coloredText "black" sep
+
+
+constructorColor : String
+constructorColor =
+  "purple"
+
+
+stringColor : String
+stringColor =
   "green"
+
+
+numberColor : String
+numberColor =
+  "blue"
 
 
 swapper : Signal.Address Action -> String -> Html
 swapper address str =
   span [onClick address Swap] [text str]
 
+
+coloredText : String -> String -> Html
+coloredText color string =
+  span [style ["color" => color]] [text string]
 

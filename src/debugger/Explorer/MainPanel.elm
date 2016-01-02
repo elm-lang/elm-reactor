@@ -15,13 +15,6 @@ import Utils.Helpers exposing (last, unsafe)
 import Utils.Style exposing ((=>), textTypefaces, unselectable)
 
 
---type alias Model =
---  { nodeExpandos : Dict DM.NodeId Expando
---  , exprExpandos : Dict DM.ExprTag Expando
---  , salientNodes : DM.SalientSGNodes
---  }
-
-
 type Message
   = ExprMessage DM.ExprTag Expando.Action
   | NodeMessage DM.NodeId Expando.Action
@@ -70,15 +63,10 @@ view addr state =
           []
           (List.map
             (\(tag, maybeExpando) ->
-              case maybeExpando of
-                Just expando ->
-                  viewValue
-                    (Signal.forwardTo addr (ExprMessage tag))
-                    tag
-                    expando
-
-                Nothing ->
-                  text "No value at this frame"
+              viewValue
+                (Signal.forwardTo addr (ExprMessage tag))
+                tag
+                maybeExpando
             )
             exprExpandosWithLabels)
       , h2 [] [ text "Signals" ]
@@ -86,26 +74,26 @@ view addr state =
           []
           (List.map
             (\(label, nodeId, maybeExpando) ->
-              case maybeExpando of
-                Just expando ->
-                  viewValue
-                    (Signal.forwardTo addr (NodeMessage nodeId))
-                    label
-                    expando
-
-                Nothing ->
-                  text "No value at this frame"
+              viewValue
+                (Signal.forwardTo addr (NodeMessage nodeId))
+                label
+                maybeExpando
             )
             nodeExpandos)
       ]
 
 
-viewValue : Signal.Address Expando.Action -> String -> Expando -> Html
-viewValue addr label expando =
+viewValue : Signal.Address Expando.Action -> String -> Maybe Expando -> Html
+viewValue addr label maybeExpando =
   div
     []
     [ h3 [] [ text label ]
-    , Expando.view addr expando
+    , case maybeExpando of
+        Just expando ->
+          span [style ["font-family" => "monospace"]] [Expando.view addr expando]
+
+        Nothing ->
+          p [] [ text "No value at this frame" ]
     ]
 
 
