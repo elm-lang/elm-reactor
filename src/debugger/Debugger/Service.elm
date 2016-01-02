@@ -84,7 +84,7 @@ update msg state =
           Debug.crash "already initialized"
 
         Nothing ->
-          ( Just (Active.initModel window_ session)
+          ( Just (Active.initModel window_ initValues session)
           , none
           )
 

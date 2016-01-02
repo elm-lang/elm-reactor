@@ -29,8 +29,8 @@ type alias Model =
   }
 
 
-initModel : DM.Window -> DM.DebugSession -> Model
-initModel window_ session =
+initModel : DM.Window -> DM.ValueSet -> DM.DebugSession -> Model
+initModel window_ signalValues session =
   { window_ = window_
   , session = session
   , totalTimeLost = 0
@@ -38,7 +38,10 @@ initModel window_ session =
   , numFrames = 1
   , isScrubbing = False
   , exprLogs = Dict.empty
-  , nodeLogs = Dict.empty
+  , nodeLogs =
+      signalValues
+        |> List.map (\(tag, val) -> (tag, [logEntry 0 val]))
+        |> Dict.fromList
   , subscribedNodes = Set.empty
   , salientNodes = session |> API.getSgShape |> DM.getSalientNodes
   }
@@ -501,22 +504,28 @@ getLatestMainVal session logs =
       |> snd
 
 
-appendToLog : DM.FrameIndex -> DM.JsElmValue -> Maybe ExpandoValueLog -> Maybe ExpandoValueLog
-appendToLog currentFrameIndex value maybeLog =
+logEntry : DM.FrameIndex -> DM.JsElmValue -> (DM.FrameIndex, (FromJs.ElmValue, Expando))
+logEntry frameIdx value =
   let
     reifiedElmValue =
       FromJs.toElmValue value
+  in
+    (frameIdx, (reifiedElmValue, Expando.init reifiedElmValue))
 
-    pair =
-      (currentFrameIndex, (reifiedElmValue, Expando.init reifiedElmValue))
+
+appendToLog : DM.FrameIndex -> DM.JsElmValue -> Maybe ExpandoValueLog -> Maybe ExpandoValueLog
+appendToLog currentFrameIndex value maybeLog =
+  let
+    entry =
+      logEntry currentFrameIndex value
 
     newLog =
       case maybeLog of
         Just log ->
-          log ++ [pair]
+          log ++ [entry]
 
         Nothing ->
-          [pair]
+          [entry]
   in
     Just newLog
 

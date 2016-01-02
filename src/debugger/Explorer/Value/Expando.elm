@@ -271,8 +271,7 @@ mergeFields fields exFields =
 
 view : Signal.Address Action -> Expando -> Html
 view address expando =
-  let d = Debug.log "expando" expando
-  in case expando of
+  case expando of
     ExInt int ->
       coloredText numberColor (toString int)
 
