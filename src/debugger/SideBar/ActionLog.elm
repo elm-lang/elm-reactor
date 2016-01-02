@@ -12,6 +12,8 @@ import Debugger.Model as DM
 import Debugger.Active as Active
 import Utils.Style exposing ((=>))
 import Utils.Helpers exposing (unsafe)
+import Explorer.Value.Expando exposing (Expando)
+import Explorer.Value.FromJs exposing (ElmValue)
 
 
 type Message
@@ -63,7 +65,7 @@ view addr activeState =
     curFrameIdx =
       Active.curFrameIdx activeState
 
-    actionsNodeValueLog =
+    actionsNodeExpandoLog =
       case activeState.salientNodes.foldps of
         [{parent, foldp}] ->
           Dict.get parent activeState.nodeLogs
@@ -80,15 +82,15 @@ view addr activeState =
       [ id "action-log"
       , on "scroll" (JsDec.succeed ()) (\_ -> Signal.message addr ScrollLogs)
       ]
-      (List.map (viewAction addr curFrameIdx) actionsNodeValueLog)
+      (List.map (viewAction addr curFrameIdx) actionsNodeExpandoLog)
 
 
 viewAction
     : Signal.Address Message
     -> DM.FrameIndex
-    -> (DM.FrameIndex, DM.JsElmValue)
+    -> (DM.FrameIndex, (ElmValue, Expando))
     -> Html
-viewAction addr curFrameIdx (frameIdx, value) =
+viewAction addr curFrameIdx (frameIdx, (elmValue, expando)) =
   let
     onThisFrame =
       curFrameIdx == frameIdx
@@ -100,5 +102,5 @@ viewAction addr curFrameIdx (frameIdx, value) =
           , "action-log-entry-active" => onThisFrame
           ]
       ]
-      [ text (API.prettyPrint value)
+      [ text (toString elmValue) -- TODO: collapsed version
       ]

@@ -160,7 +160,8 @@ type alias SalientSGNodes =
   }
 
 
-{-| Subscribe to main, foldps, and foldp parents -}
+{-| Get main, foldps, and foldp parents, so they can be
+subscribed to & displayed. -}
 getSalientNodes : SGShape -> SalientSGNodes
 getSalientNodes shape =
   let
@@ -245,3 +246,9 @@ encodeEvent event =
     ]
 
 
+logItemForFrameIdx : FrameIndex -> List (FrameIndex, a) -> Maybe a
+logItemForFrameIdx idx log =
+  log
+    |> List.filter (\(itemIdx, val) -> itemIdx <= idx)
+    |> Utils.Helpers.last
+    |> Maybe.map snd

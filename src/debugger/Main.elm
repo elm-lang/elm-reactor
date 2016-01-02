@@ -18,14 +18,14 @@ import Debugger.Active as Active
 import Debugger.Model as DM
 import Debugger.RuntimeApi as API
 import Debugger.Service as Service
-import Explorer.Logs as Logs
+import Explorer.MainPanel as MainPanel
 import Model exposing (..)
 import SideBar.Button as Button
 import SideBar.Controls as Controls
 import SideBar.ActionLog as ActionLog
 import SideBar.Footer as Footer
 import Utils.Helpers exposing (unsafe, unsafeResult)
-import Utils.Style exposing (colorToCss, darkGrey, lightGrey)
+import Utils.Style exposing ((=>), colorToCss, darkGrey, lightGrey)
 
 
 
@@ -72,8 +72,6 @@ port uiTasks =
 port serviceTasks : Signal (Task Never ())
 port serviceTasks =
   serviceApp.tasks
-
-(=>) = (,)
 
 
 viewErrors : Signal.Address Message -> ErrorState -> Html
@@ -222,9 +220,8 @@ view ports addr state =
             ]
             [ div
                 []
-                [ Logs.view
+                [ MainPanel.view
                     (Signal.forwardTo addr LogsMessage)
-                    state.logsState
                     activeState
                 ]
             ]
@@ -245,6 +242,7 @@ type alias UpdatePorts =
 update : UpdatePorts -> Message -> Model -> (Model, Effects Message)
 update ports msg state =
   case msg of
+    -- TODO: remove
     SidebarVisible visible ->
       ( { state | sidebarVisible = visible }
       , none
@@ -320,9 +318,10 @@ update ports msg state =
         )
 
     LogsMessage logMsg ->
-      ( { state | logsState = Logs.update logMsg state.logsState }
-      , Effects.none
-      )
+      (state, Effects.none)
+      --( { state | logsState = MainPanel.update logMsg state.logsState }
+      --, Effects.none
+      --)
 
     ActionLogMessage message ->
       case message of

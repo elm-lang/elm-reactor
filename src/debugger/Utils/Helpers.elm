@@ -46,5 +46,3 @@ maybeToList maybe =
 
     Nothing ->
       []
-
-

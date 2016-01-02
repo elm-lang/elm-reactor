@@ -9,7 +9,7 @@ import Debugger.Active as Active
 import Debugger.Model as DM
 import Debugger.RuntimeApi as API
 import Debugger.Service as Service
-import Explorer.Logs as Logs
+import Explorer.MainPanel as MainPanel
 import SideBar.ActionLog as ActionLog
 import SideBar.Button as Button
 
@@ -22,7 +22,6 @@ type alias Model =
   , restartButtonState : Button.Model
   , playPauseButtonState : Button.Model
   , errorState : ErrorState
-  , logsState : Logs.Model
   , swapSocket : Maybe WebSocket.WebSocket
   }
 
@@ -52,7 +51,6 @@ initModel =
   , restartButtonState = Button.Up
   , playPauseButtonState = Button.Up
   , errorState = NoErrors
-  , logsState = Logs.initModel
   , swapSocket = Nothing
   }
 
@@ -62,7 +60,7 @@ type Message
   | PermitSwaps Bool
   | PlayPauseButtonAction (Button.Message Active.Command)
   | RestartButtonAction (Button.Message Active.Command)
-  | LogsMessage Logs.Message
+  | LogsMessage MainPanel.Message
   | ActionLogMessage ActionLog.Message
   | ConnectSocket (Maybe WebSocket.WebSocket)
   | ExportSession

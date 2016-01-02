@@ -11,6 +11,8 @@ import Debugger.RuntimeApi as API
 import Debugger.Model as DM
 import Utils.Helpers exposing (last, unsafe)
 import Utils.JsArray as JsArray
+import Explorer.Value.FromJs as FromJs exposing (ElmValue)
+import Explorer.Value.Expando as Expando exposing (Expando)
 
 
 type alias Model =
@@ -20,8 +22,8 @@ type alias Model =
   , runningState : RunningState
   , numFrames : Int
   , isScrubbing : Bool
-  , exprLogs : Dict DM.ExprTag DM.ValueLog
-  , nodeLogs : Dict DM.NodeId DM.ValueLog
+  , exprLogs : Dict DM.ExprTag ExpandoValueLog
+  , nodeLogs : Dict DM.NodeId ExpandoValueLog
   , subscribedNodes : Set DM.NodeId
   , salientNodes : DM.SalientSGNodes
   }
@@ -98,6 +100,24 @@ type Response
       Int
       (List (DM.ExprTag, DM.ValueLog))
       (List (DM.NodeId, DM.ValueLog))
+
+
+type alias ExpandoValueLog =
+  List (DM.FrameIndex, (ElmValue, Expando))
+
+
+toExpandoLogElement : DM.JsElmValue -> (ElmValue, Expando)
+toExpandoLogElement value =
+  let
+    reifiedElmValue =
+      FromJs.toElmValue value
+  in
+    (reifiedElmValue, Expando.init reifiedElmValue)
+
+
+toExpandoLog : DM.ValueLog -> ExpandoValueLog
+toExpandoLog log =
+  List.map (\(idx, value) -> (idx, toExpandoLogElement value)) log
 
 
 update : Message -> Model -> (Model, Effects Message)
@@ -364,7 +384,8 @@ update msg state =
           ( { state
                 | session = newSession
                 , runningState = newRunningState
-                , exprLogs = Dict.fromList logs
+                , exprLogs = logs |> Dict.fromList |> Dict.map (\_ log -> toExpandoLog log)
+                -- TODO: w/b node logs?
             }
           , API.renderMain state.session mainVal
               |> Task.map (always NoOp)
@@ -379,11 +400,14 @@ update msg state =
             ( { state
                   | session = newSession
                   , numFrames = numFrames
-                  , exprLogs = Dict.fromList exprLogs
+                  , exprLogs =
+                      exprLogs |> Dict.fromList |> Dict.map (\_ log -> toExpandoLog log)
+                  -- TODO w/b node logs?
                   , runningState = Playing
                   , nodeLogs =
                       nodeLogs
                         |> List.filter (\(nodeId, _) -> nodeId /= mainId)
+                        |> List.map (\(nodeId, log) -> (nodeId, toExpandoLog log))
                         |> Dict.fromList
               }
             , API.renderMain state.session mainVal
@@ -439,10 +463,10 @@ type CommandResponseMessage
 
 commandResponseMailbox : () -> Signal.Mailbox CommandResponseMessage
 commandResponseMailbox _ =
-  mailbox
+  crMailbox
 
 
-mailbox =
+crMailbox =
   Signal.mailbox NoOpResponse
 
 
@@ -477,11 +501,14 @@ getLatestMainVal session logs =
       |> snd
 
 
-appendToLog : DM.FrameIndex -> DM.JsElmValue -> Maybe DM.ValueLog -> Maybe DM.ValueLog
+appendToLog : DM.FrameIndex -> DM.JsElmValue -> Maybe ExpandoValueLog -> Maybe ExpandoValueLog
 appendToLog currentFrameIndex value maybeLog =
   let
+    reifiedElmValue =
+      FromJs.toElmValue value
+
     pair =
-      (currentFrameIndex, value)
+      (currentFrameIndex, (reifiedElmValue, Expando.init reifiedElmValue))
 
     newLog =
       case maybeLog of
@@ -495,10 +522,10 @@ appendToLog currentFrameIndex value maybeLog =
 
 
 updateLogs : DM.FrameIndex
-          -> Dict comparable DM.ValueLog
+          -> Dict comparable ExpandoValueLog
           -> List (comparable, DM.JsElmValue)
           -> (comparable -> Bool)
-          -> Dict comparable DM.ValueLog
+          -> Dict comparable ExpandoValueLog
 updateLogs currentFrameIndex logs updates idPred =
   List.foldl
     (\(tag, value) logs ->
@@ -507,14 +534,14 @@ updateLogs currentFrameIndex logs updates idPred =
     (List.filter (fst >> idPred) updates)
 
 
-truncateLogs : DM.FrameIndex -> Dict comparable DM.ValueLog -> Dict comparable DM.ValueLog
+truncateLogs : DM.FrameIndex -> Dict comparable ExpandoValueLog -> Dict comparable ExpandoValueLog
 truncateLogs frameIdx logs =
   logs
     |> Dict.map (\_ log -> truncateLog frameIdx log)
     |> Dict.filter (\_ log -> not (List.isEmpty log))
 
 
-truncateLog : DM.FrameIndex -> DM.ValueLog -> DM.ValueLog
+truncateLog : DM.FrameIndex -> ExpandoValueLog -> ExpandoValueLog
 truncateLog frameIdx log =
   List.filter (\(idx, val) -> idx <= frameIdx) log
 
