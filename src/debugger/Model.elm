@@ -60,7 +60,6 @@ type Message
   | PermitSwaps Bool
   | PlayPauseButtonAction (Button.Message Active.Command)
   | RestartButtonAction (Button.Message Active.Command)
-  | LogsMessage MainPanel.Message
   | ActionLogMessage ActionLog.Message
   | ConnectSocket (Maybe WebSocket.WebSocket)
   | ExportSession

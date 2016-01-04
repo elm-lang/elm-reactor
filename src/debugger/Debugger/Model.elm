@@ -8,6 +8,7 @@ import Time exposing (Time)
 import Utils.Helpers exposing (unsafe)
 
 import Utils.JsArray as JsArray
+import Debugger.Model.Log exposing (Log)
 
 
 type alias FrameIndex =
@@ -81,7 +82,7 @@ type alias FrameInterval =
 
 
 type alias ValueLog =
-  List (FrameIndex, JsElmValue)
+  Log FrameIndex JsElmValue
 
 
 type alias ValueSet =
@@ -244,11 +245,3 @@ encodeEvent event =
     , ("nodeId", JsEnc.int event.nodeId)
     , ("time", JsEnc.float event.time)
     ]
-
-
-logItemForFrameIdx : FrameIndex -> List (FrameIndex, a) -> Maybe a
-logItemForFrameIdx idx log =
-  log
-    |> List.filter (\(itemIdx, val) -> itemIdx <= idx)
-    |> Utils.Helpers.last
-    |> Maybe.map snd

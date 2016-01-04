@@ -287,7 +287,13 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 				for (var exprTag in flaggedExprLogs)
 				{
 					var log = List.fromArray(flaggedExprLogs[exprTag]);
-					flaggedExprLogsArray.push(Utils.Tuple2(exprTag, log));
+					flaggedExprLogsArray.push(Utils.Tuple2(
+						exprTag,
+						{
+							ctor: 'Log',
+							_0: log
+						}
+					));
 				}
 				var flaggedExprLogsList = List.fromArray(flaggedExprLogsArray);
 
@@ -295,7 +301,13 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 				for (var nodeId of session.subscribedNodeIds)
 				{
 					var log = List.fromArray(nodeLogs[nodeId]);
-					nodeLogsArray.push(Utils.Tuple2(nodeId, log));
+					nodeLogsArray.push(Utils.Tuple2(
+						nodeId,
+						{
+							ctor: 'Log',
+							_0: log
+						}
+					));
 				}
 				var nodeLogsList = List.fromArray(nodeLogsArray);
 
@@ -465,7 +477,13 @@ Elm.Native.Debugger.RuntimeApi.make = function(localRuntime) {
 						}
 
 						var logs = nodeIds.map(function(nodeId) {
-							return Utils.Tuple2(nodeId, List.fromArray(valueLogs[nodeId]));
+							return Utils.Tuple2(
+								nodeId,
+								{
+									ctor: 'Log',
+									_0: List.fromArray(valueLogs[nodeId])
+								}
+							);
 						});
 
 						callback(Task.succeed(List.fromArray(logs)));

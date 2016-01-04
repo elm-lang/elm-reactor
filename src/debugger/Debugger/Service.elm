@@ -56,6 +56,9 @@ app moduleName =
         , Signal.map
             (ActiveMessage << Active.Command)
             (commandsMailbox ()).signal
+        , Signal.map
+            (ActiveMessage << Active.UiMessage)
+            (Active.valueExplorerActionMailbox ()).signal
         ]
     }
 

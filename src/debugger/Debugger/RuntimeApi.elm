@@ -5,6 +5,7 @@ import Set
 import Task exposing (Task)
 
 import Debugger.Model exposing (..)
+import Debugger.Model.Log as Log
 import Native.Debugger.RuntimeApi
 import Utils.Helpers exposing (unsafe)
 import Utils.JsArray as JsArray
@@ -124,7 +125,7 @@ getNodeStateSingle session frameIdx nodes =
   let
     extract (id, log) =
       ( id
-      , snd (unsafe "corrupted node state" (List.head log))
+      , snd (unsafe "corrupted node state" (Log.last log))
       )
   in
     getNodeState session { start = frameIdx, end = frameIdx } nodes

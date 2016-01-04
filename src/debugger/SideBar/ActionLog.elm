@@ -9,6 +9,7 @@ import Html.Events exposing (..)
 
 import Debugger.RuntimeApi as API
 import Debugger.Model as DM
+import Debugger.Model.Log as Log
 import Debugger.Active as Active
 import Utils.Style exposing ((=>))
 import Utils.Helpers exposing (unsafe)
@@ -69,11 +70,11 @@ view addr activeState =
       case activeState.salientNodes.foldps of
         [{parent, foldp}] ->
           Dict.get parent activeState.nodeLogs
-            |> Maybe.withDefault []
+            |> Maybe.withDefault Log.empty
 
         -- no foldps
         [] ->
-          []
+          Log.empty
 
         _ ->
           Debug.crash "multiple foldps"
@@ -82,7 +83,9 @@ view addr activeState =
       [ id "action-log"
       , on "scroll" (JsDec.succeed ()) (\_ -> Signal.message addr ScrollLogs)
       ]
-      (List.map (viewAction addr curFrameIdx) actionsNodeExpandoLog)
+      (actionsNodeExpandoLog
+        |> Log.toList
+        |> List.map (viewAction addr curFrameIdx))
 
 
 throwawayMailbox =

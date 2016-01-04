@@ -10,6 +10,14 @@ import Explorer.Value.FromJs exposing (ElmValue(..), SeqType(..))
 import Utils.Style exposing ((=>))
 
 
+-- TODO: these should not really be here.
+-- expando models should not really be in Active.
+import Debugger.Model as DM
+
+type MainPanelMessage
+    = ExprMessage DM.ExprTag Action
+    | NodeMessage DM.NodeId Action
+
 
 -- MODEL
 
@@ -286,10 +294,13 @@ view address expando =
               toFloat (round (100 * float)) / 100
           in
             if truncated == float then
-              coloredText numberColor (toString truncated)
+              span 
+                [ onClick address Swap ]
+                [ coloredText numberColor (toString truncated) ]
 
             else
-              span []
+              span
+                [ onClick address Swap ]
                 [ coloredText numberColor (toString truncated)
                 , ellipsis address
                 ]
@@ -298,9 +309,12 @@ view address expando =
       coloredText stringColor (toString chr)
 
     ExString toggle str ->
+      -- TODO dedup
       case toggle of
         Show ->
-          coloredText stringColor (toString str)
+          span
+            [ onClick address Swap ]
+            [ coloredText stringColor (toString str) ]
 
         Hide ->
           let
@@ -308,13 +322,16 @@ view address expando =
               String.length str
           in
             if len > 40 then
-              span []
+              span
+                [ onClick address Swap ]
                 [ coloredText stringColor ("\"" ++ String.left (min 40 (len - 10)) str)
                 , ellipsis address
                 ]
 
             else
-              coloredText stringColor (toString str)
+              span
+                [ onClick address Swap ]
+                [ coloredText stringColor (toString str) ]
 
     ExBool bool ->
       coloredText constructorColor (toString bool)

@@ -28,7 +28,6 @@ import Utils.Helpers exposing (unsafe, unsafeResult)
 import Utils.Style exposing ((=>), colorToCss, darkGrey, lightGrey)
 
 
-
 serviceApp : StartApp.App Service.Model
 serviceApp =
   StartApp.start <| Service.app moduleName
@@ -221,7 +220,9 @@ view ports addr state =
             [ div
                 []
                 [ MainPanel.view
-                    (Signal.forwardTo addr LogsMessage)
+                    (Signal.forwardTo
+                      (Active.valueExplorerActionMailbox ()).address
+                      Active.VEAction)
                     activeState
                 ]
             ]
@@ -316,12 +317,6 @@ update ports msg state =
         ( { state | restartButtonState = newState }
         , sendEffects
         )
-
-    LogsMessage logMsg ->
-      (state, Effects.none)
-      --( { state | logsState = MainPanel.update logMsg state.logsState }
-      --, Effects.none
-      --)
 
     ActionLogMessage message ->
       case message of

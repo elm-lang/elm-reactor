@@ -8,6 +8,7 @@ import Markdown
 
 import Debugger.Active as Active
 import Debugger.Model as DM
+import Debugger.Model.Log as Log
 import Debugger.RuntimeApi as API
 import Explorer.Value.Expando as Expando exposing (Expando)
 import Explorer.Value.FromJs as FromJs
@@ -15,12 +16,7 @@ import Utils.Helpers exposing (last, unsafe)
 import Utils.Style exposing ((=>), textTypefaces, unselectable)
 
 
-type Message
-  = ExprMessage DM.ExprTag Expando.Action
-  | NodeMessage DM.NodeId Expando.Action
-
-
-view : Signal.Address Message -> Active.Model -> Html
+view : Signal.Address Expando.MainPanelMessage -> Active.Model -> Html
 view addr state =
   let
     curFrameIdx =
@@ -29,13 +25,13 @@ view addr state =
     exprExpandosWithLabels =
       state.exprLogs
         |> Dict.map (\tag log ->
-              log |> DM.logItemForFrameIdx curFrameIdx |> Maybe.map snd)
+              log |> Log.mostRecentBeforeIndex curFrameIdx |> Maybe.map snd)
         |> Dict.toList
 
     nodeExpandosAtFrame =
       state.nodeLogs
         |> Dict.map (\id log ->
-              log |> DM.logItemForFrameIdx curFrameIdx |> Maybe.map snd)
+              log |> Log.mostRecentBeforeIndex curFrameIdx |> Maybe.map snd)
 
     -- assumes that all salient nodes (foldps and their parents) are subscribed to
     nodeExpandos =
@@ -64,7 +60,7 @@ view addr state =
           (List.map
             (\(tag, maybeExpando) ->
               viewValue
-                (Signal.forwardTo addr (ExprMessage tag))
+                (Signal.forwardTo addr (Expando.ExprMessage tag))
                 tag
                 maybeExpando
             )
@@ -75,7 +71,7 @@ view addr state =
           (List.map
             (\(label, nodeId, maybeExpando) ->
               viewValue
-                (Signal.forwardTo addr (NodeMessage nodeId))
+                (Signal.forwardTo addr (Expando.NodeMessage nodeId))
                 label
                 maybeExpando
             )

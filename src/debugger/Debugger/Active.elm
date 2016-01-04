@@ -9,7 +9,8 @@ import Effects exposing (..)
 
 import Debugger.RuntimeApi as API
 import Debugger.Model as DM
-import Utils.Helpers exposing (last, unsafe)
+import Debugger.Model.Log as Log
+import Utils.Helpers exposing (last, unsafe, unsafeResult)
 import Utils.JsArray as JsArray
 import Explorer.Value.FromJs as FromJs exposing (ElmValue)
 import Explorer.Value.Expando as Expando exposing (Expando)
@@ -40,7 +41,7 @@ initModel window_ signalValues session =
   , exprLogs = Dict.empty
   , nodeLogs =
       signalValues
-        |> List.map (\(tag, val) -> (tag, [logEntry 0 val]))
+        |> List.map (\(tag, val) -> (tag, Log.fromList [makeLogEntry 0 val]))
         |> Dict.fromList
   , subscribedNodes = Set.empty
   , salientNodes = session |> API.getSgShape |> DM.getSalientNodes
@@ -66,6 +67,7 @@ type Message
   = Command Command
   | Notification Notification
   | Response Response
+  | UiMessage ValueExplorerAction
   | NoOp
 
 
@@ -106,7 +108,7 @@ type Response
 
 
 type alias ExpandoValueLog =
-  List (DM.FrameIndex, (ElmValue, Expando))
+  Log.Log DM.FrameIndex (ElmValue, Expando)
 
 
 toExpandoLogElement : DM.JsElmValue -> (ElmValue, Expando)
@@ -120,7 +122,7 @@ toExpandoLogElement value =
 
 toExpandoLog : DM.ValueLog -> ExpandoValueLog
 toExpandoLog log =
-  List.map (\(idx, value) -> (idx, toExpandoLogElement value)) log
+  Log.map (\(idx, value) -> (idx, toExpandoLogElement value)) log
 
 
 update : Message -> Model -> (Model, Effects Message)
@@ -253,10 +255,10 @@ update msg state =
                                 nodeLogs
                                   |> List.filter (\(nodeId, log) ->
                                         nodeId == (API.getSgShape newSession).mainId)
-                                  |> List.head
+                                  |> last
                                   |> unsafe "no log for main"
                                   |> snd
-                                  |> last
+                                  |> Log.last
                                   |> unsafe "no values in main log"
                                   |> snd
                             in
@@ -338,14 +340,14 @@ update msg state =
                   (API.getSgShape state.session).mainId
 
                 newExprLogs =
-                  updateLogs
+                  appendToLogs
                     currentFrameIndex
                     state.exprLogs
                     newFrameNot.flaggedExprValues
                     (always True)
 
                 newNodeLogs =
-                  updateLogs
+                  appendToLogs
                     currentFrameIndex
                     state.nodeLogs
                     newFrameNot.subscribedNodeValues
@@ -423,8 +425,63 @@ update msg state =
           , none
           )
 
+    UiMessage mainPanelMessage ->
+      case mainPanelMessage of
+        VEAction veAction ->
+          case veAction of
+            Expando.NodeMessage nodeId action ->
+              ( { state | nodeLogs =
+                    updateLog
+                      nodeId
+                      (curFrameIdx state)
+                      action
+                      state.nodeLogs
+                    |> unsafeResult
+                }
+              , none
+              )
+
+            Expando.ExprMessage tag action ->
+              ( { state | exprLogs =
+                    updateLog
+                      tag
+                      (curFrameIdx state)
+                      action
+                      state.exprLogs
+                    |> unsafeResult
+                }
+              , none
+              )
+
+        VENoOp ->
+          (state, none)
+
     NoOp ->
-      ( state, none )
+      (state, none)
+
+
+updateLog
+  : comparable
+  -> DM.FrameIndex
+  -> Expando.Action
+  -> Dict comparable ExpandoValueLog
+  -> Result String (Dict comparable ExpandoValueLog)
+updateLog key idx action logs =
+  case Dict.get key logs of
+    Just log ->
+      let
+        updateEntry (_, (value, expando)) =
+          (value, Expando.update action expando)
+      in
+        case Log.update idx updateEntry log of
+          Just updatedLog ->
+            Ok <| Dict.insert key updatedLog logs
+
+          Nothing ->
+            Err "no log entry found at given index"
+
+    Nothing ->
+      Err "no such log"
 
 
 -- should this be in RuntimeApi?
@@ -464,6 +521,11 @@ type CommandResponseMessage
   | NoOpResponse
 
 
+type ValueExplorerAction
+  = VEAction Expando.MainPanelMessage
+  | VENoOp
+
+
 commandResponseMailbox : () -> Signal.Mailbox CommandResponseMessage
 commandResponseMailbox _ =
   crMailbox
@@ -471,6 +533,15 @@ commandResponseMailbox _ =
 
 crMailbox =
   Signal.mailbox NoOpResponse
+
+
+valueExplorerActionMailbox : () -> Signal.Mailbox ValueExplorerAction
+valueExplorerActionMailbox _ =
+  veaMailbox
+
+
+veaMailbox =
+  Signal.mailbox VENoOp
 
 
 getMainVal : DM.DebugSession -> DM.ValueSet -> DM.JsElmValue
@@ -499,13 +570,13 @@ getLatestMainVal session logs =
       |> List.head
       |> unsafe "no log with main id"
       |> snd
-      |> last
+      |> Log.last
       |> unsafe "empty log"
       |> snd
 
 
-logEntry : DM.FrameIndex -> DM.JsElmValue -> (DM.FrameIndex, (FromJs.ElmValue, Expando))
-logEntry frameIdx value =
+makeLogEntry : DM.FrameIndex -> DM.JsElmValue -> (DM.FrameIndex, (FromJs.ElmValue, Expando))
+makeLogEntry frameIdx value =
   let
     reifiedElmValue =
       FromJs.toElmValue value
@@ -517,25 +588,25 @@ appendToLog : DM.FrameIndex -> DM.JsElmValue -> Maybe ExpandoValueLog -> Maybe E
 appendToLog currentFrameIndex value maybeLog =
   let
     entry =
-      logEntry currentFrameIndex value
+      makeLogEntry currentFrameIndex value
 
     newLog =
       case maybeLog of
         Just log ->
-          log ++ [entry]
+          Log.append entry log
 
         Nothing ->
-          [entry]
+          Log.fromList [entry]
   in
     Just newLog
 
 
-updateLogs : DM.FrameIndex
+appendToLogs : DM.FrameIndex
           -> Dict comparable ExpandoValueLog
           -> List (comparable, DM.JsElmValue)
           -> (comparable -> Bool)
           -> Dict comparable ExpandoValueLog
-updateLogs currentFrameIndex logs updates idPred =
+appendToLogs currentFrameIndex logs updates idPred =
   List.foldl
     (\(tag, value) logs ->
       Dict.update tag (appendToLog currentFrameIndex value) logs)
@@ -546,13 +617,8 @@ updateLogs currentFrameIndex logs updates idPred =
 truncateLogs : DM.FrameIndex -> Dict comparable ExpandoValueLog -> Dict comparable ExpandoValueLog
 truncateLogs frameIdx logs =
   logs
-    |> Dict.map (\_ log -> truncateLog frameIdx log)
-    |> Dict.filter (\_ log -> not (List.isEmpty log))
-
-
-truncateLog : DM.FrameIndex -> ExpandoValueLog -> ExpandoValueLog
-truncateLog frameIdx log =
-  List.filter (\(idx, val) -> idx <= frameIdx) log
+    |> Dict.map (\_ log -> Log.truncate frameIdx log)
+    |> Dict.filter (\_ log -> not (Log.isEmpty log))
 
 
 isPlaying : Model -> Bool
