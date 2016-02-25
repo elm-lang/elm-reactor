@@ -9,11 +9,13 @@ import System.Process
 import Control.Monad
 import System.FilePath
 import System.Directory
+import GHC.IO.Encoding (setLocaleEncoding, utf8)
 
 
 main :: IO ()
 main =
-  defaultMainWithHooks simpleUserHooks { postBuild = myPostBuild }
+  do  setLocaleEncoding utf8
+      defaultMainWithHooks simpleUserHooks { postBuild = myPostBuild }
 
 
 myPostBuild :: Args -> BuildFlags -> PackageDescription -> LocalBuildInfo -> IO ()
