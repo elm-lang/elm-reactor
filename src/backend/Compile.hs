@@ -31,7 +31,7 @@ compile filePath =
               return (Right code)
 
 
-getName :: FilePath -> String -> Either String Module.Name
+getName :: FilePath -> String -> Either String Module.Raw
 getName filePath sourceCode =
   case Compiler.parseDependencies sourceCode of
     Right (name, _deps) ->
@@ -111,11 +111,16 @@ myStyle =
     \html,body { height: 100%; margin: 0px; }\n"
 
 
-initialize :: Bool -> Module.Name -> FilePath -> String
+initialize :: Bool -> Module.Raw -> FilePath -> String
 initialize debug name filePath =
-  let moduleName = Module.nameToString name
+  let
+    moduleName =
+      Module.nameToString name
   in
       "var runningElmModule =\n    " ++
       case debug of
-        True -> "Elm.fullscreenDebug('" ++ moduleName ++ "', '" ++ filePath ++ "');"
-        False -> "Elm.fullscreen(Elm." ++ moduleName ++ ");"
+        True ->
+          "Elm.fullscreenDebug('" ++ moduleName ++ "', '" ++ filePath ++ "');"
+
+        False ->
+          "Elm.fullscreen(Elm." ++ moduleName ++ ");"
