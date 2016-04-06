@@ -1,12 +1,12 @@
-module Index where
+module Index exposing (..) -- where
 
 import Color exposing (Color, darkGrey)
 import Dict
-import FontAwesome as FA
+import TempFontAwesome as FA
 import Html exposing (..)
+import Html.App as Html
 import Html.Attributes exposing (..)
 import Markdown
-import Signal exposing (Signal, Address)
 import String
 
 
@@ -14,12 +14,13 @@ import String
 -- MAIN
 
 
-main : Html
 main =
-  view info
-
-
-port info : Model
+  Html.programWithFlags
+    { init = init
+    , view = view
+    , update = update
+    , subscriptions = subscriptions
+    }
 
 
 
@@ -41,6 +42,21 @@ type alias PackageInfo =
     , summary : String
     , dependencies : List (String, String)
     }
+
+
+init : Model -> (Model, Cmd msg)
+init model =
+  (model, Cmd.none)
+
+
+update : msg -> Model -> (Model, Cmd msg)
+update _ model =
+  (model, Cmd.none)
+
+
+subscriptions : Model -> Sub msg
+subscriptions model =
+  Sub.none
 
 
 
@@ -93,7 +109,7 @@ boxItemStyles =
   [ "border-top" => "1px solid #e1e1e1" ]
 
 
-clearfix : Html
+clearfix : Html msg
 clearfix =
   div [ style [ "clear" => "both" ] ] []
 
@@ -102,7 +118,7 @@ clearfix =
 -- VIEW
 
 
-view : Model -> Html
+view : Model -> Html msg
 view model =
   let
     rightColumnView pkgInfo =
@@ -133,7 +149,7 @@ view model =
       ]
 
 
-pageHeader : Model -> Html
+pageHeader : Model -> Html msg
 pageHeader model =
   header
     [ style
@@ -145,7 +161,7 @@ pageHeader model =
     []
 
 
-leftColumnView : Model -> Html
+leftColumnView : Model -> Html msg
 leftColumnView model =
   let
     files =
@@ -161,7 +177,7 @@ leftColumnView model =
       [ div
           [ style boxStyles ]
           [ div [ style (blockStyles ++ boxHeaderStyles) ] [ text "README" ]
-          , div [ style (blockStyles ++ boxItemStyles) ] [ Markdown.toHtml markdown ]
+          , Markdown.toHtml [ style (blockStyles ++ boxItemStyles) ] markdown
           ]
       ]
   in
@@ -171,7 +187,7 @@ leftColumnView model =
       (files :: Maybe.withDefault [] (Maybe.map viewReadme model.readme))
 
 
-folderDisplay : String -> Html
+folderDisplay : String -> Html msg
 folderDisplay folder =
   div
     [ style (blockStyles ++ boxItemStyles)
@@ -180,7 +196,7 @@ folderDisplay folder =
     ]
 
 
-elmFileLinks : Bool -> String -> List Html
+elmFileLinks : Bool -> String -> List (Html msg)
 elmFileLinks isElmFile file =
   let
     jumpLinkStyle =
@@ -198,7 +214,7 @@ elmFileLinks isElmFile file =
       []
 
 
-fileDisplay : (String, Bool) -> Html
+fileDisplay : (String, Bool) -> Html msg
 fileDisplay (file, hasMain) =
   div [ style (blockStyles ++ boxItemStyles) ]
     (
@@ -211,7 +227,7 @@ fileDisplay (file, hasMain) =
     )
 
 
-navigator : List String -> Html
+navigator : List String -> Html msg
 navigator pathSegments =
   let
     hrefs =
@@ -245,7 +261,7 @@ packageUrl name version =
   "http://package.elm-lang.org/packages" </> name </> version
 
 
-dependenciesView : List (String, String) -> Html
+dependenciesView : List (String, String) -> Html msg
 dependenciesView dependencies =
   div
     [ style (boxStyles ++ floatRight ++ [ "width" => smallBoxWidth ])
@@ -258,7 +274,7 @@ dependenciesView dependencies =
     )
 
 
-dependencyView : (String, String) -> Html
+dependencyView : (String, String) -> Html msg
 dependencyView (name, version) =
   div
     [ style (blockStyles ++ boxItemStyles)
@@ -274,7 +290,7 @@ dependencyView (name, version) =
     ]
 
 
-viewPackageInfo : PackageInfo -> Html
+viewPackageInfo : PackageInfo -> Html msg
 viewPackageInfo pkgInfo =
   div
     [ style <| boxStyles ++ floatRight ++
@@ -292,7 +308,7 @@ viewPackageInfo pkgInfo =
 -- ICONS
 
 
-getIcon : String -> Html
+getIcon : String -> Html msg
 getIcon filename =
   let
     file = String.toLower filename
@@ -326,7 +342,7 @@ packageIcon =
   makeIcon FA.archive
 
 
-makeIcon : (Color -> Int -> Html) -> Html
+makeIcon : (Color -> Int -> Html msg) -> Html msg
 makeIcon icon =
   span
     [ style [ "display" => "inline-block", "vertical-align" => "middle", "padding-right" => "0.5em" ] ]

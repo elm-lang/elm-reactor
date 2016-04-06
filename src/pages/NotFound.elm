@@ -1,4 +1,4 @@
-module NotFound where
+module NotFound exposing (..) -- where
 
 import Html exposing (..)
 import Html.Attributes exposing (style)
@@ -7,7 +7,7 @@ import Html.Attributes exposing (style)
 (=>) = (,)
 
 
-main : Html
+main : Html msg
 main =
   div
     [ style

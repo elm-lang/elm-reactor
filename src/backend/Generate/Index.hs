@@ -71,7 +71,7 @@ toHtml info@(Info pwd _ _ _ _) =
   Help.makeHtml
     (List.intercalate "/" ("~" : pwd))
     ("/" ++ StaticFiles.indexPath)
-    ("Elm.fullscreen(Elm.Index, { info: " ++ LBSC.unpack (Json.encode info) ++ " });")
+    ("Elm.Index.fullscreen(" ++ LBSC.unpack (Json.encode info) ++ ");")
 
 
 -- GET INFO FOR THIS LOCATION

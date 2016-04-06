@@ -163,12 +163,6 @@ staticAssets :: [(FilePath, (BSC.ByteString, MimeType))]
 staticAssets =
     [ StaticFiles.faviconPath ==>
         (StaticFiles.favicon, "image/x-icon")
-    , StaticFiles.debuggerAgentPath ==>
-        (StaticFiles.debuggerAgent, "application/javascript")
-    , StaticFiles.debuggerInterfaceJsPath ==>
-        (StaticFiles.debuggerInterfaceJs, "application/javascript")
-    , StaticFiles.debuggerInterfaceHtmlPath ==>
-        (StaticFiles.debuggerInterfaceHtml, "text/html")
     , StaticFiles.indexPath ==>
         (StaticFiles.index, "application/javascript")
     , StaticFiles.notFoundPath ==>

@@ -9,6 +9,6 @@ import qualified Generate.Help as Help
 html :: BSC.ByteString
 html =
   Help.makeHtml
-    "Page not found"
+    "Page Not Found"
     ("/" ++ StaticFiles.notFoundPath)
-    "Elm.fullscreen(Elm.NotFound);"
+    "Elm.NotFound.fullscreen();"

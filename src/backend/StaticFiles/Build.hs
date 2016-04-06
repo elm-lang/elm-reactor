@@ -1,8 +1,9 @@
 {-# OPTIONS_GHC -Wall #-}
 module StaticFiles.Build
-    ( debuggerAgent, debuggerInterfaceJs, debuggerInterfaceHtml
-    , navigationPage, favicon
-    ) where
+    ( favicon
+    , navigationPage
+    )
+    where
 
 import qualified Data.ByteString as BS
 import System.Directory (removeFile)
@@ -14,16 +15,6 @@ import System.Process (readProcessWithExitCode)
 
 
 -- READ STATIC FILES
-
-
-debuggerAgent :: IO BS.ByteString
-debuggerAgent =
-  BS.readFile ("src" </> "debugger" </> "debug-agent.js")
-
-
-debuggerInterfaceHtml :: IO BS.ByteString
-debuggerInterfaceHtml =
-  BS.readFile ("src" </> "debugger" </> "debug-interface.html")
 
 
 favicon :: IO BS.ByteString
@@ -60,17 +51,5 @@ compile source target =
           return ()
 
         ExitFailure _ ->
-          do  hPutStrLn stderr (unlines ["Failed to build" ++ source, "", out, err])
+          do  hPutStrLn stderr (unlines ["Failed to build " ++ source, "", out, err])
               exitFailure
-
-
-debuggerInterfaceJs :: IO BS.ByteString
-debuggerInterfaceJs =
-  let
-    tempFile =
-      "temp-debug.js"
-  in
-    do  compile ("src" </> "debugger" </> "Main.elm") tempFile
-        result <- BS.readFile tempFile
-        seq (BS.length result) (removeFile tempFile)
-        return result
