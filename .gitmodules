@@ -1,9 +1,0 @@
-[submodule "src/submodules/elm-html-file"]
-	path = src/submodules/elm-html-file
-	url = git@github.com:vilterp/elm-html-file.git
-[submodule "src/submodules/elm-websockets"]
-	path = src/submodules/elm-websockets
-	url = git@github.com:vilterp/elm-websockets.git
-[submodule "src/submodules/elm-font-awesome"]
-	path = src/submodules/elm-font-awesome
-	url = git@github.com:vilterp/elm-font-awesome.git
