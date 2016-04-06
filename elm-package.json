@@ -5,16 +5,14 @@
     "license": "BSD3",
     "source-directories": [
         "src/debugger",
-        "src/pages",
-        "src/submodules/elm-font-awesome/src",
-        "src/submodules/elm-html-file",
-        "src/submodules/elm-websockets"
+        "src/pages"
     ],
     "exposed-modules": [],
     "native-modules": true,
     "dependencies": {
         "elm-lang/core": "4.0.0 <= v < 5.0.0",
         "elm-lang/html": "1.0.0 <= v < 2.0.0",
+        "elm-lang/svg": "1.0.0 <= v < 2.0.0",
         "evancz/elm-markdown": "3.0.0 <= v < 4.0.0"
     },
     "elm-version": "0.17.0 <= v < 0.18.0"
