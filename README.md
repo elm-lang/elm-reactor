@@ -57,32 +57,6 @@ start your Elm program with a control panel that lets you:
   * Swap in new code at any time, maintaining all recorded events.
 
 
-#### Debugging code embedded in HTML
-
-To use the debugger with more complex HTML or CSS, you may want to start the
-debugger from within an HTML file. This process is still improving, so *use this
-with caution*.
-
-In your custom HTML file, load the `/_reactor/debug.js` script.
-
-```html
-<script type="text/javascript" src="/_reactor/debug.js"></script>
-```
-
-That creates the `Elm.fullscreenDebug` function so you can initiate your Elm
-program with the debugger:
-
-```javascript
-var main = Elm.fullscreenDebug('MyProject.Main', 'MyProject/Main.elm');
-```
-
-The first argument is the name of the module you would like to debug.
-The second argument is the name of the source file for that module.
-The file name is needed so that we know which file to recompile when
-the Reactor detects that a file has changed. You may edit a dependency,
-but we always need to compile from the root file.
-
-
 ## Building from Source
 
 If you are interesting in modifying this project, here is what you need to do
