@@ -2,6 +2,7 @@ module TempFontAwesome exposing
   ( home
   , file_image_o, file_text_o
   , folder, archive
+  , play, pause
   )
   -- where
 
@@ -39,6 +40,15 @@ archive : Color -> Int -> Html msg
 archive =
   icon "M1088 832q0-26-19-45t-45-19h-256q-26 0-45 19t-19 45 19 45 45 19h256q26 0 45-19t19-45zm576-192v960q0 26-19 45t-45 19h-1408q-26 0-45-19t-19-45v-960q0-26 19-45t45-19h1408q26 0 45 19t19 45zm64-448v256q0 26-19 45t-45 19h-1536q-26 0-45-19t-19-45v-256q0-26 19-45t45-19h1536q26 0 45 19t19 45z"
 
+
+play : Color -> Int -> Html msg
+play =
+  icon "M1576 927l-1328 738q-23 13-39.5 3t-16.5-36v-1472q0-26 16.5-36t39.5 3l1328 738q23 13 23 31t-23 31z"
+
+
+pause : Color -> Int -> Html msg
+pause =
+  icon "M1664 192v1408q0 26-19 45t-45 19h-512q-26 0-45-19t-19-45v-1408q0-26 19-45t45-19h512q26 0 45 19t19 45zm-896 0v1408q0 26-19 45t-45 19h-512q-26 0-45-19t-19-45v-1408q0-26 19-45t45-19h512q26 0 45 19t19 45z"
 
 
 -- HELPERS
