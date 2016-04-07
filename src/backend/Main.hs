@@ -6,6 +6,7 @@ module Main where
 import Control.Applicative ((<|>))
 import Control.Monad (guard)
 import Control.Monad.Trans (MonadIO(liftIO))
+import qualified Data.HashMap.Strict as HashMap
 import qualified Data.List as List
 import Data.Maybe (isJust)
 import qualified Data.ByteString.Char8 as BSC
@@ -128,15 +129,11 @@ error404 =
 
 serveFiles :: Snap ()
 serveFiles =
-  let
-    despace =
-      map (\c -> if c == '+' then ' ' else c)
-  in
-    do  file <- despace . BSC.unpack . rqPathInfo <$> getRequest
-        serveAssets file
-          <|> do  exists <- liftIO $ doesFileExist file
-                  guard exists
-                  serveElm file <|> serveCode file
+  do  file <- getSafePath
+      serveAssets file
+        <|> do  exists <- liftIO $ doesFileExist file
+                guard exists
+                serveElm file <|> serveFileWithHighlight file
 
 
 serveHtml :: MonadSnap m => H.Html -> m ()
@@ -146,22 +143,45 @@ serveHtml html =
 
 
 
--- SERVE HIGHLIGHTED CODE
+-- SERVE FILES + CODE HIGHLIGHTING
 
 
-serveCode :: FilePath -> Snap ()
-serveCode file =
+serveFileWithHighlight :: FilePath -> Snap ()
+serveFileWithHighlight file =
   let
     languages =
       Kate.languagesByFilename (takeFileName file)
   in
     case languages of
       [] ->
-        pass
+        serveFileWithoutDownload file
 
       lang : _ ->
         do  code <- liftIO (readFile file)
             serveHtml $ Generate.makeCodeHtml ('~' : '/' : file) lang code
+
+
+serveFileWithoutDownload :: FilePath -> Snap ()
+serveFileWithoutDownload file =
+  let
+    possibleExtensions =
+      getSubExts (takeExtensions file)
+  in
+    case mconcat (map (flip HashMap.lookup defaultMimeTypes) possibleExtensions) of
+      Nothing ->
+        serveFileAs "text/plain" file
+
+      Just mimeType ->
+        serveFileAs mimeType file
+
+
+getSubExts :: String -> [String]
+getSubExts fullExtension =
+  if null fullExtension then
+    []
+
+  else
+    fullExtension : getSubExts (takeExtensions (drop 1 fullExtension))
 
 
 
