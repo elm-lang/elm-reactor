@@ -5,10 +5,14 @@ module History exposing
   , record
   , timeTravel
   , rebuildCache
+  , view
   )
   -- where
 
 
+import Html exposing (div, text)
+import Html.Events exposing (onClick)
+import Html.Lazy exposing (lazy)
 import UserProgram exposing (ElmValue, UserProgram)
 
 
@@ -37,6 +41,7 @@ type History =
 
 type alias Frame =
   { message : ElmValue
+  , timestamp : Int
   }
 
 
@@ -202,3 +207,47 @@ rebuildCacheHelp userProgram tree model =
 step : UserProgram -> Frame -> ElmValue -> ElmValue
 step userProgram frame model =
   fst (userProgram.step frame.message model)
+
+
+
+-- VIEW
+
+
+view : History -> Html Int
+view (History {tree, recentFrames}) =
+  let
+    oldStuff =
+      lazy viewHistoryTree tree
+
+    newStuff =
+      List.foldl ((::) << lazy viewFrame) [] recentFrames
+  in
+    div [] (oldStuff :: newStuff)
+
+
+viewHistoryTree : HistoryTree -> Html Int
+viewHistoryTree tree =
+  div [] (viewHistoryTreeHelp tree [])
+
+
+viewHistoryTreeHelp : HistoryTree -> List (Html Int) -> List (Html Int)
+viewHistoryTreeHelp tree epochNodes =
+  case tree of
+    Leaf epoch ->
+      lazy viewLeaf epoch.frames :: epochNodes
+
+    Node _ full rest ->
+      viewHistoryTreeHelp full (viewHistoryTreeHelp rest epochNodes)
+
+
+viewLeaf : Array.Array Frame -> Html Int
+viewLeaf frames =
+  div [] (Array.foldl ((::) << viewFrame) [] frames)
+
+
+viewFrame : Frame -> Html Int
+viewFrame frame =
+  div
+    [ onClick frame.timestamp ]
+    [ text (toString frame.message)
+    ]
