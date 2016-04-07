@@ -42,7 +42,11 @@ type History =
 type alias Frame =
   { message : ElmValue
   , timestamp : Int
+  , source : Source
   }
+
+
+type Source = User | Cmd Int | Sub
 
 
 size : History -> Int
