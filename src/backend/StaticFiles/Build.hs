@@ -1,6 +1,6 @@
 {-# OPTIONS_GHC -Wall #-}
 module StaticFiles.Build
-    ( favicon
+    ( favicon, waiting
     , navigationPage
     )
     where
@@ -20,6 +20,11 @@ import System.Process (readProcessWithExitCode)
 favicon :: IO BS.ByteString
 favicon =
   BS.readFile ("assets" </> "favicon.ico")
+
+
+waiting :: IO BS.ByteString
+waiting =
+  BS.readFile ("assets" </> "waiting.gif")
 
 
 

@@ -4,6 +4,7 @@ module StaticFiles
     ( index, indexPath
     , notFound, notFoundPath
     , favicon, faviconPath
+    , waiting, waitingPath
     )
     where
 
@@ -21,6 +22,11 @@ import qualified StaticFiles.Build as Build
 faviconPath :: FilePath
 faviconPath =
   "_reactor/favicon.ico"
+
+
+waitingPath :: FilePath
+waitingPath =
+  "_reactor/waiting.gif"
 
 
 indexPath :: FilePath
@@ -50,4 +56,9 @@ notFound =
 favicon :: BS.ByteString
 favicon =
   $(bsToExp =<< runIO Build.favicon)
+
+
+waiting :: BS.ByteString
+waiting =
+  $(bsToExp =<< runIO Build.waiting)
 
