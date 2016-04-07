@@ -1,7 +1,16 @@
 {-# OPTIONS_GHC -Wall #-}
-module Generate.Help (makeHtml) where
+{-# LANGUAGE OverloadedStrings #-}
+module Generate.Help (makeHtml, makeCodeHtml) where
 
 import qualified Data.ByteString.Char8 as BSC
+import Text.Blaze.Html5 ((!))
+import qualified Text.Blaze.Html5 as H
+import qualified Text.Blaze.Html5.Attributes as A
+import qualified Text.Highlighting.Kate as Kate
+
+
+
+-- PAGES
 
 
 makeHtml :: String -> String -> String -> BSC.ByteString
@@ -35,3 +44,42 @@ makeHtml title jsFile initCode =
     , "</html>"
     ]
 
+
+
+-- CODE
+
+
+makeCodeHtml :: String -> String -> String -> H.Html
+makeCodeHtml title lang code =
+  do  H.head $ do
+        H.title $ H.toHtml title
+        H.style ! A.type_ "text/css" $ H.toHtml codeStyle
+        H.style ! A.type_ "text/css" $ H.toHtml (Kate.styleToCss Kate.haddock)
+      H.body $ do
+        H.toHtml $ Kate.formatHtmlBlock formatOptions (Kate.highlightAs lang code)
+
+
+formatOptions :: Kate.FormatOptions
+formatOptions =
+  Kate.FormatOptions
+    { Kate.numberLines = True
+    , Kate.startNumber = 1
+    , Kate.lineAnchors = False
+    , Kate.titleAttributes = False
+    , Kate.codeClasses = []
+    , Kate.containerClasses = []
+    }
+
+
+codeStyle :: String
+codeStyle =
+  unlines
+    [ "@import url(http://fonts.googleapis.com/css?family=Source+Code+Pro);"
+    , "html, head, body {"
+    , "  margin: 0;"
+    , "  height: 100%;"
+    , "}"
+    , "body {"
+    , "  font-family: 'Source Code Pro', monospace;"
+    , "}"
+    ]

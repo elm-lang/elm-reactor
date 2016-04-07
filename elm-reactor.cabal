@@ -40,7 +40,7 @@ source-repository head
 
 Executable elm-reactor
   ghc-options:
-    -threaded -O2 -W -Werror
+    -threaded -O2 -W
 
   hs-source-dirs:
     src/backend
@@ -71,6 +71,7 @@ Executable elm-reactor
     file-embed,
     filepath,
     fsnotify >= 0.2,
+    highlighting-kate,
     mtl,
     process,
     snap-core,

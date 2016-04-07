@@ -18,9 +18,11 @@ import Snap.Http.Server
 import Snap.Util.FileServe
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html.Renderer.Utf8 as Blaze
+import qualified Text.Highlighting.Kate as Kate
 
 import qualified StaticFiles
 import qualified Compile
+import qualified Generate.Help as Generate
 import qualified Generate.Index as Index
 import qualified Generate.NotFound as NotFound
 import qualified Socket
@@ -75,11 +77,10 @@ main =
   do  cargs <- cmdArgs flags
       putStrLn startupMessage
       httpServe (config (BSC.pack (address cargs)) (port cargs)) $
-          serveElm
-          <|> route [ ("socket", socket) ]
-          <|> serveDirectoryWith directoryConfig "."
-          <|> serveAssets
-          <|> error404
+        serveFiles
+        <|> route [ ("socket", socket) ]
+        <|> serveDirectoryWith directoryConfig "."
+        <|> error404
 
 
 startupMessage :: String
@@ -121,18 +122,21 @@ error404 =
       writeBS NotFound.html
 
 
--- SERVE ELM CODE
 
-serveElm :: Snap ()
-serveElm =
-  let despace = map (\c -> if c == '+' then ' ' else c) in
-  do  file <- despace . BSC.unpack . rqPathInfo <$> getRequest
-      debugParam <- getParam "debug"
-      let debug = isJust debugParam
-      exists <- liftIO $ doesFileExist file
-      guard (exists && takeExtension file == ".elm")
-      result <- liftIO $ Compile.toHtml debug file
-      serveHtml result
+-- SERVE FILES
+
+
+serveFiles :: Snap ()
+serveFiles =
+  let
+    despace =
+      map (\c -> if c == '+' then ' ' else c)
+  in
+    do  file <- despace . BSC.unpack . rqPathInfo <$> getRequest
+        serveAssets file
+          <|> do  exists <- liftIO $ doesFileExist file
+                  guard exists
+                  serveElm file <|> serveCode file
 
 
 serveHtml :: MonadSnap m => H.Html -> m ()
@@ -141,18 +145,57 @@ serveHtml html =
       writeBuilder (Blaze.renderHtmlBuilder html)
 
 
+
+-- SERVE HIGHLIGHTED CODE
+
+
+serveCode :: FilePath -> Snap ()
+serveCode file =
+  let
+    languages =
+      Kate.languagesByFilename (takeFileName file)
+  in
+    case languages of
+      [] ->
+        pass
+
+      lang : _ ->
+        do  code <- liftIO (readFile file)
+            serveHtml $ Generate.makeCodeHtml ('~' : '/' : file) lang code
+
+
+
+-- SERVE ELM
+
+
+serveElm :: FilePath -> Snap ()
+serveElm file =
+  pass
+
+{-
+  do  guard (takeExtension file == ".elm")
+
+      debugParam <- getParam "debug"
+      let debug = isJust debugParam
+
+      result <- liftIO $ Compile.toHtml debug file
+      serveHtml result
+-}
+
+
+
 -- SERVE STATIC ASSETS
 
-serveAssets :: Snap ()
-serveAssets =
-  do  file <- BSC.unpack . rqPathInfo <$> getRequest
-      case List.lookup file staticAssets of
-        Nothing ->
-          pass
 
-        Just (content, mimeType) ->
-          do  modifyResponse (setContentType $ BSC.pack (mimeType ++ ";charset=utf-8"))
-              writeBS content
+serveAssets :: FilePath -> Snap ()
+serveAssets file =
+  case List.lookup file staticAssets of
+    Nothing ->
+      pass
+
+    Just (content, mimeType) ->
+      do  modifyResponse (setContentType $ BSC.pack (mimeType ++ ";charset=utf-8"))
+          writeBS content
 
 
 type MimeType =
@@ -163,6 +206,8 @@ staticAssets :: [(FilePath, (BSC.ByteString, MimeType))]
 staticAssets =
     [ StaticFiles.faviconPath ==>
         (StaticFiles.favicon, "image/x-icon")
+    , StaticFiles.waitingPath ==>
+        (StaticFiles.waiting, "image/gif")
     , StaticFiles.indexPath ==>
         (StaticFiles.index, "application/javascript")
     , StaticFiles.notFoundPath ==>
