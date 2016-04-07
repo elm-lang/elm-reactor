@@ -2,7 +2,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Compile (toHtml, toJson) where
 
-import Control.Monad (when)
 import qualified Data.Text as Text
 import qualified Text.Blaze as Blaze
 import Text.Blaze.Html5 ((!))
@@ -64,19 +63,16 @@ toJson filePath =
 
 -- TO HTML
 
-toHtml :: Bool -> FilePath -> IO H.Html
-toHtml debug filePath =
+toHtml :: FilePath -> IO H.Html
+toHtml filePath =
   do  sourceCode <- readFile filePath
       result <- compile filePath
       case (,) <$> getName filePath sourceCode <*> result of
         Right (name, code) ->
             return $ htmlDocument (Module.nameToString name) $
                 do  H.script $ Blaze.preEscapedToMarkup code
-
-                    when debug $ do
-                        script "/_reactor/debug-agent.js"
-
-                    H.script $ Blaze.preEscapedToMarkup (initialize debug name filePath)
+                    H.script $ Blaze.preEscapedToMarkup $
+                      "Elm." ++ Module.nameToString name ++ ".fullscreen();"
 
         Left errMsg ->
             return $ htmlDocument "Oops!" $
@@ -95,11 +91,6 @@ htmlDocument title content =
       content
 
 
-script :: FilePath -> H.Html
-script path =
-    H.script ! A.src (H.toValue path) $ ""
-
-
 myStyle :: Text.Text
 myStyle =
     "html, head, body { padding:0; margin:0; }\n\
@@ -109,18 +100,3 @@ myStyle =
     \a:active { text-decoration: none; }\n\
     \a:hover { text-decoration: underline; color: rgb(234,21,122); }\n\
     \html,body { height: 100%; margin: 0px; }\n"
-
-
-initialize :: Bool -> Module.Raw -> FilePath -> String
-initialize debug name filePath =
-  let
-    moduleName =
-      Module.nameToString name
-  in
-      "var runningElmModule =\n    " ++
-      case debug of
-        True ->
-          "Elm.fullscreenDebug('" ++ moduleName ++ "', '" ++ filePath ++ "');"
-
-        False ->
-          "Elm.fullscreen(Elm." ++ moduleName ++ ");"

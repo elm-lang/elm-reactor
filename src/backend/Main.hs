@@ -190,17 +190,13 @@ getSubExts fullExtension =
 
 serveElm :: FilePath -> Snap ()
 serveElm file =
-  pass
-
-{-
   do  guard (takeExtension file == ".elm")
 
       debugParam <- getParam "debug"
       let debug = isJust debugParam
 
-      result <- liftIO $ Compile.toHtml debug file
+      result <- liftIO $ Compile.toHtml file
       serveHtml result
--}
 
 
 
