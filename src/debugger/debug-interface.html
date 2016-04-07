@@ -2,19 +2,20 @@
 <html>
 	<head>
 		<title>Debugger</title>
-	    <link rel='icon' href='/_reactor/favicon.ico' sizes='32x32'>
+		<link rel='icon' href='/_reactor/favicon.ico' sizes='32x32'>
 		<script src="/_reactor/debug-interface.js"></script>
 	</head>
 	<body style="margin: 0;">
 		<script type="text/javascript">
-			var ports = Elm.fullscreen(Elm.Main, {
-				windowLocationHost: window.location.host,
-				scrolledToEndOfLogs: true,
+			var elmDebugger = Elm.Customized_Debugger.fullscreen({
+				host: window.location.host,
 				moduleName: window.opener.MODULE_INFO.moduleName,
 				fileName: window.opener.MODULE_INFO.fileName
-			}).ports;
+			});
 
-			ports.autoscrollLog.subscribe(function(selector) {
+			var foreigns = elmDebugger.foreign;
+
+			foreigns.scroll.subscribe(function(selector) {
 				var log = document.querySelector(selector);
 
 				requestAnimationFrame(function() {
@@ -22,21 +23,11 @@
 				});
 			});
 
-			ports.logScrollCheck.subscribe(function(selector) {
+			foreigns.askIfScrolled.subscribe(function(selector) {
 				var log = document.querySelector(selector);
 				var isAtEnd = log.scrollTop === log.scrollHeight - log.clientHeight;
 
-				ports.scrolledToEndOfLogs.send(isAtEnd);
-			});
-
-			ports.openFileChooser.subscribe(function(selector) {
-				var chooser = document.querySelector(selector);
-				var clickEvent = document.createEvent("MouseEvents");
-
-				clickEvent.initMouseEvent("click", true, true, window, 1, 0, 0, 0, 0,
-					false, false, false, false, 0, null);
-
-			  chooser.dispatchEvent(clickEvent);
+				foreigns.tellIfScrolled.send(isAtEnd);
 			});
 		</script>
 	</body>
