@@ -16,16 +16,18 @@ import qualified StaticFiles
 
 makeDebuggerHtml :: String -> String -> String -> H.Html
 makeDebuggerHtml title host file =
-  do  H.head $ do
-        H.title $ H.toHtml title
-        H.script ! A.src debuggerPath $ ""
-        H.style ! A.type_ "text/css" $ H.toHtml debuggerStyle
+  H.docTypeHtml $ do
+    H.head $ do
+      H.meta ! A.charset "UTF-8"
+      H.title $ H.toHtml title
+      H.script ! A.src debuggerPath $ ""
+      H.style ! A.type_ "text/css" $ H.toHtml debuggerStyle
 
-      H.body $ do
-        return ()
+    H.body $ do
+      return ()
 
-      H.script $ H.preEscapedToMarkup $
-        "Elm.Debugger.fullscreen({ flags: null, file: '" ++ file ++ "', host: '" ++ host ++ "' });"
+    H.script $ H.preEscapedToMarkup $
+      "Elm.Debugger.fullscreen({ flags: null, file: '" ++ file ++ "', host: '" ++ host ++ "' });"
 
 
 debuggerPath :: H.AttributeValue
@@ -86,16 +88,18 @@ makeHtml title jsFile initCode =
 
 makeCodeHtml :: String -> String -> H.Html
 makeCodeHtml title code =
-  do  H.head $ do
-        H.title $ H.toHtml title
-        H.style ! A.type_ "text/css" $ H.toHtml codeStyle
+  H.docTypeHtml $ do
+    H.head $ do
+      H.meta ! A.charset "UTF-8"
+      H.title $ H.toHtml title
+      H.style ! A.type_ "text/css" $ H.toHtml codeStyle
 
-        H.link ! A.rel "stylesheet" ! A.href "//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/styles/default.min.css"
-        H.script ! A.src "//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/highlight.min.js" $ ""
-        H.script $ "if (hljs) { hljs.initHighlightingOnLoad(); }"
+      H.link ! A.rel "stylesheet" ! A.href "//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/styles/default.min.css"
+      H.script ! A.src "//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/highlight.min.js" $ ""
+      H.script $ "if (hljs) { hljs.initHighlightingOnLoad(); }"
 
-      H.body $ do
-        H.pre $ H.code $ H.toHtml code
+    H.body $ do
+      H.pre $ H.code $ H.toHtml code
 
 
 codeStyle :: String
