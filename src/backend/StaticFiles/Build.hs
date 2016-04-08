@@ -1,14 +1,14 @@
 {-# OPTIONS_GHC -Wall #-}
 module StaticFiles.Build
     ( favicon, waiting
-    , navigationPage
+    , compile
     )
     where
 
 import qualified Data.ByteString as BS
 import System.Directory (removeFile)
 import System.Exit (ExitCode(..), exitFailure)
-import System.FilePath ((</>), replaceExtension)
+import System.FilePath ((</>), (<.>), takeBaseName)
 import System.IO (hPutStrLn, stderr)
 import System.Process (readProcessWithExitCode)
 
@@ -28,23 +28,23 @@ waiting =
 
 
 
--- COMPILE ELM CODE
+-- COMPILE TO JS
 
 
-navigationPage :: FilePath -> IO BS.ByteString
-navigationPage fileName =
+compile :: FilePath -> IO BS.ByteString
+compile fileName =
   let
     tempFile =
-      "temp-" ++ replaceExtension fileName "js"
+      "temp-orary-" ++ takeBaseName fileName <.> "js"
   in
-    do  compile ("src" </> "pages" </> fileName) tempFile
+    do  elmMake fileName tempFile
         result <- BS.readFile tempFile
         seq (BS.length result) (removeFile tempFile)
         return result
 
 
-compile :: FilePath -> FilePath -> IO ()
-compile source target =
+elmMake :: FilePath -> FilePath -> IO ()
+elmMake source target =
   do  (exitCode, out, err) <-
           readProcessWithExitCode
               "elm-make"
