@@ -71,7 +71,6 @@ Executable elm-reactor
     file-embed,
     filepath,
     fsnotify >= 0.2,
-    highlighting-kate,
     mtl,
     process,
     snap-core,

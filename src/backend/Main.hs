@@ -19,7 +19,6 @@ import Snap.Http.Server
 import Snap.Util.FileServe
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html.Renderer.Utf8 as Blaze
-import qualified Text.Highlighting.Kate as Kate
 
 import qualified StaticFiles
 import qualified Compile
@@ -137,7 +136,7 @@ serveFiles host =
       serveAssets file
         <|> do  exists <- liftIO $ doesFileExist file
                 guard exists
-                serveElm host file <|> serveFileWithHighlight file
+                serveElm host file <|> serveFilePretty file
 
 
 serveHtml :: MonadSnap m => H.Html -> m ()
@@ -150,30 +149,18 @@ serveHtml html =
 -- SERVE FILES + CODE HIGHLIGHTING
 
 
-serveFileWithHighlight :: FilePath -> Snap ()
-serveFileWithHighlight file =
-  let
-    languages =
-      Kate.languagesByFilename (takeFileName file)
-  in
-    case languages of
-      [] ->
-        serveFileWithoutDownload file
-
-      lang : _ ->
-        do  code <- liftIO (readFile file)
-            serveHtml $ Generate.makeCodeHtml ('~' : '/' : file) lang code
-
-
-serveFileWithoutDownload :: FilePath -> Snap ()
-serveFileWithoutDownload file =
+serveFilePretty :: FilePath -> Snap ()
+serveFilePretty file =
   let
     possibleExtensions =
       getSubExts (takeExtensions file)
   in
     case mconcat (map (flip HashMap.lookup defaultMimeTypes) possibleExtensions) of
       Nothing ->
-        serveFileAs "text/plain" file
+        serveCode file
+
+      Just mimeType | BSC.isPrefixOf "text" mimeType ->
+        serveCode file
 
       Just mimeType ->
         serveFileAs mimeType file
@@ -186,6 +173,12 @@ getSubExts fullExtension =
 
   else
     fullExtension : getSubExts (takeExtensions (drop 1 fullExtension))
+
+
+serveCode :: String -> Snap ()
+serveCode file =
+  do  code <- liftIO (readFile file)
+      serveHtml $ Generate.makeCodeHtml ('~' : '/' : file) code
 
 
 

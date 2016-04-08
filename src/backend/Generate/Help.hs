@@ -6,7 +6,6 @@ import qualified Data.ByteString.Char8 as BSC
 import Text.Blaze.Html5 ((!))
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
-import qualified Text.Highlighting.Kate as Kate
 
 import qualified StaticFiles
 
@@ -85,26 +84,18 @@ makeHtml title jsFile initCode =
 -- CODE
 
 
-makeCodeHtml :: String -> String -> String -> H.Html
-makeCodeHtml title lang code =
+makeCodeHtml :: String -> String -> H.Html
+makeCodeHtml title code =
   do  H.head $ do
         H.title $ H.toHtml title
         H.style ! A.type_ "text/css" $ H.toHtml codeStyle
-        H.style ! A.type_ "text/css" $ H.toHtml (Kate.styleToCss Kate.haddock)
+
+        H.link ! A.rel "stylesheet" ! A.href "//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/styles/default.min.css"
+        H.script ! A.src "//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/highlight.min.js" $ ""
+        H.script $ "if (hljs) { hljs.initHighlightingOnLoad(); }"
+
       H.body $ do
-        H.toHtml $ Kate.formatHtmlBlock formatOptions (Kate.highlightAs lang code)
-
-
-formatOptions :: Kate.FormatOptions
-formatOptions =
-  Kate.FormatOptions
-    { Kate.numberLines = True
-    , Kate.startNumber = 1
-    , Kate.lineAnchors = False
-    , Kate.titleAttributes = False
-    , Kate.codeClasses = []
-    , Kate.containerClasses = []
-    }
+        H.pre $ H.code $ H.toHtml code
 
 
 codeStyle :: String
