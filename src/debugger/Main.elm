@@ -1,24 +1,59 @@
 module Main exposing (..) -- where
 
+import Html exposing (..)
+import Html.App as Html
+import Html.Attributes exposing (..)
+
+import SideBar as SB
 import History
 import UserProgram
+
+
+
+main : Program Setup
+main =
+  Html.program
+    { init = init
+    , update = update
+    , view = view
+    , subscriptions = subscriptions
+    }
 
 
 
 -- MODEL
 
 
-type alias Model =
-  { program : UserProgram
-  , history : History
-  , status : Status
-  , userModel : ElmValue
+type alias Model
+  { setup : Setup
+  , state : State
   }
 
 
-type Status
-  = Paused Int
-  | Playing
+type State
+  = Loading
+  | Error (Maybe Session)
+  | Playing Session
+  | Paused Int Session
+
+
+type alias Session =
+  { program : UserProgram
+  , history : History
+  , currentUserModel : ElmValue
+  }
+
+
+type alias Setup =
+  { flags : Json.Value
+  , file : String
+  , host : String
+  }
+
+
+init : Setup -> (Model, Cmd Msg)
+init setup =
+  ( Model setup Loading, Cmd.none )
 
 
 
@@ -26,9 +61,14 @@ type Status
 
 
 type Msg
-  = UserMsg ElmValue
-  | ControlsMsg Controls.Msg
+  = UserMessage History.Source ElmValue
+  | Controls SB.Msg
   | Blocked
+
+
+update : Msg -> Model -> (Model, Cmd Msg)
+update msg model =
+  (model, Cmd.none)
 
 
 
@@ -50,14 +90,21 @@ subscriptions model =
 view : Model -> Html Msg
 view model =
   div [ style outerDivStyles ] <|
-    case model.status of
-      Playing ->
-        [ program.view model.userModel
+    case model.state of
+      Loading ->
+        [ loadingMessage
         ]
 
-      Paused time ->
-        [ program.view (History.timeTravel time model.history)
-        , blocker
+      Error maybeSession ->
+        [
+        ]
+
+      Playing session ->
+        [
+        ]
+
+      Paused time session ->
+        [ blocker
         ]
 
 
@@ -66,6 +113,33 @@ outerDivStyles =
   [ "display" => "block"
   , "position" => "relative"
   ]
+
+
+
+-- LOADING
+
+
+loadingMessage : Html msg
+loadingMessage =
+  div
+    [ style
+        [ "width" => "100%"
+        , "height" => "100%"
+        , "display" => "flex"
+        , "flex-direction" => "column"
+        , "justify-content" => "center"
+        , "align-items" => "center"
+        , "color" => "#9A9A9A"
+        ]
+    ]
+    [ div [ style ["font-size" => "3em"] ] [ text "Your code is compiling..." ]
+    , img [ src "_reactor/waiting.gif" ] []
+    , div [ style ["font-size" => "1em"] ] [ text "With new projects, I need a bunch of extra time to download packages." ]
+    ]
+
+
+
+-- PAUSED
 
 
 blocker : Html msg
