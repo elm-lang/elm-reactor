@@ -1,6 +1,6 @@
 {-# OPTIONS_GHC -Wall #-}
 module StaticFiles.Build
-    ( favicon, waiting
+    ( favicon, waiting, debuggerFooter
     , compile
     )
     where
@@ -25,6 +25,11 @@ favicon =
 waiting :: IO BS.ByteString
 waiting =
   BS.readFile ("assets" </> "waiting.gif")
+
+
+debuggerFooter :: IO BS.ByteString
+debuggerFooter =
+  BS.readFile ("src" </> "debugger" </> "debugger-footer.js")
 
 
 

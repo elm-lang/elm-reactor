@@ -62,7 +62,11 @@ notFound =
 
 debugger :: BS.ByteString
 debugger =
-  $(bsToExp =<< runIO (Build.compile ("src" </> "debugger" </> "Debugger.elm")))
+  $(bsToExp =<< runIO (
+    BS.append
+      <$> Build.compile ("src" </> "debugger" </> "Debugger.elm")
+      <*> Build.debuggerFooter
+  ))
 
 
 favicon :: BS.ByteString
