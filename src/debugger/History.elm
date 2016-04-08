@@ -1,6 +1,7 @@
 module History exposing
   ( History
   , Frame
+  , Source(..)
   , size
   , record
   , timeTravel
@@ -10,7 +11,8 @@ module History exposing
   -- where
 
 
-import Html exposing (div, text)
+import Array
+import Html exposing (Html, div, text)
 import Html.Events exposing (onClick)
 import Html.Lazy exposing (lazy)
 import UserProgram exposing (ElmValue, UserProgram)
@@ -86,7 +88,7 @@ insert epoch tree =
 getHeight : HistoryTree -> Int
 getHeight tree =
   case tree of
-    Leaf ->
+    Leaf _ ->
       0
 
     Node height _ _ ->
@@ -172,11 +174,14 @@ partialStep userProgram frame ((model, framesRemaining) as result) =
 -- REBUILD CACHE
 
 
-rebuildCache : UserProgram -> History -> History
-rebuildCache userProgram (History history) =
+rebuildCache : ElmValue -> UserProgram -> History -> History
+rebuildCache flags userProgram (History history) =
   let
+    initialModel =
+      fst (userProgram.init flags)
+
     (tree, model) =
-      rebuildCacheHelp userProgram history.tree
+      rebuildCacheHelp userProgram history.tree initialModel
   in
     History
       { tree = tree

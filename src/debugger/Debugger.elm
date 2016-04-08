@@ -3,16 +3,17 @@ module Debugger exposing (main) -- where
 import Html exposing (..)
 import Html.App as Html
 import Html.Attributes exposing (..)
+import Html.Events exposing (on)
+import Json.Decode as Json
 
-import SideBar as SB
-import History
-import UserProgram
+import History exposing (History)
+import UserProgram exposing (ElmValue, UserProgram)
 
 
 
 main : Program Setup
 main =
-  Html.program
+  Html.programWithFlags
     { init = init
     , update = update
     , view = view
@@ -24,7 +25,7 @@ main =
 -- MODEL
 
 
-type alias Model
+type alias Model =
   { setup : Setup
   , state : State
   }
@@ -62,7 +63,6 @@ init setup =
 
 type Msg
   = UserMessage History.Source ElmValue
-  | Controls SB.Msg
   | Blocked
 
 
@@ -130,10 +130,11 @@ loadingMessage =
         , "justify-content" => "center"
         , "align-items" => "center"
         , "color" => "#9A9A9A"
+        , "font-family" => "Source Sans Pro"
         ]
     ]
-    [ div [ style ["font-size" => "3em"] ] [ text "Your code is compiling..." ]
-    , img [ src "_reactor/waiting.gif" ] []
+    [ div [ style ["font-size" => "3em"] ] [ text "Building your project!" ]
+    , img [ src "/_reactor/waiting.gif" ] []
     , div [ style ["font-size" => "1em"] ] [ text "With new projects, I need a bunch of extra time to download packages." ]
     ]
 
@@ -142,7 +143,7 @@ loadingMessage =
 -- PAUSED
 
 
-blocker : Html msg
+blocker : Html Msg
 blocker =
   let
     variousEvents =

@@ -14,7 +14,7 @@ type alias ElmValue =
 
 
 type alias UserProgram =
-  { init : (ElmValue, Cmd ElmValue)
+  { init : ElmValue -> (ElmValue, Cmd ElmValue)
   , step : ElmValue -> ElmValue -> (ElmValue, Cmd ElmValue)
   , subs : ElmValue -> Sub ElmValue
   , view : ElmValue -> Html ElmValue
