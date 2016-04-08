@@ -31,6 +31,5 @@ sendHotSwap watchedFile connection _ =
 
 loopForever :: IO ()
 loopForever =
-  do
-    threadDelay (10 * 1000000) -- 10 seconds
-    loopForever
+  do  threadDelay (10 * 1000000) -- 10 seconds
+      loopForever
