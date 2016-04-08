@@ -1,4 +1,4 @@
-module Main exposing (..) -- where
+module Debugger exposing (main) -- where
 
 import Html exposing (..)
 import Html.App as Html
