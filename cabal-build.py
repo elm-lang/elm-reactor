@@ -52,6 +52,6 @@ if mostRecent > prevMostRecent:
 
 ## RUN CABAL BUILD
 
-exitCode = os.system("cabal install")
+exitCode = os.system("cabal build")
 
 sys.exit(exitCode)
