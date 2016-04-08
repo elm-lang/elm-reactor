@@ -76,9 +76,13 @@ config bindSpec portNumber =
 main :: IO ()
 main =
   do  cargs <- cmdArgs flags
+
       putStrLn startupMessage
+
+      let host = "http://" ++ address cargs ++ ":" ++ show (port cargs)
+
       httpServe (config (BSC.pack (address cargs)) (port cargs)) $
-        serveFiles
+        serveFiles host
         <|> route [ ("socket", socket) ]
         <|> serveDirectoryWith directoryConfig "."
         <|> error404
@@ -108,7 +112,7 @@ socket =
     maybe error400 socketSnap =<< getParam "file"
   where
     socketSnap fileParam =
-         WSS.runWebSocketsSnap $ Socket.fileChangeApp $ BSC.unpack fileParam
+      WSS.runWebSocketsSnap $ Socket.fileChangeApp $ BSC.unpack fileParam
 
 
 error400 :: Snap ()
@@ -127,13 +131,13 @@ error404 =
 -- SERVE FILES
 
 
-serveFiles :: Snap ()
-serveFiles =
+serveFiles :: String -> Snap ()
+serveFiles host =
   do  file <- getSafePath
       serveAssets file
         <|> do  exists <- liftIO $ doesFileExist file
                 guard exists
-                serveElm file <|> serveFileWithHighlight file
+                serveElm host file <|> serveFileWithHighlight file
 
 
 serveHtml :: MonadSnap m => H.Html -> m ()
@@ -188,15 +192,17 @@ getSubExts fullExtension =
 -- SERVE ELM
 
 
-serveElm :: FilePath -> Snap ()
-serveElm file =
+serveElm :: String -> FilePath -> Snap ()
+serveElm host file =
   do  guard (takeExtension file == ".elm")
 
-      debugParam <- getParam "debug"
-      let debug = isJust debugParam
+      debug <- getParam "debug"
+      if isJust debug
+        then
+          serveHtml (Generate.makeDebuggerHtml ("~/" ++ file) host file)
 
-      result <- liftIO $ Compile.toHtml file
-      serveHtml result
+        else
+          serveHtml =<< liftIO (Compile.toHtml file)
 
 
 
@@ -228,6 +234,8 @@ staticAssets =
         (StaticFiles.index, "application/javascript")
     , StaticFiles.notFoundPath ==>
         (StaticFiles.notFound, "application/javascript")
+    , StaticFiles.debuggerPath ==>
+        (StaticFiles.debugger, "application/javascript")
     ]
 
 
