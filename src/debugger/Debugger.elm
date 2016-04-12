@@ -107,6 +107,8 @@ outerDivStyles : List (String, String)
 outerDivStyles =
   [ "display" => "block"
   , "position" => "relative"
+  , "width" => "100%"
+  , "height" => "100%"
   ]
 
 
