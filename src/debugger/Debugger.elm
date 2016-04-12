@@ -1,4 +1,4 @@
-module Debugger exposing (main) -- where
+port module Debugger exposing (..)
 
 import Html exposing (..)
 import Html.App as Html
@@ -11,9 +11,9 @@ import UserProgram exposing (ElmValue, UserProgram)
 
 
 
-main : Program Setup
+main : Program Never
 main =
-  Html.programWithFlags
+  Html.program
     { init = init
     , update = update
     , view = view
@@ -21,17 +21,14 @@ main =
     }
 
 
+port changes : (Json.Value -> msg) -> Sub msg
+
+
 
 -- MODEL
 
 
-type alias Model =
-  { setup : Setup
-  , state : State
-  }
-
-
-type State
+type Model
   = Loading
   | Error (Maybe Session)
   | Playing Session
@@ -45,16 +42,9 @@ type alias Session =
   }
 
 
-type alias Setup =
-  { flags : Json.Value
-  , file : String
-  , host : String
-  }
-
-
-init : Setup -> (Model, Cmd Msg)
-init setup =
-  ( Model setup Loading, Cmd.none )
+init : (Model, Cmd Msg)
+init =
+  ( Loading, Cmd.none )
 
 
 
@@ -64,11 +54,16 @@ init setup =
 type Msg
   = UserMessage History.Source ElmValue
   | Blocked
+  | Changes Json.Value
 
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
-  (model, Cmd.none)
+  case msg of
+    _ ->
+      ( Debug.log "model" model
+      , Cmd.none
+      )
 
 
 
@@ -77,7 +72,7 @@ update msg model =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-  Sub.none
+  changes Changes
 
 
 
@@ -90,7 +85,7 @@ subscriptions model =
 view : Model -> Html Msg
 view model =
   div [ style outerDivStyles ] <|
-    case model.state of
+    case model of
       Loading ->
         [ loadingMessage
         ]

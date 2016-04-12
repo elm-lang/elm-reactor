@@ -3,11 +3,28 @@ Elm.Debugger = function() {
 
 	var PrivateDebugger = Elm.Debugger;
 
-	function replaceForeigns(app)
+	function fullscreen(flags)
 	{
-		var privateForeign = app.foreign;
+		setupPorts(flags, PrivateDebugger.fullscreen());
+		return {};
+	}
 
-		privateForeign.scroll.subscribe(function(selector)
+	function embed(flags)
+	{
+		setupPorts(flags, PrivateDebugger.embed());
+		return {};
+	}
+
+	function setupPorts(flags, app)
+	{
+		setupSocket('ws://' + window.location.host + '/_changes/' + flags.file, function(message) {
+			app.ports.changes.send(message);
+		});
+
+
+		/* SCROLLING
+
+		app.ports.scroll.subscribe(function(selector)
 		{
 			var log = document.querySelector(selector);
 
@@ -16,34 +33,35 @@ Elm.Debugger = function() {
 			});
 		});
 
-		privateForeign.askIfScrolled.subscribe(function(selector)
+		app.ports.askIfScrolled.subscribe(function(selector)
 		{
 			var log = document.querySelector(selector);
 			var isAtEnd = log.scrollTop === log.scrollHeight - log.clientHeight;
 
-			privateForeign.tellIfScrolled.send(isAtEnd);
+			app.ports.tellIfScrolled.send(isAtEnd);
 		});
 
-		var newApp = {};
-		for (var key in app)
-		{
-			if (key === 'foreign')
-			{
-				continue;
-			}
-			newApp[key] = app[key];
-		}
-		return newApp;
+		*/
 	}
 
-	function fullscreen()
+	function setupSocket(url, callback, backoff)
 	{
-		return replaceForeigns(PrivateDebugger.fullscreen.apply(this, arguments));
-	}
+		var socket = new WebSocket(url);
 
-	function embed()
-	{
-		return replaceForeigns(PrivateDebugger.embed.apply(this, arguments));
+		socket.addEventListener("message", function(event) {
+			callback(event.data);
+		});
+
+		socket.addEventListener("open", function(event) {
+			backoff = undefined;
+		});
+
+		socket.addEventListener("close", function(event) {
+			backoff = (backoff || 1) * 2;
+			setTimeout(function() {
+				setupSocket(url, callback, backoff);
+			}, backoff);
+		});
 	}
 
 	return {
