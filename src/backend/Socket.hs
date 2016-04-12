@@ -1,35 +1,52 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# LANGUAGE OverloadedStrings #-}
-module Socket where
+module Socket (watchFile) where
 
-import Control.Monad.Trans (MonadIO(liftIO))
-import Control.Concurrent (threadDelay)
-import qualified Data.ByteString.Char8 as BSC
+import Control.Concurrent (forkFinally, threadDelay)
+import Control.Exception (SomeException, catch)
+import qualified Data.ByteString.Char8 as BS
 import qualified Network.WebSockets as WS
-import qualified System.FSNotify.Devel as NDevel
+import qualified System.FSNotify.Devel as Notify
 import qualified System.FSNotify as Notify
 
 import qualified Compile
 
 
-fileChangeApp :: FilePath -> WS.ServerApp
-fileChangeApp watchedFile pendingConnection =
+watchFile :: FilePath -> WS.ServerApp
+watchFile watchedFile pendingConnection =
   do  connection <- WS.acceptRequest pendingConnection
-      Notify.withManager $ \notifyManager ->
-        do  putStrLn $ "swapping initialized for " ++ watchedFile
-            _ <- NDevel.treeExtExists notifyManager "." "elm" (sendHotSwap watchedFile connection)
-            -- if we don't keep the thread alive, the above file watcher will die
-            loopForever
+
+      compileAndSend watchedFile connection
+
+      Notify.withManager $ \mgmt ->
+        do  stopListening <- Notify.treeExtAny mgmt "." ".elm" (\_ -> compileAndSend watchedFile connection)
+            tend connection
+            stopListening
 
 
-sendHotSwap :: FilePath -> WS.Connection -> FilePath -> IO ()
-sendHotSwap watchedFile connection _ =
-  do  result <- liftIO (Compile.toJson watchedFile)
-      putStrLn $ "swapped " ++ watchedFile
-      WS.sendTextData connection (BSC.pack result)
+compileAndSend :: FilePath -> WS.Connection -> IO ()
+compileAndSend watchedFile connection =
+  do  result <- Compile.toJson watchedFile
+      WS.sendTextData connection result
 
 
-loopForever :: IO ()
-loopForever =
-  do  threadDelay (10 * 1000000) -- 10 seconds
-      loopForever
+tend :: WS.Connection -> IO ()
+tend connection =
+  let
+    pinger :: Integer -> IO a
+    pinger n =
+      do  threadDelay (5 * 1000 * 1000)
+          WS.sendPing connection (BS.pack (show n))
+          pinger (n + 1)
+
+    receiver :: IO a
+    receiver =
+      do  _ <- WS.receiveDataMessage connection
+          receiver
+
+    shutdown :: SomeException -> IO ()
+    shutdown _ =
+      return ()
+  in
+    do  _pid <- forkFinally receiver (\_ -> return ())
+        pinger 1 `catch` shutdown
