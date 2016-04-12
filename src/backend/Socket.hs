@@ -2,7 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Socket (watchFile) where
 
-import Control.Concurrent (forkFinally, threadDelay)
+import Control.Concurrent (forkIO, threadDelay)
 import Control.Exception (SomeException, catch)
 import qualified Data.ByteString.Char8 as BS
 import qualified Network.WebSockets as WS
@@ -12,16 +12,18 @@ import qualified System.FSNotify as Notify
 import qualified Compile
 
 
-watchFile :: FilePath -> WS.ServerApp
+watchFile :: FilePath -> WS.PendingConnection -> IO ()
 watchFile watchedFile pendingConnection =
   do  connection <- WS.acceptRequest pendingConnection
 
-      compileAndSend watchedFile connection
+      let refresh = compileAndSend watchedFile connection
+
+      refresh
 
       Notify.withManager $ \mgmt ->
-        do  stopListening <- Notify.treeExtAny mgmt "." ".elm" (\_ -> compileAndSend watchedFile connection)
+        do  stop <- Notify.treeExtAny mgmt "." ".elm" (const refresh)
             tend connection
-            stopListening
+            stop
 
 
 compileAndSend :: FilePath -> WS.Connection -> IO ()
@@ -39,7 +41,7 @@ tend connection =
           WS.sendPing connection (BS.pack (show n))
           pinger (n + 1)
 
-    receiver :: IO a
+    receiver :: IO ()
     receiver =
       do  _ <- WS.receiveDataMessage connection
           receiver
@@ -48,5 +50,5 @@ tend connection =
     shutdown _ =
       return ()
   in
-    do  _pid <- forkFinally receiver (\_ -> return ())
+    do  _pid <- forkIO (receiver `catch` shutdown)
         pinger 1 `catch` shutdown
