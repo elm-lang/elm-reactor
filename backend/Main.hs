@@ -17,6 +17,7 @@ import System.FilePath
 import Snap.Core
 import Snap.Http.Server
 import Snap.Util.FileServe
+import GHC.IO.Encoding (setLocaleEncoding, utf8)
 
 import Index
 import qualified Compile
@@ -70,7 +71,8 @@ config bindSpec portNumber =
 -- | Set up the reactor.
 main :: IO ()
 main =
-  do  cargs <- cmdArgs flags
+  do  setLocaleEncoding utf8
+      cargs <- cmdArgs flags
       putStrLn startupMessage
       httpServe (config (BSC.pack (address cargs)) (port cargs)) $
           serveElm
