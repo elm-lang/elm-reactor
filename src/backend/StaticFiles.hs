@@ -65,16 +65,16 @@ debugger =
   $(bsToExp =<< runIO (
     BS.append
       <$> Build.compile ("src" </> "debugger" </> "Debugger.elm")
-      <*> Build.debuggerFooter
+      <*> BS.readFile ("src" </> "debugger" </> "debugger-footer.js")
   ))
 
 
 favicon :: BS.ByteString
 favicon =
-  $(bsToExp =<< runIO Build.favicon)
+  $(bsToExp =<< runIO (BS.readFile ("assets" </> "favicon.ico")))
 
 
 waiting :: BS.ByteString
 waiting =
-  $(bsToExp =<< runIO Build.waiting)
+  $(bsToExp =<< runIO (BS.readFile ("assets" </> "waiting.gif")))
 

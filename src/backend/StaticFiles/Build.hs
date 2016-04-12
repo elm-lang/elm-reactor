@@ -1,35 +1,15 @@
 {-# OPTIONS_GHC -Wall #-}
 module StaticFiles.Build
-    ( favicon, waiting, debuggerFooter
-    , compile
+    ( compile
     )
     where
 
 import qualified Data.ByteString as BS
 import System.Directory (removeFile)
 import System.Exit (ExitCode(..), exitFailure)
-import System.FilePath ((</>), (<.>), takeBaseName)
+import System.FilePath ((<.>), takeBaseName)
 import System.IO (hPutStrLn, stderr)
 import System.Process (readProcessWithExitCode)
-
-
-
--- READ STATIC FILES
-
-
-favicon :: IO BS.ByteString
-favicon =
-  BS.readFile ("assets" </> "favicon.ico")
-
-
-waiting :: IO BS.ByteString
-waiting =
-  BS.readFile ("assets" </> "waiting.gif")
-
-
-debuggerFooter :: IO BS.ByteString
-debuggerFooter =
-  BS.readFile ("src" </> "debugger" </> "debugger-footer.js")
 
 
 
