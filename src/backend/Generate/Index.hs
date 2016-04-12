@@ -1,9 +1,9 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# LANGUAGE OverloadedStrings #-}
-module Generate.Index (getInfo, toHtml) where
+module Generate.Index (getInfo, toHtml, getPkg) where
 
 import Control.Monad
-import Control.Monad.Except (liftIO, runExceptT, throwError)
+import Control.Monad.Except (ExceptT, liftIO, runExceptT, throwError)
 import Data.Aeson as Json
 import qualified Data.ByteString.Char8 as BSC
 import qualified Data.ByteString.Lazy.Char8 as LBSC
@@ -22,7 +22,9 @@ import qualified Generate.Help as Help
 import qualified StaticFiles
 
 
+
 -- INFO
+
 
 data Info = Info
     { _pwd :: [String]
@@ -41,7 +43,9 @@ data PackageInfo = PackageInfo
     }
 
 
+
 -- TO JSON
+
 
 instance ToJSON Info where
   toJSON info =
@@ -64,7 +68,9 @@ instance ToJSON PackageInfo where
       ]
 
 
+
 -- GENERATE HTML
+
 
 toHtml :: Info -> BSC.ByteString
 toHtml info@(Info pwd _ _ _ _) =
@@ -74,7 +80,9 @@ toHtml info@(Info pwd _ _ _ _) =
     ("Elm.Index.fullscreen(" ++ LBSC.unpack (Json.encode info) ++ ");")
 
 
+
 -- GET INFO FOR THIS LOCATION
+
 
 getInfo :: FilePath -> IO Info
 getInfo directory =
@@ -104,9 +112,7 @@ getPackageInfo :: IO (Maybe PackageInfo)
 getPackageInfo =
   fmap (either (const Nothing) Just) $ runExceptT $
     do
-        descExists <- liftIO (doesFileExist Paths.description)
-        when (not descExists) (throwError "file not found")
-        desc <- Desc.read Paths.description
+        desc <- getDescription
 
         solutionExists <- liftIO (doesFileExist Paths.solvedDependencies)
         when (not solutionExists) (throwError "file not found")
@@ -121,6 +127,20 @@ getPackageInfo =
           , _summary = Desc.summary desc
           , _dependencies = Map.toList publicSolution
           }
+
+
+getDescription :: ExceptT String IO Desc.Description
+getDescription =
+  do  descExists <- liftIO (doesFileExist Paths.description)
+      when (not descExists) (throwError "file not found")
+      Desc.read Paths.description
+
+
+getPkg :: IO Pkg.Name
+getPkg =
+  fmap
+    (either (const Pkg.dummyName) Desc.name)
+    (runExceptT getDescription)
 
 
 getDirectoryInfo :: FilePath -> IO ([FilePath], [(FilePath, Bool)])

@@ -14,25 +14,20 @@ import qualified StaticFiles
 -- DEBUGGER
 
 
-makeDebuggerHtml :: String -> String -> String -> H.Html
-makeDebuggerHtml title host file =
+makeDebuggerHtml :: String -> String -> H.Html
+makeDebuggerHtml title file =
   H.docTypeHtml $ do
     H.head $ do
       H.meta ! A.charset "UTF-8"
       H.title $ H.toHtml title
-      H.script ! A.src debuggerPath $ ""
+      H.script ! A.src (H.toValue ('/' : StaticFiles.debuggerPath)) $ ""
       H.style ! A.type_ "text/css" $ H.toHtml debuggerStyle
 
     H.body $ do
       return ()
 
     H.script $ H.preEscapedToMarkup $
-      "Elm.Debugger.fullscreen({ flags: null, file: '" ++ file ++ "', host: '" ++ host ++ "' });"
-
-
-debuggerPath :: H.AttributeValue
-debuggerPath =
-  H.toValue ('/' : StaticFiles.debuggerPath)
+      "Elm.Debugger.fullscreen({ file: '" ++ file ++ "' });"
 
 
 debuggerStyle :: String
@@ -57,7 +52,6 @@ makeHtml title jsFile initCode =
     , ""
     , "<head>"
     , "  <title>" ++ title ++ "</title>"
-    , "  <link rel='icon' href='/" ++ StaticFiles.faviconPath ++ "' sizes='32x32'>"
     , "  <script src=\"" ++ jsFile ++ "\"></script>"
     , "  <style>"
     , "    @import url(http://fonts.googleapis.com/css?family=Source+Sans+Pro:400,700,400italic,700italic|Source+Code+Pro);"

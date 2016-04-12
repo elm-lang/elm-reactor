@@ -2,7 +2,12 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Compile (toHtml, toJson) where
 
+import Data.Aeson ((.=))
+import qualified Data.Aeson as Json
+import qualified Data.ByteString.Lazy.Char8 as BS
 import qualified Data.Text as Text
+import qualified Data.Text.IO as Text
+import System.Directory (removeFile)
 import qualified Text.Blaze as Blaze
 import Text.Blaze.Html5 ((!))
 import qualified Text.Blaze.Html5 as H
@@ -10,74 +15,100 @@ import qualified Text.Blaze.Html5.Attributes as A
 
 import qualified Elm.Compiler as Compiler
 import qualified Elm.Compiler.Module as Module
+import qualified Elm.Package as Pkg
 import qualified Elm.Utils as Utils
+import qualified Generate.Index as GI
 
 
 -- ACTUALLY COMPILE STUFF
 
-compile :: FilePath -> IO (Either String String)
+
+compile :: FilePath -> IO (Either Json.Value (Text.Text, String))
 compile filePath =
-  do  result <- Utils.unwrappedRun "elm-make" [ "--yes", filePath, "--output=elm.js" ]
+  let
+    tempJsFile =
+      "it-is-safe-to-delete-this-file.js"
+  in
+  do  result <- Utils.unwrappedRun "elm-make" [ "--yes", filePath, "--report=json", "--output=" ++ tempJsFile ]
       case result of
         Left (Utils.MissingExe msg) ->
-          return (Left msg)
+          return $ Left (jsonString msg)
 
         Left (Utils.CommandFailed out err) ->
-          return (Left (out ++ err))
+          return $ Left (jsonValue (out ++ err) out)
 
         Right _ ->
-          do  code <- readFile "elm.js"
-              return (Right code)
+          do  code <- Text.readFile tempJsFile
+              removeFile tempJsFile
+              source <- readFile filePath
+              return $ Right $ (,) code $
+                case Compiler.parseDependencies source of
+                  Left _ ->
+                    error "impossible"
+
+                  Right (name, _) ->
+                    Module.nameToString name
 
 
-getName :: FilePath -> String -> Either String Module.Raw
-getName filePath sourceCode =
-  case Compiler.parseDependencies sourceCode of
-    Right (name, _deps) ->
-        Right name
 
-    Left errors ->
-        let
-          toString err =
-            Compiler.errorToString Compiler.dummyLocalizer filePath sourceCode err
-        in
-          Left (concatMap toString errors)
+jsonString :: String -> Json.Value
+jsonString string =
+  Json.String (Text.pack string)
+
+
+jsonValue :: String -> String -> Json.Value
+jsonValue backup json =
+  case Json.decode (BS.pack json) of
+    Just value ->
+      value
+
+    Nothing ->
+      jsonString backup
+
 
 
 -- TO JSON
 
-toJson :: FilePath -> IO String
-toJson filePath =
-  do  sourceCode <- readFile filePath
-      result <- compile filePath
-      case (,) <$> getName filePath sourceCode <*> result of
-        Right (name, code) ->
-          return $
-            "{ \"name\": " ++ show (Module.nameToString name) ++
-            ", \"code\": " ++ show code ++ " }"
 
-        Left err ->
-          return $
-            "{ \"error\": " ++ show ( err) ++ " }"
+toJson :: FilePath -> IO BS.ByteString
+toJson filePath =
+  do  result <- compile filePath
+      pkg <- GI.getPkg
+      return $ Json.encode $ Json.object $
+        case result of
+          Right (code, moduleName) ->
+            [ "pkg" .= pkg
+            , "code" .= injectHooks pkg moduleName code
+            ]
+
+          Left msg ->
+            [ "error" .= msg
+            ]
+
+
+injectHooks :: Pkg.Name -> String -> Text.Text -> Text.Text
+injectHooks pkg moduleName code =
+  code
+
 
 
 -- TO HTML
 
+
 toHtml :: FilePath -> IO H.Html
 toHtml filePath =
-  do  sourceCode <- readFile filePath
-      result <- compile filePath
-      case (,) <$> getName filePath sourceCode <*> result of
-        Right (name, code) ->
-            return $ htmlDocument (Module.nameToString name) $
+  do  result <- compile filePath
+      case result of
+        Right (code, name) ->
+            return $ htmlDocument name $
                 do  H.script $ Blaze.preEscapedToMarkup code
                     H.script $ Blaze.preEscapedToMarkup $
-                      "Elm." ++ Module.nameToString name ++ ".fullscreen();"
+                      "Elm." ++ name ++ ".fullscreen();"
 
         Left errMsg ->
             return $ htmlDocument "Oops!" $
                 H.pre ! A.style "margin: 0; padding: 8px;" $
-                  Blaze.toMarkup errMsg
+                  Blaze.unsafeLazyByteString (Json.encode errMsg)
 
 
 htmlDocument :: String -> H.Html -> H.Html
