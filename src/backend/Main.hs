@@ -10,6 +10,7 @@ import qualified Data.HashMap.Strict as HashMap
 import qualified Data.List as List
 import Data.Maybe (isJust)
 import qualified Data.ByteString.Char8 as BSC
+import GHC.IO.Encoding (setLocaleEncoding, utf8)
 import qualified Network.WebSockets.Snap as WSS
 import System.Console.CmdArgs
 import System.Directory
@@ -74,7 +75,8 @@ config bindSpec portNumber =
 -- | Set up the reactor.
 main :: IO ()
 main =
-  do  cargs <- cmdArgs flags
+  do  setLocaleEncoding utf8
+      cargs <- cmdArgs flags
 
       putStrLn startupMessage
 
