@@ -80,12 +80,11 @@ main =
 
       putStrLn startupMessage
 
-      let host = "http://" ++ address cargs ++ ":" ++ show (port cargs)
-
       httpServe (config (BSC.pack (address cargs)) (port cargs)) $
-        serveFiles host
-        <|> route [ ("socket", socket) ]
+        serveFiles
+        <|> route [ ("_changes", socket) ]
         <|> serveDirectoryWith directoryConfig "."
+        <|> serveAssets
         <|> error404
 
 
@@ -110,15 +109,10 @@ directoryConfig =
 
 socket :: Snap ()
 socket =
-    maybe error400 socketSnap =<< getParam "file"
-  where
-    socketSnap fileParam =
-      WSS.runWebSocketsSnap $ Socket.fileChangeApp $ BSC.unpack fileParam
-
-
-error400 :: Snap ()
-error400 =
-    modifyResponse $ setResponseStatus 400 "Bad Request"
+  do  file <- getSafePath
+      exists <- liftIO $ doesFileExist file
+      guard exists
+      WSS.runWebSocketsSnap (Socket.watchFile file)
 
 
 error404 :: Snap ()
@@ -132,13 +126,11 @@ error404 =
 -- SERVE FILES
 
 
-serveFiles :: String -> Snap ()
-serveFiles host =
+serveFiles :: Snap ()
+serveFiles =
   do  file <- getSafePath
-      serveAssets file
-        <|> do  exists <- liftIO $ doesFileExist file
-                guard exists
-                serveElm host file <|> serveFilePretty file
+      guard =<< liftIO (doesFileExist file)
+      serveElm file <|> serveFilePretty file
 
 
 serveHtml :: MonadSnap m => H.Html -> m ()
@@ -187,14 +179,14 @@ serveCode file =
 -- SERVE ELM
 
 
-serveElm :: String -> FilePath -> Snap ()
-serveElm host file =
+serveElm :: FilePath -> Snap ()
+serveElm file =
   do  guard (takeExtension file == ".elm")
 
       debug <- getParam "debug"
       if isJust debug
         then
-          serveHtml (Generate.makeDebuggerHtml ("~/" ++ file) host file)
+          serveHtml (Generate.makeDebuggerHtml ("~/" ++ file) file)
 
         else
           serveHtml =<< liftIO (Compile.toHtml file)
@@ -204,15 +196,16 @@ serveElm host file =
 -- SERVE STATIC ASSETS
 
 
-serveAssets :: FilePath -> Snap ()
-serveAssets file =
-  case List.lookup file staticAssets of
-    Nothing ->
-      pass
+serveAssets :: Snap ()
+serveAssets =
+  do  file <- getSafePath
+      case List.lookup file staticAssets of
+        Nothing ->
+          pass
 
-    Just (content, mimeType) ->
-      do  modifyResponse (setContentType $ BSC.pack (mimeType ++ ";charset=utf-8"))
-          writeBS content
+        Just (content, mimeType) ->
+          do  modifyResponse (setContentType $ BSC.pack (mimeType ++ ";charset=utf-8"))
+              writeBS content
 
 
 type MimeType =

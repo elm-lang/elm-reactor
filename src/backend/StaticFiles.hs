@@ -23,7 +23,7 @@ import qualified StaticFiles.Build as Build
 
 faviconPath :: FilePath
 faviconPath =
-  "_reactor/favicon.ico"
+  "favicon.ico"
 
 
 waitingPath :: FilePath
