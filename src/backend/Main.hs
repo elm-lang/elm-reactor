@@ -8,7 +8,6 @@ import Control.Monad (guard)
 import Control.Monad.Trans (MonadIO(liftIO))
 import qualified Data.HashMap.Strict as HashMap
 import qualified Data.List as List
-import Data.Maybe (isJust)
 import qualified Data.ByteString.Char8 as BSC
 import GHC.IO.Encoding (setLocaleEncoding, utf8)
 import qualified Network.WebSockets.Snap as WSS
@@ -184,11 +183,11 @@ serveElm file =
   do  guard (takeExtension file == ".elm")
 
       debug <- getParam "debug"
-      if isJust debug
-        then
+      case debug of
+        Just _ ->
           serveHtml (Generate.makeDebuggerHtml ("~/" ++ file) file)
 
-        else
+        Nothing ->
           serveHtml =<< liftIO (Compile.toHtml file)
 
 
