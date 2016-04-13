@@ -18,7 +18,16 @@ Elm.Debugger = function() {
 	function setupPorts(flags, app)
 	{
 		setupSocket('ws://' + window.location.host + '/_changes/' + flags.file, function(message) {
-			app.ports.changes.send(message);
+			var result = JSON.parse(message);
+
+			if ('error' in result)
+			{
+				app.ports.changes.send(result.error);
+				return;
+			}
+
+			eval(result.code);
+			app.ports.changes.send(elm_reactor_hook);
 		});
 
 

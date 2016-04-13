@@ -87,9 +87,30 @@ toJson filePath =
 
 
 injectHooks :: Pkg.Name -> String -> Text.Text -> Text.Text
-injectHooks pkg moduleName code =
-  code
+injectHooks (Pkg.Name user project) moduleName code =
+  let
+    (normalStuff, ending) =
+      Text.breakOnEnd "var Elm = {};" code
 
+    escape str =
+      map (\c -> if c == '-' || c == '.' then '_' else c) str
+
+    main =
+      Text.pack $
+        '_' : escape user
+        ++ "$" ++ escape project
+        ++ "$" ++ escape moduleName
+        ++ "$main"
+  in
+    Text.concat
+      [ normalStuff
+      , "this.elm_reactor_hook = {\n"
+      , "\tprogram: typeof ", main, " === 'undefined' ? null : _elm_lang$core$Native_Scheduler.mainToProgram('", Text.pack moduleName, "', ", main, "),\n"
+      , "\tmanagers: _elm_lang$core$Native_Scheduler.effectManagers\n"
+      , "};\n"
+      , "return;\n"
+      , ending
+      ]
 
 
 -- TO HTML
