@@ -218,12 +218,8 @@ fileDisplay : (String, Bool) -> Html msg
 fileDisplay (file, hasMain) =
   div [ style (blockStyles ++ boxItemStyles) ]
     (
-      a [ href file
-        ]
-        [ getIcon file
-        , text file
-        ]
-      :: elmFileLinks hasMain file
+      a [ href file ] [ getIcon file, text file ]
+      :: [] -- elmFileLinks hasMain file
     )
 
 

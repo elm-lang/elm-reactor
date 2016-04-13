@@ -181,7 +181,7 @@ serveCode file =
 serveElm :: FilePath -> Snap ()
 serveElm file =
   do  guard (takeExtension file == ".elm")
-
+{-
       debug <- getParam "debug"
       case debug of
         Just _ ->
@@ -189,6 +189,8 @@ serveElm file =
 
         Nothing ->
           serveHtml =<< liftIO (Compile.toHtml file)
+-}
+      serveHtml =<< liftIO (Compile.toHtml file)
 
 
 
