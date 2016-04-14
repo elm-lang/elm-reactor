@@ -110,6 +110,7 @@ elmIndexGenerator directory =
     writeBS "<title>"
     writeS title
     writeBS "</title>"
+    writeBs "<meta name='viewport' content='width=device-width, initial-scale=1'>"
     writeBS "<style type='text/css'>"
     writeBS indexStyle
     writeBS "</style></head><body>"
