@@ -1,9 +1,9 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# LANGUAGE TemplateHaskell #-}
 module StaticFiles
-    ( index, indexPath
+    ( errors
+    , index, indexPath
     , notFound, notFoundPath
-    , debugger, debuggerPath
     , favicon, faviconPath
     , waiting, waitingPath
     )
@@ -41,13 +41,13 @@ notFoundPath =
   "_reactor/notFound.js"
 
 
-debuggerPath :: FilePath
-debuggerPath =
-  "_reactor/debugger.js"
-
-
 
 -- RAW RESOURCES
+
+
+errors :: BS.ByteString
+errors =
+  $(bsToExp =<< runIO (Build.compile ("src" </> "pages" </> "Errors.elm")))
 
 
 index :: BS.ByteString
@@ -58,15 +58,6 @@ index =
 notFound :: BS.ByteString
 notFound =
   $(bsToExp =<< runIO (Build.compile ("src" </> "pages" </> "NotFound.elm")))
-
-
-debugger :: BS.ByteString
-debugger =
-  $(bsToExp =<< runIO (
-    BS.append
-      <$> Build.compile ("src" </> "debugger" </> "Debugger.elm")
-      <*> BS.readFile ("src" </> "debugger" </> "debugger-footer.js")
-  ))
 
 
 favicon :: BS.ByteString

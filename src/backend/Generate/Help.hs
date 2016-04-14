@@ -1,78 +1,43 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# LANGUAGE OverloadedStrings #-}
-module Generate.Help (makeHtml, makeCodeHtml, makeDebuggerHtml) where
+module Generate.Help (makeHtml, makeCodeHtml, makeElmHtml) where
 
-import qualified Data.ByteString.Char8 as BSC
 import Text.Blaze.Html5 ((!))
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
-
-import qualified StaticFiles
-
-
-
--- DEBUGGER
-
-
-makeDebuggerHtml :: String -> String -> H.Html
-makeDebuggerHtml title file =
-  H.docTypeHtml $ do
-    H.head $ do
-      H.meta ! A.charset "UTF-8"
-      H.title $ H.toHtml title
-      H.script ! A.src (H.toValue ('/' : StaticFiles.debuggerPath)) $ ""
-      H.style ! A.type_ "text/css" $ H.toHtml debuggerStyle
-
-    H.body $ do
-      return ()
-
-    H.script $ H.preEscapedToMarkup $
-      "Elm.Debugger.fullscreen({ file: '" ++ file ++ "' });"
-
-
-debuggerStyle :: String
-debuggerStyle =
-  unlines
-    [ "@import url(http://fonts.googleapis.com/css?family=Source+Sans+Pro|Source+Code+Pro);"
-    , "html, head, body {"
-    , "  margin: 0;"
-    , "  height: 100%;"
-    , "}"
-    ]
 
 
 
 -- PAGES
 
 
-makeHtml :: String -> String -> String -> BSC.ByteString
+makeHtml :: String -> String -> String -> H.Html
 makeHtml title jsFile initCode =
-  BSC.pack $ unlines $
-    [ "<html>"
-    , ""
-    , "<head>"
-    , "  <title>" ++ title ++ "</title>"
-    , "  <script src=\"" ++ jsFile ++ "\"></script>"
-    , "  <style>"
-    , "    @import url(http://fonts.googleapis.com/css?family=Source+Sans+Pro:400,700,400italic,700italic|Source+Code+Pro);"
-    , "    html, head, body {"
-    , "      margin: 0;"
-    , "      height: 100%;"
-    , "    }"
-    , "    body {"
-    , "      font-family: 'Source Sans Pro', 'Trebuchet MS', 'Lucida Grande', 'Bitstream Vera Sans', 'Helvetica Neue', sans-serif;"
-    , "      color: #293c4b;"
-    , "    }"
-    , "    a { color: #60B5CC; text-decoration: none; }"
-    , "    a:hover { text-decoration: underline; }"
-    , "  </style>"
-    , "</head>"
-    , ""
-    , "<body>"
-    , "  <script type=\"text/javascript\">" ++ initCode ++ "</script>"
-    , "</body>"
-    , ""
-    , "</html>"
+  H.docTypeHtml $ do
+    H.head $ do
+      H.meta ! A.charset "UTF-8"
+      H.title $ H.toHtml title
+      H.style ! A.type_ "text/css" $ normalStyle
+      H.script ! A.src (H.toValue jsFile) $ ""
+
+    H.body $ do
+      H.script $ H.preEscapedToMarkup initCode
+
+
+normalStyle :: H.Html
+normalStyle =
+  H.toHtml $ unlines $
+    [ "@import url(http://fonts.googleapis.com/css?family=Source+Sans+Pro|Source+Code+Pro);"
+    , "html, head, body {"
+    , "  margin: 0;"
+    , "  height: 100%;"
+    , "}"
+    , "body {"
+    , "  font-family: 'Source Sans Pro', 'Trebuchet MS', 'Lucida Grande', 'Bitstream Vera Sans', 'Helvetica Neue', sans-serif;"
+    , "  color: #293c4b;"
+    , "}"
+    , "a { color: #60B5CC; text-decoration: none; }"
+    , "a:hover { text-decoration: underline; }"
     ]
 
 
@@ -86,7 +51,7 @@ makeCodeHtml title code =
     H.head $ do
       H.meta ! A.charset "UTF-8"
       H.title $ H.toHtml title
-      H.style ! A.type_ "text/css" $ H.toHtml codeStyle
+      H.style ! A.type_ "text/css" $ codeStyle
 
       H.link ! A.rel "stylesheet" ! A.href "//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/styles/default.min.css"
       H.script ! A.src "//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/highlight.min.js" $ ""
@@ -96,11 +61,11 @@ makeCodeHtml title code =
       H.pre $ H.code $ H.toHtml code
 
 
-codeStyle :: String
+codeStyle :: H.Html
 codeStyle =
-  unlines
+  H.toHtml $ unlines $
     [ "@import url(http://fonts.googleapis.com/css?family=Source+Code+Pro);"
-    , "html, head, body {"
+    , "html, head, body, pre {"
     , "  margin: 0;"
     , "  height: 100%;"
     , "}"
@@ -108,3 +73,49 @@ codeStyle =
     , "  font-family: 'Source Code Pro', monospace;"
     , "}"
     ]
+
+
+
+-- ELM CODE
+
+
+makeElmHtml :: FilePath -> H.Html
+makeElmHtml filePath =
+  H.docTypeHtml $ do
+    H.head $ do
+      H.meta ! A.charset "UTF-8"
+      H.title $ H.toHtml ("~/" ++ filePath)
+      H.style ! A.type_ "text/css" $ elmStyle
+
+    H.body $ do
+      H.div ! A.style waitingStyle $ do
+        H.div ! A.style "font-size: 3em;" $ "Building your project!"
+        H.img ! A.src "/_reactor/waiting.gif"
+        H.div ! A.style "font-size: 1em" $ "With new projects, I need a bunch of extra time to download packages."
+
+    H.script ! A.src (H.toValue ("/_compile/" ++ filePath)) $ ""
+    H.script $ H.preEscapedToMarkup $ unlines $
+      [ "while (document.body.firstChild) {"
+      , "    document.body.removeChild(document.body.firstChild);"
+      , "}"
+      , "runElmProgram();"
+      ]
+
+
+elmStyle :: H.Html
+elmStyle =
+  H.toHtml $ unlines $
+    [ "@import url(http://fonts.googleapis.com/css?family=Source+Sans+Pro);"
+    , "html, head, body {"
+    , "  margin: 0;"
+    , "  height: 100%;"
+    , "}"
+    ]
+
+
+waitingStyle :: H.AttributeValue
+waitingStyle =
+  H.stringValue $
+    "width: 100%; height: 100%; display: flex; flex-direction: column;"
+    ++ " justify-content: center; align-items: center; color: #9A9A9A;"
+    ++ " font-family: 'Source Sans Pro';"

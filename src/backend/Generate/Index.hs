@@ -1,11 +1,10 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# LANGUAGE OverloadedStrings #-}
-module Generate.Index (getInfo, toHtml, getPkg) where
+module Generate.Index (toHtml, getInfo, getPkg) where
 
 import Control.Monad
 import Control.Monad.Except (ExceptT, liftIO, runExceptT, throwError)
 import Data.Aeson as Json
-import qualified Data.ByteString.Char8 as BSC
 import qualified Data.ByteString.Lazy.Char8 as LBSC
 import qualified Data.List as List
 import qualified Data.Map as Map
@@ -17,6 +16,7 @@ import qualified Elm.Package.Paths as Paths
 import qualified Elm.Package.Solution as S
 import System.Directory (doesDirectoryExist, doesFileExist, getDirectoryContents)
 import System.FilePath ((</>), splitDirectories, takeExtension)
+import qualified Text.Blaze.Html5 as H
 
 import qualified Generate.Help as Help
 import qualified StaticFiles
@@ -72,7 +72,7 @@ instance ToJSON PackageInfo where
 -- GENERATE HTML
 
 
-toHtml :: Info -> BSC.ByteString
+toHtml :: Info -> H.Html
 toHtml info@(Info pwd _ _ _ _) =
   Help.makeHtml
     (List.intercalate "/" ("~" : pwd))

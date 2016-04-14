@@ -81,6 +81,7 @@ main =
 
       httpServe (config (BSC.pack (address cargs)) (port cargs)) $
         serveFiles
+        <|> route [ ("_compile", compile) ]
         <|> route [ ("_changes", socket) ]
         <|> serveDirectoryWith directoryConfig "."
         <|> serveAssets
@@ -98,7 +99,7 @@ directoryConfig =
     customGenerator directory =
       do  info <- liftIO (Index.getInfo directory)
           modifyResponse $ setContentType "text/html; charset=utf-8"
-          writeBS (Index.toHtml info)
+          writeBuilder (Blaze.renderHtmlBuilder (Index.toHtml info))
   in
     fancyDirectoryConfig
       { indexFiles = []
@@ -106,11 +107,18 @@ directoryConfig =
       }
 
 
+compile :: Snap ()
+compile =
+  do  file <- getSafePath
+      guard =<< liftIO (doesFileExist file)
+      modifyResponse (setContentType "text/javascript")
+      writeBS =<< liftIO (Compile.toJavaScript file)
+
+
 socket :: Snap ()
 socket =
   do  file <- getSafePath
-      exists <- liftIO $ doesFileExist file
-      guard exists
+      guard =<< liftIO (doesFileExist file)
       WSS.runWebSocketsSnap (Socket.watchFile file)
 
 
@@ -118,7 +126,7 @@ error404 :: Snap ()
 error404 =
   do  modifyResponse $ setResponseStatus 404 "Not Found"
       modifyResponse $ setContentType "text/html; charset=utf-8"
-      writeBS NotFound.html
+      writeBuilder (Blaze.renderHtmlBuilder NotFound.html)
 
 
 
@@ -181,16 +189,7 @@ serveCode file =
 serveElm :: FilePath -> Snap ()
 serveElm file =
   do  guard (takeExtension file == ".elm")
-{-
-      debug <- getParam "debug"
-      case debug of
-        Just _ ->
-          serveHtml (Generate.makeDebuggerHtml ("~/" ++ file) file)
-
-        Nothing ->
-          serveHtml =<< liftIO (Compile.toHtml file)
--}
-      serveHtml =<< liftIO (Compile.toHtml file)
+      serveHtml (Generate.makeElmHtml file)
 
 
 
@@ -223,8 +222,6 @@ staticAssets =
         (StaticFiles.index, "application/javascript")
     , StaticFiles.notFoundPath ==>
         (StaticFiles.notFound, "application/javascript")
-    , StaticFiles.debuggerPath ==>
-        (StaticFiles.debugger, "application/javascript")
     ]
 
 

@@ -9,27 +9,16 @@ import qualified Network.WebSockets as WS
 import qualified System.FSNotify.Devel as Notify
 import qualified System.FSNotify as Notify
 
-import qualified Compile
 
 
 watchFile :: FilePath -> WS.PendingConnection -> IO ()
 watchFile watchedFile pendingConnection =
   do  connection <- WS.acceptRequest pendingConnection
 
-      let refresh = compileAndSend watchedFile connection
-
-      refresh
-
       Notify.withManager $ \mgmt ->
-        do  stop <- Notify.treeExtAny mgmt "." ".elm" (const refresh)
+        do  stop <- Notify.treeExtAny mgmt "." ".elm" print
             tend connection
             stop
-
-
-compileAndSend :: FilePath -> WS.Connection -> IO ()
-compileAndSend watchedFile connection =
-  do  result <- Compile.toJson watchedFile
-      WS.sendTextData connection result
 
 
 tend :: WS.Connection -> IO ()
