@@ -1,4 +1,8 @@
 dist
 assets/_reactor/debug.js
+assets/_reactor/index.js
 elm-stuff
 cabal.sandbox.config
+elm.js
+.cabal-sandbox/
+last-modified

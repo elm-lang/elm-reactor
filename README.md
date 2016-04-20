@@ -8,18 +8,20 @@ programs. Key features include:
   * [Time travel debugging][debug]
   * Compatible with any editor
 
-[hot-swapping]: http://elm-lang.org/blog/Interactive-Programming.elm
-[debug]: http://debug.elm-lang.org
+[hot-swapping]: http://elm-lang.org/blog/interactive-programming
+[debug]: http://elm-lang.org/blog/time-travel-made-easy
 
 This means you can get a great development experience whether you are using
 Sublime Text, emacs, vim, or whatever else to edit Elm code.
+
 
 ## Install
 
 Install [Elm Platform][platform]. This will install Elm Reactor and everything
 else it needs.
 
-[platform]: http://elm-lang.org/Install.elm
+[platform]: http://elm-lang.org/install
+
 
 ## Use
 
@@ -42,6 +44,7 @@ Click on any file to see what it looks like. For example, you can navigate to
 an Elm file and try it out. If you modify the file, you can just refresh that
 page and see the new version!
 
+
 #### Time Travel Debugging
 
 To use the debugger, click the small wrench next to every Elm file. This will
@@ -54,27 +57,84 @@ start your Elm program with a control panel that lets you:
   * Swap in new code at any time, maintaining all recorded events.
 
 
-#### Debugging code embedded in HTML
+## Building from Source
 
-To use the debugger with more complex HTML or CSS, you may want to start the
-debugger from within an HTML file. This process is still improving, so *use this
-with caution*.
+If you are interesting in modifying this project, here is what you need to do
+as of 20 November 2015:
 
-In your custom HTML file, load the `/_reactor/debug.js` script.
+### Build Elm Platform
 
-```html
-<script type="text/javascript" src="/_reactor/debug.js"></script>
+```bash
+mkdir sandbox
+cd sandbox
+cabal sandbox init
+
+git clone https://github.com/elm-lang/elm-compiler.git
+cd elm-compiler
+cabal sandbox init --sandbox ../.cabal-sandbox
+cd ..
+
+git clone https://github.com/elm-lang/elm-package.git
+cd elm-package
+cabal sandbox init --sandbox ../.cabal-sandbox
+cd ..
+
+git clone https://github.com/elm-lang/elm-make.git
+cd elm-make
+cabal sandbox init --sandbox ../.cabal-sandbox
+cd ..
+
+git clone https://github.com/elm-lang/core.git
+cd core
+git remote add vilterp git@github.com:vilterp/core.git
+git fetch vilterp new-debugger-api-support
+git checkout new-debugger-api-support
+cd ..
+
+git clone https://github.com/elm-lang/elm-reactor.git
+cd elm-reactor
+cabal sandbox init --sandbox ../.cabal-sandbox
+git checkout expando
+elm-package install
+cd elm-stuff/packages/elm-lang/core
+rm -rf 3.0.0
+ln -s ../../../../../core 3.0.0
+cd ../../../..
+
+cd ../elm-compiler
+cabal install
+cd ../elm-package
+cabal install
+cd ../elm-make
+cabal install
+cd ../elm-reactor
+git submodule init
+git submodule update
 ```
 
-That creates the `Elm.fullscreenDebug` function so you can initiate your Elm
-program with the debugger:
+Then most of your work will be in `elm-reactor/`, where you recompile with this:
 
-```javascript
-var main = Elm.fullscreenDebug('MyProject.Main', 'MyProject/Main.elm');
+```
+./cabal-build.py
 ```
 
-The first argument is the name of the module you would like to debug.
-The second argument is the name of the source file for that module.
-The file name is needed so that we know which file to recompile when
-the Reactor detects that a file has changed. You may edit a dependency,
-but we always need to compile from the root file.
+This does an extra check to see if any Elm files have changed and recompiles
+accordingly. You will need to run this for any changes you make, whether they
+are in Haskell or Elm.
+
+The binaries will all go in `sandbox/.cabal-sandbox/bin` so that is where you
+want to point for testing.
+
+### Run Development Reactor
+
+cd into the directory of the project you want to debug, then:
+
+```
+elm-make --yes
+pushd elm-stuff/packages/elm-lang/core
+rm -rf 3.0.0
+ln -s <path to core on branch new-debugger-api-support from vilterp fork of core> 3.0.0
+popd
+```
+
+...then invoke `elm-reactor` as normal and you should be able to use the new reactor. This linking step will be necessary until a version of core is published which has the changes on `vilterp-new-debugger-api-support` integrated.
