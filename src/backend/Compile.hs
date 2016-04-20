@@ -40,7 +40,7 @@ compile filePath =
                   Left _ ->
                     error "impossible"
 
-                  Right (name, _) ->
+                  Right (_, name, _) ->
                     Module.nameToString name
 
 
