@@ -28,17 +28,17 @@ faviconPath =
 
 waitingPath :: FilePath
 waitingPath =
-  "_reactor/waiting.gif"
+  "_reactor" </> "waiting.gif"
 
 
 indexPath :: FilePath
 indexPath =
-  "_reactor/index.js"
+  "_reactor" </> "index.js"
 
 
 notFoundPath :: FilePath
 notFoundPath =
-  "_reactor/notFound.js"
+  "_reactor" </> "notFound.js"
 
 
 
