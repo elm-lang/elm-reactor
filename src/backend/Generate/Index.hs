@@ -5,7 +5,7 @@ module Generate.Index (toHtml, getInfo, getPkg) where
 import Control.Monad
 import Control.Monad.Except (ExceptT, liftIO, runExceptT, throwError)
 import Data.Aeson as Json
-import qualified Data.ByteString.Lazy.Char8 as LBSC
+import qualified Data.ByteString.Lazy.UTF8 as BSU8
 import qualified Data.List as List
 import qualified Data.Map as Map
 import qualified Data.Text as Text
@@ -77,7 +77,7 @@ toHtml info@(Info pwd _ _ _ _) =
   Help.makeHtml
     (List.intercalate "/" ("~" : pwd))
     ("/" ++ StaticFiles.indexPath)
-    ("Elm.Index.fullscreen(" ++ LBSC.unpack (Json.encode info) ++ ");")
+    ("Elm.Index.fullscreen(" ++ BSU8.toString (Json.encode info) ++ ");")
 
 
 
