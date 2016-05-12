@@ -12,7 +12,7 @@ programs. Key features include:
 [debug]: http://elm-lang.org/blog/time-travel-made-easy
 
 This means you can get a great development experience whether you are using
-Sublime Text, emacs, vim, or whatever else to edit Elm code.
+Sublime Text, Emacs, vim, or whatever else to edit Elm code.
 
 
 ## Install
