@@ -62,6 +62,7 @@ Executable elm-reactor
     base >=4.2 && <5,
     blaze-html,
     blaze-markup,
+    utf8-string,
     bytestring,
     cmdargs,
     containers,
