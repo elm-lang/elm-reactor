@@ -1,15 +1,11 @@
 # Elm Reactor
 
-Interactive development tool that makes it easy to develop and debug Elm
+Interactive development tool that makes it easy to develop Elm
 programs. Key features include:
 
   * Automatically compile any Elm program
-  * [Hot-swapping][]
-  * [Time travel debugging][debug]
   * Compatible with any editor
 
-[hot-swapping]: http://elm-lang.org/blog/interactive-programming
-[debug]: http://elm-lang.org/blog/time-travel-made-easy
 
 This means you can get a great development experience whether you are using
 Sublime Text, Emacs, vim, or whatever else to edit Elm code.
@@ -44,18 +40,10 @@ Click on any file to see what it looks like. For example, you can navigate to
 an Elm file and try it out. If you modify the file, you can just refresh that
 page and see the new version!
 
+## Notes
 
-#### Time Travel Debugging
-
-To use the debugger, click the small wrench next to every Elm file. This will
-start your Elm program with a control panel that lets you:
-
-  * Pause, rewind, and continue from any point.
-
-  * Add watches and traces to track and visualize values over time.
-
-  * Swap in new code at any time, maintaining all recorded events.
-
+Older versions of the Elm Reactor used to support hot-swapping and time-travel debugging, 
+but they currently need to be updated for Elm 0.17.
 
 ## Building from Source
 
