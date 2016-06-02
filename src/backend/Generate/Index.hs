@@ -116,7 +116,7 @@ getPackageInfo =
 
         solutionExists <- liftIO (doesFileExist Paths.solvedDependencies)
         when (not solutionExists) (throwError "file not found")
-        solution <- S.read Paths.solvedDependencies
+        solution <- S.read id Paths.solvedDependencies
 
         let publicSolution =
               Map.intersection solution (Map.fromList (Desc.dependencies desc))
@@ -133,7 +133,7 @@ getDescription :: ExceptT String IO Desc.Description
 getDescription =
   do  descExists <- liftIO (doesFileExist Paths.description)
       when (not descExists) (throwError "file not found")
-      Desc.read Paths.description
+      Desc.read id Paths.description
 
 
 getPkg :: IO Pkg.Name
