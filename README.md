@@ -56,6 +56,11 @@ start your Elm program with a control panel that lets you:
 
   * Swap in new code at any time, maintaining all recorded events.
 
+(Unfortunately the debugger does not currently work with programs
+that use Effects. See
+[Elm Effects issue #14](https://github.com/evancz/elm-effects/issues/14)
+for details, and track it under
+[issue #36 of Elm reactor](https://github.com/elm-lang/elm-reactor/issues/36).)
 
 ## Building from Source
 
