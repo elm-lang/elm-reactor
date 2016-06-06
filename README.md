@@ -1,15 +1,10 @@
 # Elm Reactor
 
-Interactive development tool that makes it easy to develop and debug Elm
+Interactive development tool that makes it easier to develop Elm
 programs. Key features include:
 
   * Automatically compile any Elm program
-  * [Hot-swapping][]
-  * [Time travel debugging][debug]
   * Compatible with any editor
-
-[hot-swapping]: http://elm-lang.org/blog/interactive-programming
-[debug]: http://elm-lang.org/blog/time-travel-made-easy
 
 This means you can get a great development experience whether you are using
 Sublime Text, Emacs, vim, or whatever else to edit Elm code.
@@ -26,10 +21,10 @@ else it needs.
 ## Use
 
 Navigate to the Elm project you want to work on. A great project to get started
-with is [elm-examples][] which contains some simple programs that should be fun
+with is [elm-architecture-tutorial][] which contains some simple programs that should be fun
 to debug.
 
-[elm-examples]: https://github.com/evancz/elm-examples
+[elm-architecture-tutorial]: https://github.com/evancz/elm-architecture-tutorial
 
 In the root of your Elm project start the reactor with:
 
@@ -40,21 +35,7 @@ elm-reactor
 Now open [http://localhost:8000](http://localhost:8000) in your browser. You
 should see a navigation page for your project.
 
-Click on any file to see what it looks like. For example, you can navigate to
-an Elm file and try it out. If you modify the file, you can just refresh that
-page and see the new version!
-
-
-#### Time Travel Debugging
-
-To use the debugger, click the small wrench next to every Elm file. This will
-start your Elm program with a control panel that lets you:
-
-  * Pause, rewind, and continue from any point.
-
-  * Add watches and traces to track and visualize values over time.
-
-  * Swap in new code at any time, maintaining all recorded events.
+Click on any file to see what it looks like. For example, you can navigate to an Elm file like `examples/1-button.elm` and try it out. If you modify the file, you can just refresh that page and see the new version!
 
 
 ## Building from Source
