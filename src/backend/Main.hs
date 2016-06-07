@@ -7,7 +7,6 @@ import Control.Applicative ((<|>))
 import Control.Monad (guard)
 import Control.Monad.Trans (MonadIO(liftIO))
 import qualified Data.HashMap.Strict as HashMap
-import qualified Data.List as List
 import qualified Data.ByteString.Char8 as BSC
 import GHC.IO.Encoding (setLocaleEncoding, utf8)
 import qualified Network.WebSockets.Snap as WSS
@@ -20,7 +19,7 @@ import Snap.Util.FileServe
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html.Renderer.Utf8 as Blaze
 
-import qualified StaticFiles
+import qualified StaticFiles as SF
 import qualified Compile
 import qualified Generate.Help as Generate
 import qualified Generate.Index as Index
@@ -29,6 +28,10 @@ import qualified Socket
 import qualified Elm.Compiler as Compiler
 import qualified Elm.Package as Pkg
 import Elm.Utils ((|>))
+
+
+
+-- FLAGS
 
 
 data Flags = Flags
@@ -62,6 +65,10 @@ flags = Flags
     &= summary startupMessage
 
 
+
+-- START THE REACTOR
+
+
 config :: BSC.ByteString -> Int -> Config Snap a
 config bindSpec portNumber =
     defaultConfig
@@ -71,7 +78,6 @@ config bindSpec portNumber =
       |> setErrorLog ConfigNoLog
 
 
--- | Set up the reactor.
 main :: IO ()
 main =
   do  setLocaleEncoding utf8
@@ -88,9 +94,13 @@ main =
         <|> error404
 
 
+
+-- HELPERS
+
+
 startupMessage :: String
 startupMessage =
-  "elm reactor " ++ Pkg.versionToString Compiler.version
+  "elm-reactor " ++ Pkg.versionToString Compiler.version
 
 
 directoryConfig :: MonadSnap m => DirectoryConfig m
@@ -156,11 +166,8 @@ serveFilePretty file =
     possibleExtensions =
       getSubExts (takeExtensions file)
   in
-    case mconcat (map (flip HashMap.lookup defaultMimeTypes) possibleExtensions) of
+    case mconcat (map lookupMimeType possibleExtensions) of
       Nothing ->
-        serveCode file
-
-      Just mimeType | BSC.isPrefixOf "text" mimeType ->
         serveCode file
 
       Just mimeType ->
@@ -199,7 +206,7 @@ serveElm file =
 serveAssets :: Snap ()
 serveAssets =
   do  file <- getSafePath
-      case List.lookup file staticAssets of
+      case HashMap.lookup file staticAssets of
         Nothing ->
           pass
 
@@ -212,18 +219,79 @@ type MimeType =
   String
 
 
-staticAssets :: [(FilePath, (BSC.ByteString, MimeType))]
+staticAssets :: HashMap.HashMap FilePath (BSC.ByteString, MimeType)
 staticAssets =
-    [ StaticFiles.faviconPath ==>
-        (StaticFiles.favicon, "image/x-icon")
-    , StaticFiles.waitingPath ==>
-        (StaticFiles.waiting, "image/gif")
-    , StaticFiles.indexPath ==>
-        (StaticFiles.index, "application/javascript")
-    , StaticFiles.notFoundPath ==>
-        (StaticFiles.notFound, "application/javascript")
+  HashMap.fromList
+    [ SF.faviconPath  ==> (SF.favicon , "image/x-icon")
+    , SF.waitingPath  ==> (SF.waiting , "image/gif")
+    , SF.indexPath    ==> (SF.index   , "application/javascript")
+    , SF.notFoundPath ==> (SF.notFound, "application/javascript")
     ]
 
 
 (==>) :: a -> b -> (a,b)
 (==>) = (,)
+
+
+
+-- MIME TYPES
+
+
+lookupMimeType :: FilePath -> Maybe BSC.ByteString
+lookupMimeType ext =
+  HashMap.lookup ext mimeTypeDict
+
+
+mimeTypeDict :: HashMap.HashMap FilePath BSC.ByteString
+mimeTypeDict =
+  HashMap.fromList
+    [ ".asc"     ==> "text/plain"
+    , ".asf"     ==> "video/x-ms-asf"
+    , ".asx"     ==> "video/x-ms-asf"
+    , ".avi"     ==> "video/x-msvideo"
+    , ".bz2"     ==> "application/x-bzip"
+    , ".css"     ==> "text/css"
+    , ".dtd"     ==> "text/xml"
+    , ".dvi"     ==> "application/x-dvi"
+    , ".gif"     ==> "image/gif"
+    , ".gz"      ==> "application/x-gzip"
+    , ".htm"     ==> "text/html"
+    , ".html"    ==> "text/html"
+    , ".ico"     ==> "image/x-icon"
+    , ".jpeg"    ==> "image/jpeg"
+    , ".jpg"     ==> "image/jpeg"
+    , ".js"      ==> "text/javascript"
+    , ".json"    ==> "application/json"
+    , ".m3u"     ==> "audio/x-mpegurl"
+    , ".mov"     ==> "video/quicktime"
+    , ".mp3"     ==> "audio/mpeg"
+    , ".mpeg"    ==> "video/mpeg"
+    , ".mpg"     ==> "video/mpeg"
+    , ".ogg"     ==> "application/ogg"
+    , ".pac"     ==> "application/x-ns-proxy-autoconfig"
+    , ".pdf"     ==> "application/pdf"
+    , ".png"     ==> "image/png"
+    , ".qt"      ==> "video/quicktime"
+    , ".sig"     ==> "application/pgp-signature"
+    , ".spl"     ==> "application/futuresplash"
+    , ".svg"     ==> "image/svg+xml"
+    , ".swf"     ==> "application/x-shockwave-flash"
+    , ".tar"     ==> "application/x-tar"
+    , ".tar.bz2" ==> "application/x-bzip-compressed-tar"
+    , ".tar.gz"  ==> "application/x-tgz"
+    , ".tbz"     ==> "application/x-bzip-compressed-tar"
+    , ".text"    ==> "text/plain"
+    , ".tgz"     ==> "application/x-tgz"
+    , ".ttf"     ==> "application/x-font-truetype"
+    , ".txt"     ==> "text/plain"
+    , ".wav"     ==> "audio/x-wav"
+    , ".wax"     ==> "audio/x-ms-wax"
+    , ".wma"     ==> "audio/x-ms-wma"
+    , ".wmv"     ==> "video/x-ms-wmv"
+    , ".xbm"     ==> "image/x-xbitmap"
+    , ".xml"     ==> "text/xml"
+    , ".xpm"     ==> "image/x-xpixmap"
+    , ".xwd"     ==> "image/x-xwindowdump"
+    , ".zip"     ==> "application/zip"
+    ]
+

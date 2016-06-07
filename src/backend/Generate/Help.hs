@@ -57,7 +57,7 @@ makeCodeHtml title code =
       H.script ! A.src "//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/highlight.min.js" $ ""
       H.script $ "if (hljs) { hljs.initHighlightingOnLoad(); }"
 
-    H.body $ do
+    H.body ! A.style "background-color: #F0F0F0;" $ do
       H.pre $ H.code $ H.toHtml code
 
 
