@@ -22,13 +22,16 @@ makeHtml title jsFile initCode =
 
     H.body $ do
       H.script $ H.preEscapedToMarkup initCode
+      H.link
+        ! A.type_ "text/css"
+        ! A.rel "stylesheet"
+        ! A.href "https://fonts.googleapis.com/css?family=Source+Sans+Pro|Source+Code+Pro"
 
 
 normalStyle :: H.Html
 normalStyle =
   H.toHtml $ unlines $
-    [ "@import url(http://fonts.googleapis.com/css?family=Source+Sans+Pro|Source+Code+Pro);"
-    , "html, head, body {"
+    [ "html, head, body {"
     , "  margin: 0;"
     , "  height: 100%;"
     , "}"
