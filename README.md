@@ -37,3 +37,8 @@ should see a navigation page for your project.
 
 Click on any file to see what it looks like. For example, you can navigate to an Elm file like `examples/1-button.elm` and try it out. If you modify the file, you can just refresh that page and see the new version!
 
+### Note on Elm's Time Traveling Debugger
+[Elm's Time Traveling Debugger](http://debug.elm-lang.org/) has been temporarily disabled.
+It is not currently available as part of the `elm-reactor`.
+An updated version will appear in a future release.
+For now, please use the [Debug](http://package.elm-lang.org/packages/elm-lang/core/latest/Debug) library.
