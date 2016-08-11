@@ -4,7 +4,6 @@ import Color exposing (Color, darkGrey)
 import Dict
 import TempFontAwesome as FA
 import Html exposing (..)
-import Html.App as Html
 import Html.Attributes exposing (..)
 import Markdown
 import String
