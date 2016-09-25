@@ -73,7 +73,7 @@ Executable elm-reactor
     filepath,
     fsnotify >= 0.2,
     mtl,
-    process,
+    process-extras,
     snap-core,
     snap-server,
     template-haskell,
