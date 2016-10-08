@@ -1,5 +1,5 @@
 Name: elm-reactor
-Version: 0.17.1
+Version: 0.18
 
 
 Synopsis:
@@ -67,7 +67,7 @@ Executable elm-reactor
     cmdargs,
     containers,
     directory >= 1.2,
-    elm-compiler == 0.17.1,
+    elm-compiler == 0.18,
     elm-package,
     file-embed,
     filepath,
