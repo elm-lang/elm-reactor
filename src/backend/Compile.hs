@@ -9,6 +9,7 @@ import System.Directory (removeFile)
 
 import qualified Elm.Compiler as Compiler
 import qualified Elm.Compiler.Module as Module
+import qualified Elm.Package as Pkg
 import qualified Elm.Utils as Utils
 import qualified StaticFiles
 
@@ -23,7 +24,7 @@ compile filePath =
     tempJsFile =
       "it-is-safe-to-delete-this-file.js"
   in
-  do  result <- Utils.unwrappedRun "elm-make" [ "--yes", filePath, "--output=" ++ tempJsFile ]
+  do  result <- Utils.unwrappedRun "elm-make" [ "--yes", "--debug", filePath, "--output=" ++ tempJsFile ]
       case result of
         Left (Utils.MissingExe msg) ->
           return $ Left msg
@@ -36,7 +37,7 @@ compile filePath =
               removeFile tempJsFile
               source <- readFile filePath
               return $ Right $ (,) code $
-                case Compiler.parseDependencies source of
+                case Compiler.parseDependencies Pkg.dummyName source of
                   Left _ ->
                     error "impossible"
 
