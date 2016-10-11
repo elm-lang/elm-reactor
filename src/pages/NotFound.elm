@@ -1,4 +1,4 @@
-module NotFound exposing (..) -- where
+module NotFound exposing (main)
 
 import Html exposing (..)
 import Html.Attributes exposing (style)
