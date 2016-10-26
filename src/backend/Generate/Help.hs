@@ -96,7 +96,7 @@ makeElmHtml filePath =
         H.img ! A.src "/_reactor/waiting.gif"
         H.div ! A.style "font-size: 1em" $ "With new projects, I need a bunch of extra time to download packages."
 
-    H.script ! A.src (H.toValue ("/_compile/" ++ filePath)) $ ""
+    H.script ! A.src (H.toValue ("/_compile/" ++ filePath)) ! A.charset "utf-8" $ ""
     H.script $ H.preEscapedToMarkup $ unlines $
       [ "while (document.body.firstChild) {"
       , "    document.body.removeChild(document.body.firstChild);"
