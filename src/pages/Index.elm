@@ -169,7 +169,7 @@ leftColumnView model =
         (
           div [ style <| boxHeaderStyles ++ blockStyles ] [ text "File Navigation" ]
           :: List.map folderDisplay (List.sort (List.filter (not << String.startsWith ".") model.dirs))
-          ++ List.map fileDisplay (List.sortBy fst (List.filter (not << String.startsWith "." << fst) model.files))
+          ++ List.map fileDisplay (List.sortBy Tuple.first (List.filter (not << String.startsWith "." << Tuple.first) model.files))
         )
 
     viewReadme markdown =
