@@ -5,6 +5,7 @@ module Compile (toJavaScript) where
 import qualified Data.Aeson as Json
 import qualified Data.ByteString.Char8 as BS
 import qualified Data.ByteString.Lazy.Char8 as LBS
+import qualified Data.Text.IO as Text
 import System.Directory (removeFile)
 
 import qualified Elm.Compiler as Compiler
@@ -35,7 +36,7 @@ compile filePath =
         Right _ ->
           do  code <- BS.readFile tempJsFile
               removeFile tempJsFile
-              source <- readFile filePath
+              source <- Text.readFile filePath
               return $ Right $ (,) code $
                 case Compiler.parseDependencies Pkg.dummyName source of
                   Left _ ->
