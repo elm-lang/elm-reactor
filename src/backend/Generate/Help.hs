@@ -22,10 +22,7 @@ makeHtml title jsFile initCode =
 
     H.body $ do
       H.script $ H.preEscapedToMarkup initCode
-      H.link
-        ! A.type_ "text/css"
-        ! A.rel "stylesheet"
-        ! A.href "https://fonts.googleapis.com/css?family=Source+Sans+Pro|Source+Code+Pro"
+      fontLink
 
 
 normalStyle :: H.Html
@@ -56,19 +53,18 @@ makeCodeHtml title code =
       H.title $ H.toHtml title
       H.style ! A.type_ "text/css" $ codeStyle
 
-      H.link ! A.rel "stylesheet" ! A.href "//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/styles/default.min.css"
-      H.script ! A.src "//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/highlight.min.js" $ ""
-      H.script $ "if (hljs) { hljs.initHighlightingOnLoad(); }"
-
     H.body ! A.style "background-color: #F0F0F0;" $ do
       H.pre $ H.code $ H.toHtml code
+      fontLink
+      H.link ! A.rel "stylesheet" ! A.href "//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/styles/default.min.css"
+      H.script ! A.src "//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/highlight.min.js" $ ""
+      H.script $ "if (hljs) { hljs.initHighlighting(); }"
 
 
 codeStyle :: H.Html
 codeStyle =
   H.toHtml $ unlines $
-    [ "@import url(http://fonts.googleapis.com/css?family=Source+Code+Pro);"
-    , "html, head, body, pre {"
+    [ "html, head, body, pre {"
     , "  margin: 0;"
     , "  height: 100%;"
     , "}"
@@ -103,13 +99,13 @@ makeElmHtml filePath =
       , "}"
       , "runElmProgram();"
       ]
+    fontLink
 
 
 elmStyle :: H.Html
 elmStyle =
   H.toHtml $ unlines $
-    [ "@import url(http://fonts.googleapis.com/css?family=Source+Sans+Pro);"
-    , "html, head, body {"
+    [ "html, head, body {"
     , "  margin: 0;"
     , "  height: 100%;"
     , "}"
@@ -122,3 +118,15 @@ waitingStyle =
     "width: 100%; height: 100%; display: flex; flex-direction: column;"
     ++ " justify-content: center; align-items: center; color: #9A9A9A;"
     ++ " font-family: 'Source Sans Pro';"
+
+
+
+-- COMMON
+
+
+fontLink :: H.Html
+fontLink =
+  H.link
+    ! A.type_ "text/css"
+    ! A.rel "stylesheet"
+    ! A.href "https://fonts.googleapis.com/css?family=Source+Sans+Pro|Source+Code+Pro"
