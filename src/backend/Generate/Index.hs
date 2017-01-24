@@ -1,188 +1,188 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# LANGUAGE OverloadedStrings #-}
-module Generate.Index (toHtml, getInfo, getPkg) where
+module Generate.Index (toHtml, getProject, moveToRoot) where
 
-import Control.Monad
-import Control.Monad.Except (ExceptT, liftIO, runExceptT, throwError)
-import Data.Aeson as Json
+import Control.Monad (filterM)
+import Data.Aeson ((.=))
+import qualified Data.Aeson as Json
 import qualified Data.ByteString.Lazy.UTF8 as BSU8
 import qualified Data.List as List
-import qualified Data.Map as Map
 import qualified Data.Text as Text
 import qualified Data.Text.IO as Text
-import qualified Elm.Package as Pkg
-import qualified Elm.Package.Description as Desc
-import qualified Elm.Package.Paths as Paths
-import qualified Elm.Package.Solution as S
-import System.Directory (doesDirectoryExist, doesFileExist, getDirectoryContents)
-import System.FilePath ((</>), splitDirectories, takeExtension)
+import qualified System.Directory as Dir
+import System.FilePath ((</>), joinPath, splitDirectories, takeExtension)
 import qualified Text.Blaze.Html5 as H
 
+import qualified Elm.Config as Config
 import qualified Generate.Help as Help
 import qualified StaticFiles
 
 
 
--- INFO
+-- PROJECT
 
 
-data Info = Info
+data Project =
+  Project
+    { _root :: FilePath
+    , _info :: PerhapsInfo
+    }
+
+
+data PerhapsInfo
+  = Bad (Maybe FilePath)
+  | Good Info
+
+
+data Info =
+  Info
     { _pwd :: [String]
     , _dirs :: [FilePath]
     , _files :: [(FilePath, Bool)]
-    , _pkg :: Maybe PackageInfo
     , _readme :: Maybe String
-    }
-
-
-data PackageInfo = PackageInfo
-    { _version :: Pkg.Version
-    , _repository :: String
-    , _summary :: String
-    , _dependencies :: [(Pkg.Name, Pkg.Version)]
+    , _config :: Text.Text
     }
 
 
 
--- TO JSON
+-- JSON
 
 
-instance ToJSON Info where
-  toJSON info =
-    object
-      [ "pwd" .= _pwd info
-      , "dirs" .= _dirs info
-      , "files" .= _files info
-      , "pkg" .= _pkg info
-      , "readme" .= _readme info
-      ]
+goodToJson :: FilePath -> Info -> String
+goodToJson root info =
+  BSU8.toString $ Json.encode $ Json.object $
+    [ "root" .= root
+    , "pwd" .= _pwd info
+    , "dirs" .= _dirs info
+    , "files" .= _files info
+    , "readme" .= _readme info
+    , "config" .= _config info
+    ]
 
 
-instance ToJSON PackageInfo where
-  toJSON pkgInfo =
-    object
-      [ "version" .= _version pkgInfo
-      , "repository" .= _repository pkgInfo
-      , "summary" .= _summary pkgInfo
-      , "dependencies" .= _dependencies pkgInfo
-      ]
+badJson :: FilePath -> Maybe FilePath -> String
+badJson root potentialRoot =
+  BSU8.toString $ Json.encode $ Json.object $
+    [ "root" .= root
+    , "suggestion" .= potentialRoot
+    ]
 
 
 
 -- GENERATE HTML
 
 
-toHtml :: Info -> H.Html
-toHtml info@(Info pwd _ _ _ _) =
-  Help.makeHtml
-    (List.intercalate "/" ("~" : pwd))
-    ("/" ++ StaticFiles.indexPath)
-    ("Elm.Index.fullscreen(" ++ BSU8.toString (Json.encode info) ++ ");")
+toHtml :: Project -> H.Html
+toHtml (Project root perhapsInfo) =
+  case perhapsInfo of
+    Good info@(Info pwd _ _ _ _) ->
+      Help.makeHtml
+        (List.intercalate "/" ("~" : pwd))
+        ("/" ++ StaticFiles.indexPath)
+        ("Elm.Index.fullscreen(" ++ goodToJson root info ++ ");")
+
+    Bad suggestion ->
+      Help.makeHtml
+        (maybe "New Project!" (const "Existing Project?") suggestion)
+        ("/" ++ StaticFiles.startPath)
+        ("Elm.Start.fullscreen(" ++ badJson root suggestion ++ ");")
 
 
 
--- GET INFO FOR THIS LOCATION
+-- GET PROJECT
 
 
-getInfo :: FilePath -> IO Info
-getInfo directory =
-  do  packageInfo <- getPackageInfo
-      (dirs, files) <- getDirectoryInfo directory
+getProject :: FilePath -> IO Project
+getProject directory =
+  do  root <- Dir.getCurrentDirectory
+      exists <- Dir.doesFileExist Config.path
+      Project root <$>
+        case exists of
+          False ->
+            Bad <$> findNearestConfig (splitDirectories root)
+
+          True ->
+            do  json <- Text.readFile Config.path
+                Good <$> getInfo json directory
+
+
+findNearestConfig :: [String] -> IO (Maybe FilePath)
+findNearestConfig dirs =
+  if null dirs then
+    return Nothing
+
+  else
+    do  exists <- Dir.doesFileExist (joinPath dirs </> Config.path)
+        if exists
+          then return (Just (joinPath dirs))
+          else findNearestConfig (init dirs)
+
+
+moveToRoot :: IO ()
+moveToRoot =
+  do  subDir <- Dir.getCurrentDirectory
+      maybeRoot <- findNearestConfig (splitDirectories subDir)
+      case maybeRoot of
+        Nothing ->
+          return ()
+
+        Just root ->
+          Dir.setCurrentDirectory root
+
+
+
+-- GET INFO
+
+
+getInfo :: Text.Text -> FilePath -> IO Info
+getInfo config directory =
+  do  (dirs, files) <- getDirectoryInfo directory
       readme <- getReadme directory
-      return $ Info
-          { _pwd = toPwd directory
+      return $
+        Info
+          { _pwd = dropWhile ("." ==) (splitDirectories directory)
           , _dirs = dirs
           , _files = files
-          , _pkg = packageInfo
           , _readme = readme
+          , _config = config
           }
 
 
-toPwd :: FilePath -> [String]
-toPwd directory =
-  case splitDirectories directory of
-    "." : path ->
-        path
 
-    path ->
-        path
+-- README
 
 
-getPackageInfo :: IO (Maybe PackageInfo)
-getPackageInfo =
-  fmap (either (const Nothing) Just) $ runExceptT $
-    do
-        desc <- getDescription
-
-        solutionExists <- liftIO (doesFileExist Paths.solvedDependencies)
-        when (not solutionExists) (throwError "file not found")
-        solution <- S.read id Paths.solvedDependencies
-
-        let publicSolution =
-              Map.intersection solution (Map.fromList (Desc.dependencies desc))
-
-        return $ PackageInfo
-          { _version = Desc.version desc
-          , _repository = Desc.repo desc
-          , _summary = Desc.summary desc
-          , _dependencies = Map.toList publicSolution
-          }
+getReadme :: FilePath -> IO (Maybe String)
+getReadme dir =
+  do  let readmePath = dir </> "README.md"
+      exists <- Dir.doesFileExist readmePath
+      if exists
+        then Just <$> readFile readmePath
+        else return Nothing
 
 
-getDescription :: ExceptT String IO Desc.Description
-getDescription =
-  do  descExists <- liftIO (doesFileExist Paths.description)
-      when (not descExists) (throwError "file not found")
-      Desc.read id Paths.description
 
-
-getPkg :: IO Pkg.Name
-getPkg =
-  fmap
-    (either (const Pkg.dummyName) Desc.name)
-    (runExceptT getDescription)
+-- DIRECTORIES / FILES
 
 
 getDirectoryInfo :: FilePath -> IO ([FilePath], [(FilePath, Bool)])
-getDirectoryInfo directory =
-  do  directoryContents <-
-          getDirectoryContents directory
+getDirectoryInfo dir =
+  do  contents <- Dir.getDirectoryContents dir
 
-      allDirectories <-
-          filterM (doesDirectoryExist . (directory </>)) directoryContents
+      allDirs <- filterM (Dir.doesDirectoryExist . (dir </>)) contents
+      rawFiles <- filterM (Dir.doesFileExist . (dir </>)) contents
 
-      let isLegit name =
-            List.notElem name [".", "..", "elm-stuff"]
+      files <- mapM (inspectFile dir) rawFiles
 
-      let directories =
-            filter isLegit allDirectories
-
-      rawFiles <-
-          filterM (doesFileExist . (directory </>)) directoryContents
-
-      files <- mapM (inspectFile directory) rawFiles
-
-      return (directories, files)
+      return (allDirs, files)
 
 
 inspectFile :: FilePath -> FilePath -> IO (FilePath, Bool)
-inspectFile directory filePath =
+inspectFile dir filePath =
   if takeExtension filePath == ".elm" then
-    do  source <- Text.readFile (directory </> filePath)
+    do  source <- Text.readFile (dir </> filePath)
         let hasMain = Text.isInfixOf "\nmain " source
         return (filePath, hasMain)
 
   else
     return (filePath, False)
-
-
-
-
-getReadme :: FilePath -> IO (Maybe String)
-getReadme directory =
-  do  exists <- doesFileExist (directory </> "README.md")
-      if exists
-        then
-          Just `fmap` readFile (directory </> "README.md")
-        else
-          return Nothing

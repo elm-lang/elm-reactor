@@ -4,6 +4,7 @@
 module Main where
 
 import Control.Applicative ((<|>))
+import Control.Concurrent (threadDelay)
 import Control.Monad (guard)
 import Control.Monad.Trans (MonadIO(liftIO))
 import qualified Data.HashMap.Strict as HashMap
@@ -19,12 +20,12 @@ import Snap.Util.FileServe
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html.Renderer.Utf8 as Blaze
 
-import qualified StaticFiles as SF
 import qualified Compile
 import qualified Generate.Help as Generate
 import qualified Generate.Index as Index
 import qualified Generate.NotFound as NotFound
 import qualified Socket
+import qualified StaticFiles
 import qualified Elm.Compiler as Compiler
 import qualified Elm.Package as Pkg
 import Elm.Utils ((|>))
@@ -89,6 +90,8 @@ main =
         serveFiles
         <|> route [ ("_compile", compile) ]
         <|> route [ ("_changes", socket) ]
+        <|> route [ ("_elm/move-to-root", moveToRoot)]
+        <|> route [ ("_elm/create-new-project", createNewProject)]
         <|> serveDirectoryWith directoryConfig "."
         <|> serveAssets
         <|> error404
@@ -107,9 +110,9 @@ directoryConfig :: MonadSnap m => DirectoryConfig m
 directoryConfig =
   let
     customGenerator directory =
-      do  info <- liftIO (Index.getInfo directory)
+      do  project <- liftIO (Index.getProject directory)
           modifyResponse $ setContentType "text/html; charset=utf-8"
-          writeBuilder (Blaze.renderHtmlBuilder (Index.toHtml info))
+          writeBuilder (Blaze.renderHtmlBuilder (Index.toHtml project))
   in
     fancyDirectoryConfig
       { indexFiles = []
@@ -137,6 +140,21 @@ error404 =
   do  modifyResponse $ setResponseStatus 404 "Not Found"
       modifyResponse $ setContentType "text/html; charset=utf-8"
       writeBuilder (Blaze.renderHtmlBuilder NotFound.html)
+
+
+
+-- CREATE NEW PROJECT
+
+
+createNewProject :: Snap ()
+createNewProject =
+  do  liftIO $ threadDelay (2 * 1000 * 1000)
+      return ()
+
+
+moveToRoot :: Snap ()
+moveToRoot =
+  liftIO Index.moveToRoot
 
 
 
@@ -206,31 +224,13 @@ serveElm file =
 serveAssets :: Snap ()
 serveAssets =
   do  file <- getSafePath
-      case HashMap.lookup file staticAssets of
+      case StaticFiles.lookup file of
         Nothing ->
           pass
 
         Just (content, mimeType) ->
           do  modifyResponse (setContentType $ BSC.pack (mimeType ++ ";charset=utf-8"))
               writeBS content
-
-
-type MimeType =
-  String
-
-
-staticAssets :: HashMap.HashMap FilePath (BSC.ByteString, MimeType)
-staticAssets =
-  HashMap.fromList
-    [ SF.faviconPath  ==> (SF.favicon , "image/x-icon")
-    , SF.waitingPath  ==> (SF.waiting , "image/gif")
-    , SF.indexPath    ==> (SF.index   , "application/javascript")
-    , SF.notFoundPath ==> (SF.notFound, "application/javascript")
-    ]
-
-
-(==>) :: a -> b -> (a,b)
-(==>) = (,)
 
 
 
@@ -240,6 +240,11 @@ staticAssets =
 lookupMimeType :: FilePath -> Maybe BSC.ByteString
 lookupMimeType ext =
   HashMap.lookup ext mimeTypeDict
+
+
+(==>) :: a -> b -> (a,b)
+(==>) a b =
+  (a, b)
 
 
 mimeTypeDict :: HashMap.HashMap FilePath BSC.ByteString
