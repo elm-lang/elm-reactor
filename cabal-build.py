@@ -18,8 +18,9 @@ def mostRecentModification(directory):
 
 
 pageTime = mostRecentModification('src/pages')
+assetTime = mostRecentModification('assets')
 debuggerTime = mostRecentModification('src/debugger')
-mostRecent = max(pageTime, debuggerTime)
+mostRecent = max(pageTime, assetTime, debuggerTime)
 
 
 ## FIGURE OUT OLD MODIFICATION TIME
@@ -54,4 +55,4 @@ if mostRecent > prevMostRecent:
 
 exitCode = os.system("cabal build")
 
-sys.exit(exitCode)
+sys.exit(1 if exitCode else 0)
