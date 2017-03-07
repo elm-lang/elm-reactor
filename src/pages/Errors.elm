@@ -53,7 +53,6 @@ view model =
         , "min-height" => "100%"
         , "display" => "flex"
         , "flex-direction" => "column"
-        , "align-items" => "center"
         , "background-color" => "black"
         , "color" => "rgb(233, 235, 235)"
         , "font-family" => "monospace"
@@ -65,6 +64,7 @@ view model =
             , "white-space" => "pre"
             , "background-color" => "rgb(39, 40, 34)"
             , "padding" => "2em"
+            , "margin" => "0 auto"
             ]
         ]
         (addColors model)
