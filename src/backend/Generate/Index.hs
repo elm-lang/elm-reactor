@@ -75,9 +75,10 @@ instance ToJSON PackageInfo where
 toHtml :: Info -> H.Html
 toHtml info@(Info pwd _ _ _ _) =
   Help.makeHtml
-    (List.intercalate "/" ("~" : pwd))
+    (List.intercalate "/" ("~" : pwd)) 
     ("/" ++ StaticFiles.indexPath)
     ("Elm.Index.fullscreen(" ++ BSU8.toString (Json.encode info) ++ ");")
+    []
 
 
 

@@ -5,14 +5,13 @@ module Generate.Help (makeHtml, makeCodeHtml, makeElmHtml) where
 import Text.Blaze.Html5 ((!))
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
-
-
+import Data.String (fromString)
 
 -- PAGES
 
 
-makeHtml :: String -> String -> String -> H.Html
-makeHtml title jsFile initCode =
+makeHtml :: String -> String -> String -> [String] -> H.Html
+makeHtml title jsFile initCode cssIncludes =
   H.docTypeHtml $ do
     H.head $ do
       H.meta ! A.charset "UTF-8"
@@ -22,11 +21,12 @@ makeHtml title jsFile initCode =
 
     H.body $ do
       H.script $ H.preEscapedToMarkup initCode
-      H.link
-        ! A.type_ "text/css"
-        ! A.rel "stylesheet"
-        ! A.href "https://fonts.googleapis.com/css?family=Source+Sans+Pro|Source+Code+Pro"
-
+      link' "https://fonts.googleapis.com/css?family=Source+Sans+Pro|Source+Code+Pro"
+      mapM_ link' cssIncludes
+  where link' css = H.link
+                  ! A.type_ "text/css"
+                  ! A.rel "stylesheet"
+                  ! A.href (fromString css)
 
 normalStyle :: H.Html
 normalStyle =
@@ -82,13 +82,14 @@ codeStyle =
 -- ELM CODE
 
 
-makeElmHtml :: FilePath -> H.Html
-makeElmHtml filePath =
+makeElmHtml :: FilePath -> [String] -> H.Html
+makeElmHtml filePath cssIncludes =
   H.docTypeHtml $ do
     H.head $ do
       H.meta ! A.charset "UTF-8"
       H.title $ H.toHtml ("~/" ++ filePath)
       H.style ! A.type_ "text/css" $ elmStyle
+      mapM_ link' cssIncludes
 
     H.body $ do
       H.div ! A.style waitingStyle $ do
@@ -103,6 +104,10 @@ makeElmHtml filePath =
       , "}"
       , "runElmProgram();"
       ]
+  where link' css = H.link
+                  ! A.type_ "text/css"
+                  ! A.rel "stylesheet"
+                  ! A.href (fromString css)
 
 
 elmStyle :: H.Html
