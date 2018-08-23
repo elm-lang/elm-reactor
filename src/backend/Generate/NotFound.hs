@@ -12,3 +12,4 @@ html =
     "Page Not Found"
     ("/" ++ StaticFiles.notFoundPath)
     "Elm.NotFound.fullscreen();"
+    []

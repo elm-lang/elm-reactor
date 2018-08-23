@@ -37,6 +37,7 @@ import Elm.Utils ((|>))
 data Flags = Flags
     { address :: String
     , port :: Int
+    , cssIncludes :: [String]
     }
     deriving (Data,Typeable,Show,Eq)
 
@@ -49,6 +50,9 @@ flags = Flags
 
   , port = 8000
       &= help "set the port of the reactor (default: 8000)"
+
+  , cssIncludes = []
+      &= help "list of urls to css files (default: [])"
 
   } &= help
         "Interactive development tool that makes it easy to develop and debug Elm programs.\n\
@@ -86,7 +90,7 @@ main =
       putStrLn startupMessage
 
       httpServe (config (BSC.pack (address cargs)) (port cargs)) $
-        serveFiles
+        serveFiles (cssIncludes cargs)
         <|> route [ ("_compile", compile) ]
         <|> route [ ("_changes", socket) ]
         <|> serveDirectoryWith directoryConfig "."
@@ -143,11 +147,11 @@ error404 =
 -- SERVE FILES
 
 
-serveFiles :: Snap ()
-serveFiles =
+serveFiles :: [String] -> Snap ()
+serveFiles cssLinks =
   do  file <- getSafePath
       guard =<< liftIO (doesFileExist file)
-      serveElm file <|> serveFilePretty file
+      serveElm file cssLinks <|> serveFilePretty file
 
 
 serveHtml :: MonadSnap m => H.Html -> m ()
@@ -185,18 +189,18 @@ getSubExts fullExtension =
 
 serveCode :: String -> Snap ()
 serveCode file =
-  do  code <- liftIO (readFile file)
-      serveHtml $ Generate.makeCodeHtml ('~' : '/' : file) code
+  do code <- liftIO (readFile file)
+     serveHtml $ Generate.makeCodeHtml ('~' : '/' : file) code
 
 
 
 -- SERVE ELM
 
 
-serveElm :: FilePath -> Snap ()
-serveElm file =
-  do  guard (takeExtension file == ".elm")
-      serveHtml (Generate.makeElmHtml file)
+serveElm :: FilePath -> [String] -> Snap ()
+serveElm file cssLinks =
+  do guard (takeExtension file == ".elm")
+     serveHtml (Generate.makeElmHtml file cssLinks)
 
 
 
