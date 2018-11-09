@@ -5,11 +5,12 @@ module StaticFiles.Build
     where
 
 import qualified Data.ByteString as BS
+import Data.ByteString.Char8 (unpack)
 import System.Directory (removeFile)
 import System.Exit (ExitCode(..), exitFailure)
 import System.FilePath ((<.>), takeBaseName)
 import System.IO (hPutStrLn, stderr)
-import System.Process (readProcessWithExitCode)
+import System.Process.ByteString (readProcessWithExitCode)
 
 
 
@@ -34,12 +35,13 @@ elmMake source target =
           readProcessWithExitCode
               "elm-make"
               [ "--yes", source, "--output=" ++ target ]
-              ""
+              BS.empty
 
       case exitCode of
         ExitSuccess ->
           return ()
 
         ExitFailure _ ->
-          do  hPutStrLn stderr (unlines ["Failed to build " ++ source, "", out, err])
+          do  hPutStrLn stderr (unlines ["Failed to build " ++ source, "",
+                                         unpack out, unpack err])
               exitFailure
